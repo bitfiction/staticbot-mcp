@@ -43,7 +43,10 @@ const server = new McpServer({
 
 server.tool(
   "list_templates",
-  "List available infrastructure templates. Templates define what gets deployed — e.g. a Vite app, a Supabase self-hosted stack, or a combined infra+website setup. Use this to find a template before creating a stack.",
+  "List available templates (slim response: id, name, category, repoLink). " +
+  "Use get_template to see full details including config variables. " +
+  "When preparing a migration, ask the user: do they want to pick an existing template from this list, " +
+  "or create a new one from their GitHub repo using create_template?",
   {},
   async () => {
     const data = await apiFetch("/api/v1/templates");
@@ -59,6 +62,26 @@ server.tool(
   },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/templates/${id}`);
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
+
+server.tool(
+  "create_template",
+  "Create a new template by scanning a GitHub repository. Auto-detects platforms, env vars, and builders. " +
+  "Use this when the user wants to migrate a repo that doesn't match any existing template from list_templates. " +
+  "The name is optional — if omitted, it's derived from the repo name.",
+  {
+    repoLink: z.string().describe("GitHub repository URL (e.g. https://github.com/owner/repo)"),
+    name: z.string().optional().describe("Template name (derived from repo name if omitted)"),
+  },
+  async ({ repoLink, name }) => {
+    const body: Record<string, string> = { repoLink };
+    if (name) body.name = name;
+    const data = await apiFetch("/api/v1/templates", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
     return { content: [{ type: "text", text: toText(data) }] };
   }
 );
@@ -294,13 +317,14 @@ server.tool(
 
 server.tool(
   "create_migration",
-  "Create a new Supabase-to-self-hosted migration. This starts the 8-phase pipeline: " +
-  "Discovery → DB Migration → Data Import → Edge Functions → Storage → Auth Config → " +
-  "Backend Switchover → Frontend Deploy. The migration starts in PENDING status with a " +
-  "DISCOVERY job. After discovery completes, the migration pauses (PAUSED_FOR_APPROVAL) — " +
-  "call confirm_migration to proceed. You need: sourceSupabaseUrl, sourceSupabaseAnonKey, " +
-  "supabaseIntegrationInstanceId (from list_integration_instances), templateId (from list_templates), " +
-  "and targetSupabaseProjectRef. Target keys are auto-fetched if not provided.",
+  "Create a new Supabase migration. Starts an 8-phase pipeline: Discovery → DB Migration → Data Import → Edge Functions → Storage → Auth Config → Backend Switchover → Frontend Deploy.\n\n" +
+  "BEFORE calling this tool, follow these steps to gather the required parameters:\n" +
+  "1. Ask the user for their GitHub repo URL and (optionally) Lovable project URL.\n" +
+  "2. Call list_integration_instances — use the instance with type='supabase' as supabaseIntegrationInstanceId, and type='github' as githubIntegrationInstanceId.\n" +
+  "3. Call parse_source_keys with the GitHub repo URL — this auto-reads the .env file and returns sourceSupabaseUrl and sourceSupabaseAnonKey. No need to ask the user for these.\n" +
+  "4. Call list_supabase_projects with the Supabase integration instance — ask the user which ACTIVE project to use as the target.\n" +
+  "5. For templateId: either ask the user to pick from list_templates, or create a new template from their repo using create_template.\n\n" +
+  "After creation, the migration starts with a DISCOVERY job. Once discovery completes, it pauses (PAUSED_FOR_APPROVAL) — present the inventory to the user and call confirm_migration if they approve.",
   {
     name: z.string().describe("Human-readable name for this migration"),
     sourceSupabaseUrl: z.string().describe("Source Supabase project URL (e.g. https://abcdef.supabase.co)"),
@@ -435,9 +459,10 @@ server.tool(
 
 server.tool(
   "list_integration_instances",
-  "List all connected integrations (Supabase, GitHub, etc.) for the organization. " +
-  "Use this to find the supabaseIntegrationInstanceId and githubIntegrationInstanceId " +
-  "needed for create_migration.",
+  "List all connected integrations for the organization. Each instance has a 'type' field " +
+  "identifying whether it is 'supabase', 'github', etc. Use the instance with type='supabase' " +
+  "as supabaseIntegrationInstanceId and type='github' as githubIntegrationInstanceId when " +
+  "calling create_migration.",
   {},
   async () => {
     const data = await apiFetch("/api/v1/migrations/integrations/instances");
@@ -446,11 +471,29 @@ server.tool(
 );
 
 server.tool(
+  "parse_source_keys",
+  "Parse source Supabase URL and anon key from a GitHub repository's .env file. " +
+  "This eliminates the need to ask the user for these values — just provide the repo URL. " +
+  "Call this BEFORE create_migration to auto-fill sourceSupabaseUrl and sourceSupabaseAnonKey. " +
+  "Uses the organization's GitHub integration token for private repos.",
+  {
+    githubRepoUrl: z.string().describe("GitHub repo URL (e.g. https://github.com/owner/repo)"),
+  },
+  async ({ githubRepoUrl }) => {
+    const data = await apiFetch(
+      `/api/v1/migrations/parse-source-keys?githubRepoUrl=${encodeURIComponent(githubRepoUrl)}`
+    );
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
+
+server.tool(
   "list_supabase_projects",
   "List all Supabase projects accessible through a connected Supabase integration instance. " +
   "Returns project name, reference ID, region, and status. Use the project's id field as " +
-  "targetSupabaseProjectRef when creating a migration. Call list_integration_instances first " +
-  "to get the supabaseIntegrationInstanceId.",
+  "targetSupabaseProjectRef when creating a migration. Only ACTIVE_HEALTHY projects can be " +
+  "used as targets. IMPORTANT: Present the list to the user and ask them to choose which " +
+  "project to use as the migration target.",
   {
     supabaseIntegrationInstanceId: z.string().uuid().describe("Supabase integration instance ID (from list_integration_instances)"),
   },

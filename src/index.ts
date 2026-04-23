@@ -36,7 +36,7 @@ function toText(data: unknown): string {
 
 const server = new McpServer({
   name: "staticbot",
-  version: "1.3.0",
+  version: "1.4.0",
 });
 
 // ─── Templates ───────────────────────────────────────────────────────────────
@@ -209,7 +209,8 @@ server.tool(
 
 server.tool(
   "confirm_migration",
-  "Approve a migration that is PAUSED_FOR_APPROVAL. This happens after the Discovery phase completes — Staticbot has inventoried the source project and is waiting for the user to review before proceeding with the actual migration.",
+  "Approve a migration that is PAUSED_FOR_APPROVAL. This happens after the Discovery phase completes — Staticbot has inventoried the source project and is waiting for the user to review before proceeding with the actual migration. " +
+  "IMPORTANT: Before calling this tool, you MUST present the discovery inventory to the user and ask for their explicit approval to proceed.",
   {
     id: z.string().uuid().describe("Migration ID"),
   },
@@ -348,9 +349,10 @@ server.tool(
 server.tool(
   "choose_data_import_method",
   "Choose how to import data in Phase 3. Call this when a MANUAL_CHOOSE_DATA_IMPORT_METHOD job is READY. " +
-  "'automated' (recommended): deploys an edge function, exports data, imports to target, copies storage, " +
-  "migrates secrets/cron/auth. Creates an 8-job chain. " +
-  "'manual': user exports from Lovable and imports via Supabase SQL editor.",
+  "IMPORTANT: You MUST present these options to the user and ask them to choose before calling this tool:\n" +
+  "  1. 'automated' (recommended) — Staticbot deploys an edge function, exports data, imports to target, copies storage, migrates secrets/cron/auth. Fully automated.\n" +
+  "  2. 'manual' — User exports data from Lovable and imports via Supabase SQL editor themselves.\n" +
+  "Do NOT pick an option without asking the user first.",
   {
     migrationId: z.string().uuid().describe("Migration ID"),
     jobId: z.string().uuid().describe("The MANUAL_CHOOSE_DATA_IMPORT_METHOD job ID"),
@@ -368,9 +370,11 @@ server.tool(
 server.tool(
   "choose_backend_switchover",
   "Choose how to handle backend switchover in Phase 7. Call when MANUAL_CHOOSE_BACKEND_SWITCHOVER is READY. " +
-  "'auto' with choice 'switch-fully-to-supabase': replaces all Supabase env vars in the GitHub repo. " +
-  "'auto' with choice 'lovable-preview-supabase-prod': Lovable keeps old Supabase, production uses new. " +
-  "'skip': skip the switchover entirely.",
+  "IMPORTANT: You MUST present these options to the user and ask them to choose before calling this tool:\n" +
+  "  1. 'switch-fully-to-supabase' (method='auto', choice='switch-fully-to-supabase') — Replaces ALL Supabase env vars (URL, anon key) in the GitHub repo with the new target values. Both Lovable preview and production use the new Supabase.\n" +
+  "  2. 'lovable-preview-supabase-prod' (method='auto', choice='lovable-preview-supabase-prod') — Lovable preview keeps using the OLD Supabase, but production deployments use the NEW Supabase. Good for gradual rollout.\n" +
+  "  3. 'skip' (method='skip') — Skip backend switchover entirely. The app continues pointing to the old Supabase.\n" +
+  "Do NOT pick an option without asking the user first.",
   {
     migrationId: z.string().uuid().describe("Migration ID"),
     jobId: z.string().uuid().describe("The MANUAL_CHOOSE_BACKEND_SWITCHOVER job ID"),
@@ -389,9 +393,11 @@ server.tool(
 server.tool(
   "choose_frontend_deploy",
   "Choose how to handle frontend deployment in Phase 8 (Next Steps). Call when MANUAL_CHOOSE_FRONTEND_DEPLOY is READY. " +
-  "'continuous-sync' with choice 'setup-continuous-sync': sets up automatic GitHub-to-target sync. " +
-  "'staticbot' with choice 'deploy-with-staticbot': deploy frontend via Staticbot infrastructure. " +
-  "'skip': skip frontend deployment.",
+  "IMPORTANT: You MUST present these options to the user and ask them to choose before calling this tool:\n" +
+  "  1. 'continuous-sync' (method='continuous-sync', choice='setup-continuous-sync') — Sets up automatic GitHub-to-target sync. Every push to the repo automatically deploys to the new Supabase. Recommended for most users.\n" +
+  "  2. 'staticbot' (method='staticbot', choice='deploy-with-staticbot') — Deploy the frontend via Staticbot's own infrastructure (S3 + CloudFront).\n" +
+  "  3. 'skip' (method='skip') — Skip frontend deployment entirely.\n" +
+  "Do NOT pick an option without asking the user first.",
   {
     migrationId: z.string().uuid().describe("Migration ID"),
     jobId: z.string().uuid().describe("The MANUAL_CHOOSE_FRONTEND_DEPLOY job ID"),
@@ -435,6 +441,23 @@ server.tool(
   {},
   async () => {
     const data = await apiFetch("/api/v1/migrations/integrations/instances");
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
+
+server.tool(
+  "list_supabase_projects",
+  "List all Supabase projects accessible through a connected Supabase integration instance. " +
+  "Returns project name, reference ID, region, and status. Use the project's id field as " +
+  "targetSupabaseProjectRef when creating a migration. Call list_integration_instances first " +
+  "to get the supabaseIntegrationInstanceId.",
+  {
+    supabaseIntegrationInstanceId: z.string().uuid().describe("Supabase integration instance ID (from list_integration_instances)"),
+  },
+  async ({ supabaseIntegrationInstanceId }) => {
+    const data = await apiFetch(
+      `/api/v1/migrations/integrations/instances/${supabaseIntegrationInstanceId}/supabase-projects`
+    );
     return { content: [{ type: "text", text: toText(data) }] };
   }
 );

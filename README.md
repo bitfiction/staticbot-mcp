@@ -14,6 +14,38 @@ Core workflows:
 
 Staticbot owns the things agents handle poorly: state that persists across sessions, credentials that should never appear in a context window, approval gates before destructive operations, and accumulated operational knowledge from real-world failure modes.
 
+## Key capabilities
+
+### Source-specific migration adapters
+
+Migrations are not one-size-fits-all. `create_migration` accepts a `sourceType` parameter that selects the right pipeline:
+
+- **Lovable / Supabase** (default) — 8-phase pipeline: Discovery → DB Migration → Data Import → Edge Functions → Storage Buckets → Auth Config → Backend Switchover → Next Steps. Requires GitHub repo URL. Automated data export via edge function deployment.
+- **Firebase** — 5-phase pipeline: Discovery → Schema Design → Data Import → Auth Migration → Storage Migration. Requires Firebase service account JSON. Git repo is optional. AI-assisted schema design maps Firestore collections to Postgres tables.
+
+### Discovery inventory & plan introspection
+
+The Discovery phase inventories the source project before any changes are made. The agent can read the full inventory programmatically:
+
+- `get_migration_jobs()` → find the DISCOVERY job → read its `outputData` for structured inventory: tables, edge functions, storage buckets, secrets, migration files, resolved commit SHA
+- Migration pauses (`PAUSED_FOR_APPROVAL`) — the agent presents the inventory to the user and calls `confirm_migration` only after explicit approval
+- Sync runs expose a `diffInventory` field with granular change detection: `new_migrations`, `changed_functions`, `frontend_changed`, `storage_changed`, `auth_changed`
+
+### Safety & approval gates
+
+- **Discovery approval** — migration pauses after discovery; agent must present inventory and get user consent before proceeding
+- **Destructive SQL detection** — sync runs with destructive migrations (DROP TABLE, ALTER COLUMN) pause as `PAUSED_FOR_REVIEW`; agent must confirm or skip
+- **Non-destructive syncs** auto-complete without approval
+- **Best-effort jobs** (storage copy, secrets, cron, auth identities) never block the pipeline — they always succeed at the job level and report outcomes via result fields (`copy_result`, etc.)
+- **Choice gates** (data import method, backend switchover, frontend deploy) require explicit user decision — tool descriptions enforce "MUST present options to user"
+
+### Template versioning & reproducibility
+
+- Templates are pinned to Git commit SHAs (`repoVersion`)
+- Each sync creates a new template version when changes are detected
+- Every sync run tracks `fromRepoVersion` → `toCommitSha` for reproducible diffs
+- Stacks bind templates at specific versions; deployments use Terraform/OpenTofu and are re-runnable
+
 ## Prerequisites
 
 - A [Staticbot](https://www.staticbot.dev) account
@@ -68,6 +100,7 @@ env: STATICBOT_API_KEY=sk-your-api-key-here
 |---|---|
 | `list_templates` | List available infrastructure templates (Vite apps, Supabase stacks, etc.) |
 | `get_template` | Get template details including configuration variables |
+| `create_template` | Create a new template by scanning a GitHub repo (auto-detects platforms, env vars, builders) |
 
 ### Stacks
 
@@ -90,15 +123,47 @@ env: STATICBOT_API_KEY=sk-your-api-key-here
 
 | Tool | Description |
 |---|---|
-| `list_migrations` | List all Supabase migrations; optionally filter by status |
+| `create_migration` | Create and start a new migration pipeline (Lovable/Supabase or Firebase) |
+| `list_migrations` | List all migrations; optionally filter by status |
 | `get_migration` | Get migration status and phase breakdown |
-| `confirm_migration` | Approve a migration after discovery completes |
+| `get_migration_jobs` | List all jobs with dependencies, input/output data, and results |
+| `confirm_migration` | Approve a migration after discovery completes (requires user consent) |
 | `resume_migration` | Resume a paused migration |
 | `pause_migration` | Pause a running migration |
-| `get_migration_jobs` | List all jobs within a migration (for troubleshooting) |
 | `retry_migration_job` | Retry a failed migration job |
 | `skip_migration_job` | Skip a non-critical job that's blocking progress |
+| `complete_migration_job` | Complete a manual job (e.g. MANUAL_SYNC_LOVABLE) with required data |
 | `get_migration_deployments` | List AWS deployments for a migration's infrastructure |
+| `choose_data_import_method` | Phase 3: choose automated (edge function) or manual data import |
+| `choose_backend_switchover` | Phase 7: switch env vars fully, split preview/prod, or skip |
+| `choose_frontend_deploy` | Phase 8: set up continuous sync, deploy via Staticbot, or skip |
+| `validate_function_url` | Verify an edge function URL is deployed and responding |
+
+### Integration utilities
+
+| Tool | Description |
+|---|---|
+| `list_integration_instances` | List connected integrations (Supabase, GitHub) for the organization |
+| `parse_source_keys` | Auto-extract source Supabase URL and anon key from a GitHub repo's `.env` file |
+| `list_supabase_projects` | List all Supabase projects accessible through a connected integration |
+
+### Lovable sync
+
+| Tool | Description |
+|---|---|
+| `lovable_sync` | Trigger Lovable deployment via Chrome extension bridge (3 min timeout, fallback to manual) |
+
+### Connected Projects (Continuous Sync)
+
+| Tool | Description |
+|---|---|
+| `list_connected_projects` | List all connected projects; filter by sync mode (AUTOMATIC, MANUAL, PAUSED, ARCHIVED) |
+| `get_connected_project` | Get project details: sync mode, webhook status, linked migration and deployment |
+| `trigger_sync` | Trigger a manual sync — detects and applies changes since last sync |
+| `list_sync_runs` | List sync run history (most recent first) |
+| `get_sync_run` | Get sync run status, diff inventory, summary, and AI-generated description |
+| `get_sync_run_jobs` | Get individual sync jobs (apply_migration, deploy_edge_function, frontend_deploy) |
+| `confirm_sync_run` | Approve a sync paused for review (destructive migrations); optionally skip destructive ops |
 
 ## Typical workflows
 
@@ -121,19 +186,39 @@ Agent:
 ### Migrate a Lovable/Supabase app to self-hosted
 
 ```
-Human: "Migrate my Lovable project to my own AWS"
+Human: "Migrate my Lovable project to my own Supabase"
 
 Agent:
-  1. list_migrations() → checks for existing work
-  2. Human creates migration in the UI (complex setup with OAuth)
-  3. get_migration(id) → monitors progress
-  4. When PAUSED_FOR_APPROVAL → "Discovery found 3 tables, 2 edge
-     functions, 1 storage bucket. Approve to continue."
-  5. confirm_migration(id)
-  6. Polls to track 8-phase pipeline progress
-  7. If a job fails → get_migration_jobs(id) to diagnose
-     → retry_migration_job(jobId) or skip_migration_job(jobId)
-  8. When COMPLETED → reports success and live URL
+  1. list_integration_instances() → find supabase + github instances
+  2. parse_source_keys(githubRepoUrl) → auto-extract source URL and anon key
+  3. list_supabase_projects(instanceId) → "Which project is the target?"
+  4. list_templates() or create_template(repoLink) → get templateId
+  5. create_migration(name, sourceUrl, anonKey, templateId, targetRef, ...)
+  6. Poll get_migration(id) until PAUSED_FOR_APPROVAL
+  7. get_migration_jobs(id) → read DISCOVERY job outputData
+     → "Found 3 tables, 2 edge functions, 1 storage bucket. Proceed?"
+  8. confirm_migration(id)
+  9. Monitor phases — choose_data_import_method, handle lovable_sync,
+     choose_backend_switchover, choose_frontend_deploy
+ 10. If a job fails → retry_migration_job or skip_migration_job
+ 11. When COMPLETED → reports success
+```
+
+### Keep a project in sync after migration
+
+```
+Human: "Sync my Lovable project with the new Supabase"
+
+Agent:
+  1. list_connected_projects() → find the project
+  2. get_connected_project(id) → check sync mode and webhook status
+  3. trigger_sync(id) → start sync
+  4. list_sync_runs(id) → get latest run ID
+  5. get_sync_run(projectId, runId) → check diffInventory and status
+  6. If PAUSED_FOR_REVIEW → "Destructive migration detected. Apply or skip?"
+     → confirm_sync_run(projectId, runId, skipDestructive)
+  7. get_sync_run_jobs(projectId, runId) → verify all jobs completed
+  8. When COMPLETED → report changes applied
 ```
 
 ### Browse and inspect infrastructure
@@ -155,9 +240,18 @@ Tools return immediately with an ID and a `statusUrl` — a deep link into the S
 Migration status flow:
 ```
 PENDING → IN_PROGRESS → PAUSED_FOR_APPROVAL → IN_PROGRESS → COMPLETED
-                                                  ↕
-                                    PAUSED_FOR_USER_ACTION
-                                    PAUSED_BY_USER
+                                                    ↕         COMPLETED_WITH_ERRORS
+                                      PAUSED_FOR_USER_ACTION
+                                      PAUSED_BY_USER
+                                                    ↓
+                                                  FAILED
+```
+
+Sync run status flow:
+```
+PENDING → IN_PROGRESS → COMPLETED
+                ↕          FAILED
+        PAUSED_FOR_REVIEW
 ```
 
 Deployment status flow:

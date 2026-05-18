@@ -36,7 +36,7 @@ function toText(data: unknown): string {
 
 const server = new McpServer({
   name: "staticbot",
-  version: "1.4.0",
+  version: "1.5.0",
 });
 
 // ─── Templates ───────────────────────────────────────────────────────────────
@@ -220,7 +220,7 @@ server.tool(
 
 server.tool(
   "get_migration",
-  "Get the current status and phase breakdown of a migration. The response includes all 8 phases (Discovery, DB Migration, Data Import, Edge Functions, Storage, Auth Config, Backend Switchover, Frontend Deploy) with their individual statuses.",
+  "Get the current status and phase breakdown of a migration. The response includes all 8 phases (Discovery, DB Migration, Data Import, Edge Functions, Storage, Auth Config, Backend Switchover, Frontend Deploy) with their individual statuses, plus sourceType (LOVABLE_SUPABASE / BOLT_SUPABASE / FIREBASE), targetType (SUPABASE_CLOUD / SUPABASE_SELF_HOSTED), and packageAvailable (true once the downloadable zip is ready — fetch via download_package).",
   {
     id: z.string().uuid().describe("Migration ID"),
   },
@@ -318,29 +318,54 @@ server.tool(
 server.tool(
   "create_migration",
   "Create a new Supabase migration. Starts an 8-phase pipeline: Discovery → DB Migration → Data Import → Edge Functions → Storage → Auth Config → Backend Switchover → Frontend Deploy.\n\n" +
+  "Two delivery modes via targetType:\n" +
+  "  • SUPABASE_CLOUD (default) — Staticbot applies the migration end-to-end against a managed Supabase project you own. Requires targetSupabaseProjectRef plus the Supabase integration instance.\n" +
+  "  • SUPABASE_SELF_HOSTED — Staticbot runs discovery + data export, then produces a downloadable AES-256-encrypted zip the user applies to their self-hosted Supabase (typically with Claude Code following the bundled CLAUDE.md). Skip target* params; once the GENERATE_PACKAGE job completes, call download_package to fetch the zip + password.\n\n" +
+  "Source platforms via sourceType:\n" +
+  "  • LOVABLE_SUPABASE (default) — Lovable-built apps on Supabase.\n" +
+  "  • BOLT_SUPABASE — Bolt.new apps on Supabase (Phase 3 Lovable-specific steps are adjusted).\n" +
+  "  • FIREBASE — Firebase-to-Supabase migration (different pipeline).\n\n" +
   "BEFORE calling this tool, follow these steps to gather the required parameters:\n" +
   "1. Ask the user for their GitHub repo URL and (optionally) Lovable project URL.\n" +
-  "2. Call list_integration_instances — use the instance with type='supabase' as supabaseIntegrationInstanceId, and type='github' as githubIntegrationInstanceId.\n" +
-  "3. Call parse_source_keys with the GitHub repo URL — this auto-reads the .env file and returns sourceSupabaseUrl and sourceSupabaseAnonKey. No need to ask the user for these.\n" +
-  "4. Call list_supabase_projects with the Supabase integration instance — ask the user which ACTIVE project to use as the target.\n" +
-  "5. For templateId: either ask the user to pick from list_templates, or create a new template from their repo using create_template.\n\n" +
+  "2. Ask the user whether the target is managed Supabase (SUPABASE_CLOUD) or their own self-hosted install (SUPABASE_SELF_HOSTED).\n" +
+  "3. Call list_integration_instances — use the instance with type='supabase' as supabaseIntegrationInstanceId, and type='github' as githubIntegrationInstanceId.\n" +
+  "4. Call parse_source_keys with the GitHub repo URL — this auto-reads the .env file and returns sourceSupabaseUrl and sourceSupabaseAnonKey. No need to ask the user for these.\n" +
+  "5. For SUPABASE_CLOUD only: call list_supabase_projects with the Supabase integration instance — ask the user which ACTIVE project to use as the target. Skip this step for SUPABASE_SELF_HOSTED.\n" +
+  "6. For templateId: either ask the user to pick from list_templates, or create a new template from their repo using create_template.\n\n" +
+  "IMPORTANT (SUPABASE_CLOUD only): The source and target Supabase projects MUST be different. Compare the project ref from sourceSupabaseUrl " +
+  "(the subdomain in https://{ref}.supabase.co) with targetSupabaseProjectRef — if they match, stop and ask the user for a different target project.\n\n" +
   "After creation, the migration starts with a DISCOVERY job. Once discovery completes, it pauses (PAUSED_FOR_APPROVAL) — present the inventory to the user and call confirm_migration if they approve.",
   {
     name: z.string().describe("Human-readable name for this migration"),
     sourceSupabaseUrl: z.string().describe("Source Supabase project URL (e.g. https://abcdef.supabase.co)"),
     sourceSupabaseAnonKey: z.string().describe("Source Supabase anon key"),
-    supabaseIntegrationInstanceId: z.string().uuid().describe("Supabase integration instance ID (from list_integration_instances)"),
+    sourceType: z.enum(["LOVABLE_SUPABASE", "BOLT_SUPABASE", "FIREBASE"]).optional().describe("Source platform. Defaults to LOVABLE_SUPABASE."),
+    targetType: z.enum(["SUPABASE_CLOUD", "SUPABASE_SELF_HOSTED"]).optional().describe("Target delivery mode. SUPABASE_CLOUD (default) for managed Supabase; SUPABASE_SELF_HOSTED produces a downloadable package instead of applying to a target project."),
+    supabaseIntegrationInstanceId: z.string().uuid().optional().describe("Supabase integration instance ID (from list_integration_instances). Required for SUPABASE_CLOUD; omit for SUPABASE_SELF_HOSTED."),
     templateId: z.string().uuid().describe("Template ID for the target infrastructure (from list_templates)"),
-    targetSupabaseProjectRef: z.string().describe("Target Supabase project reference (the subdomain part of the URL)"),
-    targetSupabaseUrl: z.string().optional().describe("Target Supabase URL (auto-derived from projectRef if omitted)"),
-    targetSupabaseAnonKey: z.string().optional().describe("Target anon key (auto-fetched from Supabase API if omitted)"),
-    targetSupabaseServiceRoleKey: z.string().optional().describe("Target service role key (auto-fetched if omitted)"),
+    targetSupabaseProjectRef: z.string().optional().describe("Target Supabase project reference (the subdomain part of the URL). Required for SUPABASE_CLOUD; omit for SUPABASE_SELF_HOSTED."),
+    targetSupabaseUrl: z.string().optional().describe("Target Supabase URL (auto-derived from projectRef if omitted). Ignored for SUPABASE_SELF_HOSTED."),
+    targetSupabaseAnonKey: z.string().optional().describe("Target anon key (auto-fetched from Supabase API if omitted). Ignored for SUPABASE_SELF_HOSTED."),
+    targetSupabaseServiceRoleKey: z.string().optional().describe("Target service role key (auto-fetched if omitted). Ignored for SUPABASE_SELF_HOSTED."),
     githubIntegrationInstanceId: z.string().uuid().optional().describe("GitHub integration instance ID for repo access"),
     configOverrides: z.record(z.string()).optional().describe("Template config overrides"),
     githubRepoUrl: z.string().optional().describe("GitHub repo URL"),
     gitRepoAvailable: z.boolean().optional().describe("Whether the git repo is available"),
   },
   async (params) => {
+    // Validate source and target are different projects (cloud target only)
+    if ((params.targetType ?? "SUPABASE_CLOUD") === "SUPABASE_CLOUD" && params.targetSupabaseProjectRef) {
+      const sourceRefMatch = params.sourceSupabaseUrl.match(/https:\/\/([a-zA-Z0-9]+)\.supabase\.co/);
+      const sourceRef = sourceRefMatch?.[1];
+      if (sourceRef && sourceRef === params.targetSupabaseProjectRef) {
+        return { content: [{ type: "text", text: JSON.stringify({
+          error: "Source and target Supabase projects must be different. " +
+            "The source project ref '" + sourceRef + "' is the same as the target. " +
+            "Please select a different target Supabase project."
+        }, null, 2) }] };
+      }
+    }
+
     const data = await apiFetch("/api/v1/migrations", {
       method: "POST",
       body: JSON.stringify(params),
@@ -350,12 +375,30 @@ server.tool(
 );
 
 server.tool(
+  "download_package",
+  "Fetch the downloadable migration package for a migration. Returns a presigned URL to the AES-256-encrypted zip plus the password to extract it.\n\n" +
+  "Availability:\n" +
+  "  • SUPABASE_SELF_HOSTED: this is the delivery mechanism. The user unzips with the password, runs Claude Code against the folder, and follows the bundled CLAUDE.md to apply the migration to their self-hosted Supabase.\n" +
+  "  • SUPABASE_CLOUD: this is a portable backup of the applied migration (re-applicable to any Supabase later).\n\n" +
+  "The package is ready once the GENERATE_PACKAGE job is COMPLETED — check via get_migration_jobs first. Calling before then returns 404. The download URL is time-limited; the password is shown only here, never logged.",
+  {
+    id: z.string().uuid().describe("Migration ID"),
+  },
+  async ({ id }) => {
+    const data = await apiFetch(`/api/v1/migrations/${id}/download-package`);
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
+
+server.tool(
   "complete_migration_job",
   "Complete a manual job that requires user action. Used for jobs with type MANUAL_SYNC_LOVABLE, " +
   "MANUAL_EXPORT_DATA, MANUAL_IMPORT_DATA, etc. The job must be in READY status. " +
-  "For MANUAL_SYNC_LOVABLE: pass functionUrl — this is the edge function URL that gets injected " +
-  "into all downstream jobs. Format: https://{projectRef}.supabase.co/functions/v1/{functionName}. " +
-  "Use validate_function_url first to verify the function is deployed.",
+  "For MANUAL_SYNC_LOVABLE: first try lovable_sync to auto-deploy via Chrome extension. " +
+  "If the extension is not available, ask the user to open their Lovable project and paste " +
+  "'deploy staticbot edge function' into the Lovable AI chat. Once deployed, " +
+  "use validate_function_url to verify, then call this tool with the functionUrl. " +
+  "Format: https://{projectRef}.supabase.co/functions/v1/{functionName}.",
   {
     jobId: z.string().uuid().describe("Migration job ID (from get_migration_jobs)"),
     functionUrl: z.string().optional().describe("Edge function URL (required for MANUAL_SYNC_LOVABLE)"),
@@ -440,9 +483,10 @@ server.tool(
 server.tool(
   "validate_function_url",
   "Validate that a Supabase edge function URL is reachable and responding. Use during Phase 3 " +
-  "after DEPLOY_EXPORT_FUNCTION completes to check if the function is deployed. The function URL " +
-  "can be derived as https://{sourceProjectRef}.supabase.co/functions/v1/{functionName} where " +
-  "functionName is in the MANUAL_SYNC_LOVABLE job's inputData. Returns {status: 'ok'|'error', message}. " +
+  "after the edge function has been deployed — either automatically via lovable_sync (Chrome extension) " +
+  "or manually by the user pasting 'deploy staticbot edge function' into the Lovable AI chat. " +
+  "The function URL can be derived as https://{sourceProjectRef}.supabase.co/functions/v1/{functionName} " +
+  "where functionName is in the MANUAL_SYNC_LOVABLE job's inputData. Returns {status: 'ok'|'error', message}. " +
   "Poll every 15-30 seconds if waiting for deployment.",
   {
     jobId: z.string().uuid().describe("The MANUAL_SYNC_LOVABLE job ID"),
@@ -615,9 +659,9 @@ server.tool(
   "Trigger Lovable to deploy the staticbot edge function via the Chrome extension bridge. " +
   "The Chrome extension must be installed and a Staticbot or Lovable page must be open. " +
   "This tool sets a pending sync request that the Chrome extension picks up, then waits " +
-  "for the result (up to 3 minutes). If the extension is not connected, falls back to " +
-  "asking the user to manually sync. Use this after DEPLOY_EXPORT_FUNCTION completes and " +
-  "MANUAL_SYNC_LOVABLE is READY.",
+  "for the result (up to 3 minutes). If the extension is not connected, ask the user to " +
+  "open their Lovable project and paste 'deploy staticbot edge function' into the Lovable AI chat. " +
+  "Use this after DEPLOY_EXPORT_FUNCTION completes and MANUAL_SYNC_LOVABLE is READY.",
   {
     functionName: z.string().describe("Edge function name (e.g. staticbot-export-abc123)"),
     lovableProjectId: z.string().describe("Lovable project ID (UUID from the Lovable URL)"),

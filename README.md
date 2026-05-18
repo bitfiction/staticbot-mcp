@@ -20,8 +20,16 @@ Staticbot owns the things agents handle poorly: state that persists across sessi
 
 Migrations are not one-size-fits-all. `create_migration` accepts a `sourceType` parameter that selects the right pipeline:
 
-- **Lovable / Supabase** (default) — 8-phase pipeline: Discovery → DB Migration → Data Import → Edge Functions → Storage Buckets → Auth Config → Backend Switchover → Next Steps. Requires GitHub repo URL. Automated data export via edge function deployment.
-- **Firebase** — 5-phase pipeline: Discovery → Schema Design → Data Import → Auth Migration → Storage Migration. Requires Firebase service account JSON. Git repo is optional. AI-assisted schema design maps Firestore collections to Postgres tables.
+- **Lovable / Supabase** (`LOVABLE_SUPABASE`, default) — 8-phase pipeline: Discovery → DB Migration → Data Import → Edge Functions → Storage Buckets → Auth Config → Backend Switchover → Next Steps. Requires GitHub repo URL. Automated data export via edge function deployment.
+- **Bolt / Supabase** (`BOLT_SUPABASE`) — Same pipeline tuned for Bolt.new-built apps on Supabase.
+- **Firebase** (`FIREBASE`) — 5-phase pipeline: Discovery → Schema Design → Data Import → Auth Migration → Storage Migration. Requires Firebase service account JSON. Git repo is optional. AI-assisted schema design maps Firestore collections to Postgres tables.
+
+### Target delivery modes
+
+`create_migration` also accepts a `targetType` parameter:
+
+- **`SUPABASE_CLOUD`** (default) — Staticbot applies the migration end-to-end against a managed Supabase project you own. Requires `targetSupabaseProjectRef` plus the Supabase integration instance.
+- **`SUPABASE_SELF_HOSTED`** — Staticbot runs discovery + data export, then produces a downloadable AES-256-encrypted zip that the user applies to their self-hosted Supabase (typically by running Claude Code against the unzipped folder and following the bundled `CLAUDE.md`). Once the `GENERATE_PACKAGE` job is complete, call `download_package` to obtain the presigned URL plus the extraction password.
 
 ### Discovery inventory & plan introspection
 
@@ -123,7 +131,8 @@ env: STATICBOT_API_KEY=sk-your-api-key-here
 
 | Tool | Description |
 |---|---|
-| `create_migration` | Create and start a new migration pipeline (Lovable/Supabase or Firebase) |
+| `create_migration` | Create and start a new migration pipeline (`sourceType`: Lovable/Bolt/Supabase or Firebase; `targetType`: managed cloud or downloadable self-hosted package) |
+| `download_package` | Fetch the presigned URL + AES-256 password for a migration's downloadable zip (self-hosted delivery, or portable backup for cloud migrations) |
 | `list_migrations` | List all migrations; optionally filter by status |
 | `get_migration` | Get migration status and phase breakdown |
 | `get_migration_jobs` | List all jobs with dependencies, input/output data, and results |

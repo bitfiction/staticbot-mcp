@@ -435,6 +435,23 @@ server.tool(
 );
 
 server.tool(
+  "rechoose_data_import_method",
+  "Reset the Phase 3 data import choice so the user can switch from manual to automated or vice versa. " +
+  "Call when the user wants to go back and re-decide their data import method before proceeding. " +
+  "This deletes all downstream jobs from the previous choice and re-opens the CHOOSE gate.",
+  {
+    migrationId: z.string().uuid().describe("Migration ID"),
+    jobId: z.string().uuid().describe("The MANUAL_CHOOSE_DATA_IMPORT_METHOD job ID (must be COMPLETED)"),
+  },
+  async ({ migrationId, jobId }) => {
+    const data = await apiFetch(`/api/v1/migrations/${migrationId}/jobs/${jobId}/rechoose-method`, {
+      method: "POST",
+    });
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
+
+server.tool(
   "choose_backend_switchover",
   "Choose how to handle backend switchover in Phase 7. Call when MANUAL_CHOOSE_BACKEND_SWITCHOVER is READY. " +
   "IMPORTANT: You MUST present these options to the user and ask them to choose before calling this tool:\n" +

@@ -36,7 +36,7 @@ function toText(data: unknown): string {
 
 const server = new McpServer({
   name: "staticbot",
-  version: "1.5.0",
+  version: "1.6.0",
 });
 
 // ─── Templates ───────────────────────────────────────────────────────────────
@@ -81,6 +81,27 @@ server.tool(
     const data = await apiFetch("/api/v1/templates", {
       method: "POST",
       body: JSON.stringify(body),
+    });
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
+
+server.tool(
+  "scan_deployed_url",
+  "Scan a deployed Base44 app URL for inlined Supabase credentials. " +
+  "Vite bakes import.meta.env.VITE_* into the JS bundle at build time. For Base44 users " +
+  "whose GitHub .env only has placeholders (or for BASE44_SUPABASE migrations where " +
+  "parse_source_keys returns empty values), this tool fetches the deployed *.base44.app HTML, " +
+  "finds /assets/index-*.js, and regex-extracts the Supabase URL + anon key. " +
+  "Restricted to *.base44.app hosts. Use the returned supabaseUrl and supabaseAnonKey " +
+  "as sourceSupabaseUrl and sourceSupabaseAnonKey in create_migration.",
+  {
+    deployedUrl: z.string().describe("Deployed Base44 app URL (e.g. https://myapp.base44.app)"),
+  },
+  async ({ deployedUrl }) => {
+    const data = await apiFetch("/api/v1/templates/scan-deployed-url", {
+      method: "POST",
+      body: JSON.stringify({ deployedUrl }),
     });
     return { content: [{ type: "text", text: toText(data) }] };
   }
@@ -191,7 +212,31 @@ server.tool(
 
 server.tool(
   "get_deployment",
-  "Get the status of a deployment. Use this to poll for progress. When status is WAITING, the response includes DNS records the user must configure. When status is COMPLETED, the site is live. Statuses: CREATED → PENDING → IN_PROGRESS → WAITING → COMPLETED (or FAILED).",
+  "Get the status of a deployment and the per-domain DNS state. Poll this for progress. " +
+  "Statuses: CREATED → PENDING → IN_PROGRESS → WAITING → COMPLETED (or FAILED).\n\n" +
+  "**Response fields you should always read:**\n" +
+  "- `status` — pipeline state.\n" +
+  "- `dns` — per-domain DNS state, populated once Terraform emits a state snapshot. Present " +
+  "regardless of `status`; check it on every poll, not just on WAITING.\n" +
+  "- `requiredAction` — legacy; only set when `status=WAITING` and there are records to add. Prefer `dns`.\n\n" +
+  "**For each entry in `dns`, read `action` and behave as follows:**\n" +
+  "- `NO_ACTION` — registrar NS already delegate to a zone Staticbot owns; nothing to ask the user. Celebrate.\n" +
+  "- `MANUAL_RECORDS_AT_REGISTRAR` — present `records` (cert CNAME + ALIAS/CNAME for the website) to the user, " +
+  "asking them to add them at whatever DNS provider currently serves their domain. **Do NOT** suggest changing " +
+  "nameservers — Staticbot intentionally does not recommend NS takeover as a default path.\n" +
+  "- `OFFER_CLOUDFLARE_PUSH` — domain is on Cloudflare and an integration is linked. The Staticbot UI exposes a " +
+  "push-records button; tell the user about it (and the deep link in `statusUrl`).\n" +
+  "- `OFFER_CLOUDFLARE_CONNECT` — domain is on Cloudflare without an integration. Suggest connecting Cloudflare " +
+  "(direct the user to the integrations page) for the smoothest no-NS-change path.\n" +
+  "- `REGISTER_DOMAIN_FIRST` — domain is not registered. Block and ask the user to register it first.\n\n" +
+  "**Other fields per domain:**\n" +
+  "- `staticbotManaged` — true when live registrar NS overlap our recorded Route53 zone NS for this apex. Useful " +
+  "for explaining 'your domain is already pointing at us'.\n" +
+  "- `nsPointedAt` — `AWS_ROUTE53` | `CLOUDFLARE` | `OTHER` (where the live NS resolve to).\n" +
+  "- `mailRecordsDetected` — true when MX/TXT/SRV/CAA records exist on the apex. **Treat as a hard block on any " +
+  "advice that involves changing nameservers** — doing so would risk breaking the customer's mail.\n" +
+  "- `cloudflareLinked` — true when the domain is wired to a Cloudflare integration in Staticbot.\n" +
+  "- `records` — flat list of `{type, host, value, description}` to surface to the user.",
   {
     id: z.string().uuid().describe("Deployment ID"),
   },
@@ -205,7 +250,7 @@ server.tool(
 
 server.tool(
   "list_migrations",
-  "List all Supabase-to-self-hosted migrations. Optionally filter by status. Migrations orchestrate moving a full Supabase project (database, auth, storage, edge functions) to self-hosted infrastructure.",
+  "List all migrations. Optionally filter by status. Migrations orchestrate moving a full project (database, auth, storage, edge functions) from a source platform (Lovable, Bolt, Firebase, Base44) to target Supabase infrastructure.",
   {
     status: z.string().optional().describe(
       "Filter by status: PENDING, IN_PROGRESS, PAUSED_FOR_APPROVAL, PAUSED_FOR_USER_ACTION, PAUSED_BY_USER, COMPLETED, COMPLETED_WITH_ERRORS, FAILED"
@@ -220,7 +265,8 @@ server.tool(
 
 server.tool(
   "get_migration",
-  "Get the current status and phase breakdown of a migration. The response includes all 8 phases (Discovery, DB Migration, Data Import, Edge Functions, Storage, Auth Config, Backend Switchover, Frontend Deploy) with their individual statuses, plus sourceType (LOVABLE_SUPABASE / BOLT_SUPABASE / FIREBASE), targetType (SUPABASE_CLOUD / SUPABASE_SELF_HOSTED), and packageAvailable (true once the downloadable zip is ready — fetch via download_package).",
+  "Get the current status and phase breakdown of a migration. The response includes all 8 phases (Discovery, DB Migration, Data Import, Edge Functions, Storage, Auth Config, Backend Switchover, Frontend Deploy) with their individual statuses, plus sourceType (LOVABLE_SUPABASE / BOLT_SUPABASE / FIREBASE / BASE44_SUPABASE / BASE44_NATIVE), targetType (SUPABASE_CLOUD / SUPABASE_SELF_HOSTED), and packageAvailable (true once the downloadable zip is ready — fetch via download_package).\n\n" +
+  "**Polling Phase 7 (Backend Switchover):** the response also includes `previewDeployment` (null until Phase 7 provisions one) with its own independent status. Important: the migration itself can be marked COMPLETED while `previewDeployment.status` is still IN_PROGRESS — the preview Terraform applies in the background. When babysitting a migration toward 'live preview ready', also poll `previewDeployment.status` until it reaches COMPLETED. Treat anything other than COMPLETED/FAILED/ABORTED/DESTROYED/CLEANED_UP as 'still progressing'. Use `previewDeployment.createdAt` to compute elapsed time so you can give the user a sense of progress without spamming this endpoint — once-every-5s is plenty.",
   {
     id: z.string().uuid().describe("Migration ID"),
   },
@@ -317,30 +363,33 @@ server.tool(
 
 server.tool(
   "create_migration",
-  "Create a new Supabase migration. Starts an 8-phase pipeline: Discovery → DB Migration → Data Import → Edge Functions → Storage → Auth Config → Backend Switchover → Frontend Deploy.\n\n" +
+  "Create a new migration. Starts an 8-phase pipeline: Discovery → DB Migration → Data Import → Edge Functions → Storage → Auth Config → Backend Switchover → Frontend Deploy.\n\n" +
   "Two delivery modes via targetType:\n" +
   "  • SUPABASE_CLOUD (default) — Staticbot applies the migration end-to-end against a managed Supabase project you own. Requires targetSupabaseProjectRef plus the Supabase integration instance.\n" +
   "  • SUPABASE_SELF_HOSTED — Staticbot runs discovery + data export, then produces a downloadable AES-256-encrypted zip the user applies to their self-hosted Supabase (typically with Claude Code following the bundled CLAUDE.md). Skip target* params; once the GENERATE_PACKAGE job completes, call download_package to fetch the zip + password.\n\n" +
   "Source platforms via sourceType:\n" +
   "  • LOVABLE_SUPABASE (default) — Lovable-built apps on Supabase.\n" +
   "  • BOLT_SUPABASE — Bolt.new apps on Supabase (Phase 3 Lovable-specific steps are adjusted).\n" +
-  "  • FIREBASE — Firebase-to-Supabase migration (different pipeline).\n\n" +
+  "  • FIREBASE — Firebase-to-Supabase migration (different pipeline).\n" +
+  "  • BASE44_SUPABASE — Base44 apps backed by Supabase. Requires sourceSupabaseUrl + sourceSupabaseAnonKey (use parse_source_keys or scan_deployed_url). Backend switchover updates Base44 platform secrets (not GitHub env vars).\n" +
+  "  • BASE44_NATIVE — Base44 apps using @base44/sdk against Base44's managed backend (no source Supabase). Requires sourceIntegrationInstanceId (the Base44 integration). Discovery hits Base44's REST API, DDL is synthesised from entity schemas, data is imported directly. sourceSupabaseUrl and sourceSupabaseAnonKey are NOT needed.\n\n" +
   "BEFORE calling this tool, follow these steps to gather the required parameters:\n" +
-  "1. Ask the user for their GitHub repo URL and (optionally) Lovable project URL.\n" +
+  "1. Ask the user for their GitHub repo URL and source platform.\n" +
   "2. Ask the user whether the target is managed Supabase (SUPABASE_CLOUD) or their own self-hosted install (SUPABASE_SELF_HOSTED).\n" +
-  "3. Call list_integration_instances — use the instance with type='supabase' as supabaseIntegrationInstanceId, and type='github' as githubIntegrationInstanceId.\n" +
-  "4. Call parse_source_keys with the GitHub repo URL — this auto-reads the .env file and returns sourceSupabaseUrl and sourceSupabaseAnonKey. No need to ask the user for these.\n" +
+  "3. Call list_integration_instances — use the instance with type='supabase' as supabaseIntegrationInstanceId, type='github' as githubIntegrationInstanceId, and type='base44' as sourceIntegrationInstanceId (for BASE44_NATIVE).\n" +
+  "4. For Supabase-backed sources (LOVABLE_SUPABASE, BOLT_SUPABASE, BASE44_SUPABASE): call parse_source_keys with the GitHub repo URL. For Base44 apps where the repo .env only has placeholders, use scan_deployed_url to extract keys from the deployed *.base44.app JS bundle.\n" +
   "5. For SUPABASE_CLOUD only: call list_supabase_projects with the Supabase integration instance — ask the user which ACTIVE project to use as the target. Skip this step for SUPABASE_SELF_HOSTED.\n" +
   "6. For templateId: either ask the user to pick from list_templates, or create a new template from their repo using create_template.\n\n" +
-  "IMPORTANT (SUPABASE_CLOUD only): The source and target Supabase projects MUST be different. Compare the project ref from sourceSupabaseUrl " +
-  "(the subdomain in https://{ref}.supabase.co) with targetSupabaseProjectRef — if they match, stop and ask the user for a different target project.\n\n" +
+  "IMPORTANT (SUPABASE_CLOUD + Supabase-backed sources only): The source and target Supabase projects MUST be different. Compare the project ref from sourceSupabaseUrl " +
+  "(the subdomain in https://{ref}.supabase.co) with targetSupabaseProjectRef — if they match, stop and ask the user for a different target project. Skip this check for BASE44_NATIVE (no source Supabase).\n\n" +
   "After creation, the migration starts with a DISCOVERY job. Once discovery completes, it pauses (PAUSED_FOR_APPROVAL) — present the inventory to the user and call confirm_migration if they approve.",
   {
     name: z.string().describe("Human-readable name for this migration"),
-    sourceSupabaseUrl: z.string().describe("Source Supabase project URL (e.g. https://abcdef.supabase.co)"),
-    sourceSupabaseAnonKey: z.string().describe("Source Supabase anon key"),
-    sourceType: z.enum(["LOVABLE_SUPABASE", "BOLT_SUPABASE", "FIREBASE"]).optional().describe("Source platform. Defaults to LOVABLE_SUPABASE."),
+    sourceSupabaseUrl: z.string().optional().describe("Source Supabase project URL (e.g. https://abcdef.supabase.co). Required for LOVABLE_SUPABASE, BOLT_SUPABASE, BASE44_SUPABASE. Omit for BASE44_NATIVE and FIREBASE."),
+    sourceSupabaseAnonKey: z.string().optional().describe("Source Supabase anon key. Required for LOVABLE_SUPABASE, BOLT_SUPABASE, BASE44_SUPABASE. Omit for BASE44_NATIVE and FIREBASE."),
+    sourceType: z.enum(["LOVABLE_SUPABASE", "BOLT_SUPABASE", "FIREBASE", "BASE44_SUPABASE", "BASE44_NATIVE"]).optional().describe("Source platform. Defaults to LOVABLE_SUPABASE."),
     targetType: z.enum(["SUPABASE_CLOUD", "SUPABASE_SELF_HOSTED"]).optional().describe("Target delivery mode. SUPABASE_CLOUD (default) for managed Supabase; SUPABASE_SELF_HOSTED produces a downloadable package instead of applying to a target project."),
+    sourceIntegrationInstanceId: z.string().uuid().optional().describe("Source integration instance ID. Required for BASE44_NATIVE (the Base44 integration from list_integration_instances). Omit for other source types."),
     supabaseIntegrationInstanceId: z.string().uuid().optional().describe("Supabase integration instance ID (from list_integration_instances). Required for SUPABASE_CLOUD; omit for SUPABASE_SELF_HOSTED."),
     templateId: z.string().uuid().describe("Template ID for the target infrastructure (from list_templates)"),
     targetSupabaseProjectRef: z.string().optional().describe("Target Supabase project reference (the subdomain part of the URL). Required for SUPABASE_CLOUD; omit for SUPABASE_SELF_HOSTED."),
@@ -353,8 +402,10 @@ server.tool(
     gitRepoAvailable: z.boolean().optional().describe("Whether the git repo is available"),
   },
   async (params) => {
-    // Validate source and target are different projects (cloud target only)
-    if ((params.targetType ?? "SUPABASE_CLOUD") === "SUPABASE_CLOUD" && params.targetSupabaseProjectRef) {
+    // Validate source and target are different projects (cloud target + Supabase-backed sources only)
+    const sourceType = params.sourceType ?? "LOVABLE_SUPABASE";
+    const hasSourceSupabase = ["LOVABLE_SUPABASE", "BOLT_SUPABASE", "BASE44_SUPABASE"].includes(sourceType);
+    if ((params.targetType ?? "SUPABASE_CLOUD") === "SUPABASE_CLOUD" && params.targetSupabaseProjectRef && hasSourceSupabase && params.sourceSupabaseUrl) {
       const sourceRefMatch = params.sourceSupabaseUrl.match(/https:\/\/([a-zA-Z0-9]+)\.supabase\.co/);
       const sourceRef = sourceRefMatch?.[1];
       if (sourceRef && sourceRef === params.targetSupabaseProjectRef) {
@@ -364,6 +415,14 @@ server.tool(
             "Please select a different target Supabase project."
         }, null, 2) }] };
       }
+    }
+
+    // For BASE44_NATIVE, validate sourceIntegrationInstanceId is provided
+    if (sourceType === "BASE44_NATIVE" && !params.sourceIntegrationInstanceId) {
+      return { content: [{ type: "text", text: JSON.stringify({
+        error: "sourceIntegrationInstanceId is required for BASE44_NATIVE migrations. " +
+          "Call list_integration_instances to find the Base44 integration instance ID."
+      }, null, 2) }] };
     }
 
     const data = await apiFetch("/api/v1/migrations", {
@@ -393,15 +452,17 @@ server.tool(
 server.tool(
   "complete_migration_job",
   "Complete a manual job that requires user action. Used for jobs with type MANUAL_SYNC_LOVABLE, " +
-  "MANUAL_EXPORT_DATA, MANUAL_IMPORT_DATA, etc. The job must be in READY status. " +
+  "MANUAL_SYNC_BASE44, MANUAL_EXPORT_DATA, MANUAL_IMPORT_DATA, etc. The job must be in READY status. " +
   "For MANUAL_SYNC_LOVABLE: first try lovable_sync to auto-deploy via Chrome extension. " +
   "If the extension is not available, ask the user to open their Lovable project and paste " +
   "'deploy staticbot edge function' into the Lovable AI chat. Once deployed, " +
   "use validate_function_url to verify, then call this tool with the functionUrl. " +
+  "For MANUAL_SYNC_BASE44: ask the user to sync their Base44 project from GitHub, " +
+  "then call this tool without a functionUrl. " +
   "Format: https://{projectRef}.supabase.co/functions/v1/{functionName}.",
   {
     jobId: z.string().uuid().describe("Migration job ID (from get_migration_jobs)"),
-    functionUrl: z.string().optional().describe("Edge function URL (required for MANUAL_SYNC_LOVABLE)"),
+    functionUrl: z.string().optional().describe("Edge function URL (required for MANUAL_SYNC_LOVABLE; omit for MANUAL_SYNC_BASE44)"),
   },
   async ({ jobId, functionUrl }) => {
     const body = functionUrl ? { functionUrl } : {};
@@ -454,16 +515,23 @@ server.tool(
 server.tool(
   "choose_backend_switchover",
   "Choose how to handle backend switchover in Phase 7. Call when MANUAL_CHOOSE_BACKEND_SWITCHOVER is READY. " +
-  "IMPORTANT: You MUST present these options to the user and ask them to choose before calling this tool:\n" +
-  "  1. 'switch-fully-to-supabase' (method='auto', choice='switch-fully-to-supabase') — Replaces ALL Supabase env vars (URL, anon key) in the GitHub repo with the new target values. Both Lovable preview and production use the new Supabase.\n" +
-  "  2. 'lovable-preview-supabase-prod' (method='auto', choice='lovable-preview-supabase-prod') — Lovable preview keeps using the OLD Supabase, but production deployments use the NEW Supabase. Good for gradual rollout.\n" +
-  "  3. 'skip' (method='skip') — Skip backend switchover entirely. The app continues pointing to the old Supabase.\n" +
+  "IMPORTANT: You MUST present these options to the user and ask them to choose before calling this tool. " +
+  "Four `choice` values are supported (use the literal string in your `choice` arg):\n" +
+  "  1. 'switch-fully-to-supabase' (method='auto') — Staticbot opens a GitHub PR that replaces ALL Supabase env vars (URL, anon key) in the repo with the migrated target's values. After the PR is merged, BOTH the source platform's previews AND production use the new Supabase. This is the 'I'm leaving Lovable/Base44 for good' choice.\n" +
+  "  2. 'source-preview-supabase-prod' (method='skip') — Production deployments read from the migrated Supabase backend; the source platform's preview environment keeps using its own managed Supabase as before. Good for gradual rollout where you keep developing in Lovable/Base44 but ship from the new Supabase. (Only shown to LOVABLE_SUPABASE and BASE44_SUPABASE customers — Bolt previews use WebContainer, not a separately-hosted Supabase.)\n" +
+  "  3. 'source-primary-supabase-backup' (method='skip') — Nothing changes for now. The live app stays on the source platform's current setup; the migrated Supabase project is parked as a fallback the user can switch to later. (Same platform gating as #2.)\n" +
+  "  4. 'handle-myself' (method='skip') — No automated changes. The user will update environment variables themselves whenever they're ready.\n\n" +
+  "Historical aliases: the old `lovable-preview-supabase-prod` and `lovable-primary-supabase-backup` IDs are still accepted by the backend (it stores `choice` as an opaque label). Prefer the `source-*` names for new calls so analytics filters reflect the platform-agnostic semantic.\n\n" +
+  "Platform-specific job creation under method='auto':\n" +
+  "  • BASE44_SUPABASE — creates MANUAL_SWITCH_BASE44_SECRETS jobs (Base44 manages env vars on its platform, not in GitHub). The user updates secrets in Base44's UI.\n" +
+  "  • BASE44_NATIVE — Phase 7 is fully automated (installs @bitfiction/base44-supabase-shim into the repo). No manual CHOOSE gate.\n" +
+  "  • All other source types — rewrites env vars in the GitHub repo directly.\n" +
   "Do NOT pick an option without asking the user first.",
   {
     migrationId: z.string().uuid().describe("Migration ID"),
     jobId: z.string().uuid().describe("The MANUAL_CHOOSE_BACKEND_SWITCHOVER job ID"),
     method: z.enum(["auto", "skip"]).describe("Switchover method"),
-    choice: z.string().optional().describe("Switchover strategy (e.g. 'switch-fully-to-supabase', 'lovable-preview-supabase-prod')"),
+    choice: z.string().optional().describe("Switchover strategy: 'switch-fully-to-supabase' | 'source-preview-supabase-prod' | 'source-primary-supabase-backup' | 'handle-myself' (or the deprecated `lovable-*` aliases for backward compat)"),
   },
   async ({ migrationId, jobId, method, choice }) => {
     const data = await apiFetch(`/api/v1/migrations/${migrationId}/jobs/${jobId}/choose-backend-switchover`, {
@@ -521,9 +589,9 @@ server.tool(
 server.tool(
   "list_integration_instances",
   "List all connected integrations for the organization. Each instance has a 'type' field " +
-  "identifying whether it is 'supabase', 'github', etc. Use the instance with type='supabase' " +
-  "as supabaseIntegrationInstanceId and type='github' as githubIntegrationInstanceId when " +
-  "calling create_migration.",
+  "identifying whether it is 'supabase', 'github', 'base44', etc. Use the instance with type='supabase' " +
+  "as supabaseIntegrationInstanceId, type='github' as githubIntegrationInstanceId, and type='base44' " +
+  "as sourceIntegrationInstanceId (for BASE44_NATIVE migrations) when calling create_migration.",
   {},
   async () => {
     const data = await apiFetch("/api/v1/migrations/integrations/instances");

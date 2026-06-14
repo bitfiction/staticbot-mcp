@@ -1,13 +1,14 @@
 # Staticbot Migration Automation Guide
 
-This guide teaches Claude Code how to run a Supabase migration end-to-end using the Staticbot MCP.
+This guide teaches Claude Code how to run a migration end-to-end using the Staticbot MCP.
 
-> **Firebase migrations**: This guide covers the Lovable/Supabase migration path (8 phases). Firebase migrations use a different pipeline (5 phases: Discovery → Schema Design → Data Import → Auth Migration → Storage Migration) and require a Firebase service account JSON instead of Supabase credentials. The same MCP tools apply — use `create_migration` with the appropriate `sourceType`.
+> **Supported source types**: Lovable Supabase (`LOVABLE_SUPABASE`), Bolt Supabase (`BOLT_SUPABASE`), Firebase (`FIREBASE`), Base44 Supabase (`BASE44_SUPABASE`), Base44 Native (`BASE44_NATIVE`). This guide covers the Lovable/Supabase path (8 phases) as the default. Other source types follow the same MCP tools but with different pipeline behavior — see platform-specific notes throughout.
 
 ## Prerequisites
 
 - Staticbot MCP configured with `STATICBOT_API_KEY` and `STATICBOT_API_URL`
-- Source Supabase project URL and anon key (from the Lovable/Supabase dashboard)
+- For Supabase-backed sources: source Supabase project URL and anon key (from the Lovable/Bolt/Base44 dashboard, or auto-extracted via `parse_source_keys`/`scan_deployed_url`)
+- For Base44 Native: a Base44 integration connected in the Staticbot dashboard
 - A target Supabase project created (you need the project ref)
 - Supabase integration connected in the Staticbot dashboard (OAuth)
 
@@ -16,23 +17,38 @@ This guide teaches Claude Code how to run a Supabase migration end-to-end using 
 ### Step 1: Gather Information
 
 ```
-list_integration_instances()   → find supabaseIntegrationInstanceId
+list_integration_instances()   → find supabaseIntegrationInstanceId, githubIntegrationInstanceId, sourceIntegrationInstanceId (for Base44 Native)
 list_templates()               → find the right templateId
 ```
 
 Ask the user for:
-- `sourceSupabaseUrl` (e.g., `https://abcdef.supabase.co`)
-- `sourceSupabaseAnonKey`
+- Their GitHub repo URL and source platform
 - `targetSupabaseProjectRef` (the subdomain part)
-- `lovableProjectId` (UUID from the Lovable project URL, needed for Lovable sync)
+- For Lovable: `lovableProjectId` (UUID from the Lovable project URL)
+- For Supabase-backed sources: `parse_source_keys(githubRepoUrl)` to auto-extract credentials, or ask the user
+- For Base44 apps with placeholder .env files: `scan_deployed_url(deployedUrl)` to extract inlined keys from the JS bundle
 
 ### Step 2: Create Migration
 
+**Lovable/Bolt/Base44 Supabase:**
 ```
 create_migration(
   name: "My Migration",
   sourceSupabaseUrl: "https://...",
   sourceSupabaseAnonKey: "eyJ...",
+  sourceType: "LOVABLE_SUPABASE",   // or BOLT_SUPABASE, BASE44_SUPABASE
+  supabaseIntegrationInstanceId: "...",
+  templateId: "...",
+  targetSupabaseProjectRef: "..."
+)
+```
+
+**Base44 Native (no source Supabase):**
+```
+create_migration(
+  name: "My Base44 Migration",
+  sourceType: "BASE44_NATIVE",
+  sourceIntegrationInstanceId: "...",  // Base44 integration instance
   supabaseIntegrationInstanceId: "...",
   templateId: "...",
   targetSupabaseProjectRef: "..."
@@ -80,11 +96,13 @@ resume_migration(id)
 
 This creates the automated job chain: DEPLOY → SYNC → CALL → COPY_STORAGE → SECRETS → CRON → AUTH_IDENTITIES → CLEANUP.
 
-### Step 7: Handle Lovable Sync
+### Step 7: Handle Lovable/Base44 Sync
 
-After `DEPLOY_EXPORT_FUNCTION` completes, `MANUAL_SYNC_LOVABLE` becomes READY.
+After `DEPLOY_EXPORT_FUNCTION` completes, a manual sync job becomes READY:
+- `MANUAL_SYNC_LOVABLE` for Lovable sources
+- `MANUAL_SYNC_BASE44` for Base44 Supabase sources
 
-**With Chrome extension (hands-free):**
+**Lovable with Chrome extension (hands-free):**
 ```
 get_migration_jobs(id)  → find MANUAL_SYNC_LOVABLE, read its inputData for function_name
 lovable_sync(functionName, lovableProjectId, migrationId, jobId)
@@ -96,12 +114,17 @@ complete_migration_job(jobId, functionUrl)
 resume_migration(id)
 ```
 
-**Without Chrome extension (manual step):**
+**Lovable without Chrome extension (manual step):**
 1. Extract `function_name` from the MANUAL_SYNC_LOVABLE job's `inputData`
 2. Derive the URL: `https://{sourceProjectRef}.supabase.co/functions/v1/{function_name}`
 3. Tell the user: "Please open Lovable and type 'deploy staticbot edge function' in the chat"
 4. Poll `validate_function_url(jobId, url)` every 20 seconds until status is `ok`
 5. Then: `complete_migration_job(jobId, functionUrl)` and `resume_migration(id)`
+
+**Base44 Supabase (manual sync):**
+1. Tell the user: "Please sync your Base44 project from GitHub in the Base44 dashboard"
+2. Once the user confirms: `complete_migration_job(jobId)` (no functionUrl needed)
+3. Then: `resume_migration(id)`
 
 ### Step 8: Monitor Phases 4-6
 
@@ -122,6 +145,11 @@ resume_migration(id)
 ```
 
 This replaces the old Supabase env vars in the GitHub repo with the target values.
+
+**Platform-specific behavior:**
+- **Lovable/Bolt**: `auto` rewrites `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the GitHub repo.
+- **Base44 Supabase**: `auto` creates `MANUAL_SWITCH_BASE44_SECRETS` jobs — Base44 manages env vars on its platform, not in GitHub. The user updates secrets in Base44's UI.
+- **Base44 Native**: Phase 7 is fully automated — installs the `@bitfiction/base44-supabase-shim` runtime into the repo. No manual CHOOSE gate.
 
 ### Step 10: Choose Frontend Deploy (Phase 8)
 

@@ -133,7 +133,7 @@ server.tool(
 
 server.tool(
   "create_stack",
-  "Create a new infrastructure stack from a template. A stack ties a template to a domain and becomes deployable. Call list_templates first to find the right templateId. Returns the stack ID and a statusUrl link to the Staticbot UI.",
+  "Create a new infrastructure stack from a template. A stack ties a template to a domain and becomes deployable. Call list_templates first to find the right templateId. Returns the stack ID and a statusUrl link to the Staticbot UI.\n\nFor templates that use Supabase (VITE_SUPABASE_URL and friends in configOverrides), pass supabaseIntegrationInstanceId + supabaseProjectRef to have Staticbot auto-refresh anon keys from your Supabase account on each deploy. Get these from list_integration_instances (oauthProvider='supabase') and list_supabase_projects.",
   {
     name: z.string().describe("Human-readable name for the stack (e.g. 'My Portfolio Site')"),
     templateId: z.string().uuid().describe("Template ID — get this from list_templates"),
@@ -153,9 +153,26 @@ server.tool(
         dnsDomainId: z.string().uuid().describe("ID of a DNS domain already registered in Staticbot"),
       }).describe("Reuse a domain already managed in Staticbot"),
     ]).describe("How to assign a domain to this stack"),
+    supabaseIntegrationInstanceId: z.string().uuid().optional().describe(
+      "Optional. Supabase integration instance ID from list_integration_instances. Combined with supabaseProjectRef, enables auto-refresh of anon keys from Supabase Management API on each deploy — you never have to manually rotate."
+    ),
+    supabaseProjectRef: z.string().optional().describe(
+      "Optional. Supabase project reference (the subdomain part of https://<ref>.supabase.co) — get it from list_supabase_projects. Must be set together with supabaseIntegrationInstanceId to enable auto-refresh."
+    ),
   },
-  async ({ name, templateId, configOverrides, domainOption }) => {
-    const body = { name, templateId, configOverrides: configOverrides ?? {}, domainOption };
+  async ({ name, templateId, configOverrides, domainOption, supabaseIntegrationInstanceId, supabaseProjectRef }) => {
+    const body: Record<string, unknown> = {
+      name,
+      templateId,
+      configOverrides: configOverrides ?? {},
+      domainOption,
+    };
+    // Only forward picker fields when both are set — one without the other is a
+    // configuration error that would leave the Stack unable to self-refresh.
+    if (supabaseIntegrationInstanceId && supabaseProjectRef) {
+      body.supabaseIntegrationInstanceId = supabaseIntegrationInstanceId;
+      body.supabaseProjectRef = supabaseProjectRef;
+    }
     const data = await apiFetch("/api/v1/stacks", {
       method: "POST",
       body: JSON.stringify(body),
@@ -315,7 +332,7 @@ server.tool(
 
 server.tool(
   "get_migration_jobs",
-  "Get all jobs for a migration. Jobs are the individual work units within each phase (e.g. 'migrate_schema', 'import_data', 'deploy_edge_function_X'). Use this to understand what's happening at a granular level, diagnose failures, or find a jobId for retry/skip.",
+  "Get all jobs for a migration. Jobs are the individual work units within each phase (e.g. 'migrate_schema', 'import_data', 'deploy_edge_function_X'). Use this to understand what's happening at a granular level, diagnose failures, or find a jobId for retry/skip. For IN_PROGRESS long-running jobs (e.g. CALL_EXPORT_TO_TARGET on multi-table sources), each job's `progressMessage` field carries a human-readable subtitle like \"Exporting table 'startups' (8/10)\" so you can report concrete progress without waiting for completion.",
   {
     id: z.string().uuid().describe("Migration ID"),
   },

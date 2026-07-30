@@ -4,12 +4,15 @@ MCP server for [Staticbot](https://www.staticbot.dev) — lets AI agents (Claude
 
 ## What Staticbot does
 
-Staticbot is a managed operations platform for complex, long-running deployment workflows. It hosts static websites and web apps inside **your own AWS account** using S3 and CloudFront — no vendor lock-in, no PaaS markup, full ownership of the infrastructure.
+Staticbot is a managed operations platform for complex, long-running deployment workflows. It deploys **static sites to S3 + CloudFront in your own AWS account** and **server-rendered (SSR) apps to Cloudflare Workers** — the right target is chosen automatically from your project. No vendor lock-in, no PaaS markup.
 
 Core workflows:
 
-- **Deploy to AWS** — Static websites and web apps to S3 + CloudFront CDN, with custom domains and automatic SSL via ACM
-- **Supabase migration** — Orchestrates moving a full Supabase project (database, edge functions, storage, auth) to self-hosted Supabase on your own AWS infrastructure
+- **Deploy static sites to AWS** — S3 + CloudFront CDN in your own AWS account, custom domains, automatic SSL via ACM
+- **Deploy SSR apps to Cloudflare Workers** — server-rendered frameworks (e.g. TanStack Start) run on Cloudflare's Workers-for-Platforms edge; no AWS or Terraform involved for the SSR path
+- **Supabase migration** — Orchestrates moving a full Supabase project (database, edge functions, storage, auth) to a managed Supabase project you own, or a self-hosted target
+- **Preview & host** — Deploy the migrated app to a live preview URL to verify it works, then promote it to production hosting on Staticbot's infrastructure
+- **Continuous sync** — Keep a migrated app in sync with its source repo (Lovable/Bolt/Base44) after the initial migration
 - **Multi-stage deployments** — Dev, preview, and production stages per website with independent lifecycle management
 
 Staticbot owns the things agents handle poorly: state that persists across sessions, credentials that should never appear in a context window, approval gates before destructive operations, and accumulated operational knowledge from real-world failure modes.
@@ -20,11 +23,11 @@ Staticbot owns the things agents handle poorly: state that persists across sessi
 
 Migrations are not one-size-fits-all. `create_migration` accepts a `sourceType` parameter that selects the right pipeline:
 
-- **Lovable / Supabase** (`LOVABLE_SUPABASE`, default) — 8-phase pipeline: Discovery → DB Migration → Data Import → Edge Functions → Storage Buckets → Auth Config → Backend Switchover → Next Steps. Requires GitHub repo URL. Automated data export via edge function deployment.
+- **Lovable / Supabase** (`LOVABLE_SUPABASE`, default) — full cloud pipeline: Discovery → DB Migration → Data Import → Edge Functions → Storage Buckets → Auth Config → Backend Switchover → **Preview & Verify → Hosting → Continuous Sync → Download → Follow-ups**. Requires GitHub repo URL. Automated data export via edge function deployment.
 - **Bolt / Supabase** (`BOLT_SUPABASE`) — Same pipeline tuned for Bolt.new-built apps on Supabase.
-- **Firebase** (`FIREBASE`) — 5-phase pipeline: Discovery → Schema Design → Data Import → Auth Migration → Storage Migration. Requires Firebase service account JSON. Git repo is optional. AI-assisted schema design maps Firestore collections to Postgres tables.
-- **Base44 / Supabase** (`BASE44_SUPABASE`) — Base44 apps backed by Supabase. Same 8-phase pipeline. Backend switchover updates Base44 platform secrets (not GitHub env vars). Use `parse_source_keys` or `scan_deployed_url` to extract source Supabase credentials.
-- **Base44 Native** (`BASE44_NATIVE`) — Base44 apps using `@base44/sdk` against Base44's managed backend (no source Supabase). Requires a Base44 integration instance. Discovery hits Base44's REST API, DDL is synthesised from entity schemas, data is imported directly. Phase 7 installs the `@bitfiction/base44-supabase-shim` into the repo.
+- **Firebase** (`FIREBASE`) — 6-phase pipeline: Discovery → Schema Design → Data Import → Auth Migration → Storage Migration → Follow-ups. Requires Firebase service account JSON. Git repo is optional. AI-assisted schema design maps Firestore collections to Postgres tables.
+- **Base44 / Supabase** (`BASE44_SUPABASE`) — Base44 apps backed by Supabase. Same cloud pipeline. Backend switchover updates Base44 platform secrets (not GitHub env vars). Use `parse_source_keys` or `scan_deployed_url` to extract source Supabase credentials.
+- **Base44 Native** (`BASE44_NATIVE`) — Base44 apps using `@base44/sdk` against Base44's managed backend (no source Supabase). Requires a Base44 integration instance. Discovery hits Base44's REST API, DDL is synthesised from entity schemas, data is imported directly. Uses the full cloud pipeline; the switchover phase installs the `@bitfiction/base44-supabase-shim` into the repo, then Preview & Verify + Hosting follow. A pre-flight gate (`resolve_schema_gap`) fires when the target already has Supabase state, and a secrets gate (`provide_base44_secrets`) collects the app's API keys.
 
 ### Target delivery modes
 
@@ -32,6 +35,16 @@ Migrations are not one-size-fits-all. `create_migration` accepts a `sourceType` 
 
 - **`SUPABASE_CLOUD`** (default) — Staticbot applies the migration end-to-end against a managed Supabase project you own. Requires `targetSupabaseProjectRef` plus the Supabase integration instance.
 - **`SUPABASE_SELF_HOSTED`** — Staticbot runs discovery + data export, then produces a downloadable AES-256-encrypted zip that the user applies to their self-hosted Supabase (typically by running Claude Code against the unzipped folder and following the bundled `CLAUDE.md`). Once the `GENERATE_PACKAGE` job is complete, call `download_package` to obtain the presigned URL plus the extraction password.
+
+### Hosting targets (AWS + Cloudflare)
+
+Where a site is deployed is derived from the template, not chosen by the agent:
+
+- **Static sites → AWS (S3 + CloudFront).** Deployed into your own AWS account with custom domains and ACM SSL.
+- **SSR apps → Cloudflare Workers.** Templates built on server-rendered frameworks (e.g. TanStack Start) deploy to Cloudflare's Workers-for-Platforms edge, hosted on Staticbot's Cloudflare account — no AWS, Terraform, or cert wait on this path. Detection is automatic when the template is scanned (`create_template`).
+- **Migration hosting (the "working preview → host with us" flow).** After a migration, `create_migration_preview` builds the app on Staticbot's infrastructure at a live URL — a Cloudflare Workers preview for SSR apps, a CloudFront preview for static ones — so the customer can verify it works. `choose_hosting` then decides Staticbot-hosting vs elsewhere, and `promote_to_hosting` promotes a validated preview to production (Cloudflare Workers + Supabase, or CloudFront + Supabase, matching the app type).
+
+Cloudflare is also used for DNS: when a domain is on Cloudflare, Staticbot can push the required records for you (see "Agent guidance: handling DNS" below).
 
 ### Discovery inventory & plan introspection
 
@@ -47,7 +60,8 @@ The Discovery phase inventories the source project before any changes are made. 
 - **Destructive SQL detection** — sync runs with destructive migrations (DROP TABLE, ALTER COLUMN) pause as `PAUSED_FOR_REVIEW`; agent must confirm or skip
 - **Non-destructive syncs** auto-complete without approval
 - **Best-effort jobs** (storage copy, secrets, cron, auth identities) never block the pipeline — they always succeed at the job level and report outcomes via result fields (`copy_result`, etc.)
-- **Choice gates** (data import method, backend switchover, frontend deploy) require explicit user decision — tool descriptions enforce "MUST present options to user"
+- **Choice gates** (data import method, backend switchover, frontend deploy, hosting, Base44 secrets, schema-drift review) require an explicit user decision — tool descriptions enforce "MUST present options to user"
+- **Self-navigation** — `get_migration` returns a `pendingAction` object (`type`, `jobId`, `endpoint`) naming the next step to take, and a `failureBanner` with a categorized, actionable explanation when a job has failed. An agent can drive a migration end-to-end by following `pendingAction` rather than hard-coding phase logic.
 
 ### Template versioning & reproducibility
 
@@ -79,7 +93,8 @@ Add to your project's `.mcp.json` or global MCP config:
       "command": "npx",
       "args": ["-y", "staticbot-mcp"],
       "env": {
-        "STATICBOT_API_KEY": "sk-your-api-key-here"
+        "STATICBOT_API_KEY": "sk-your-api-key-here",
+        "STATICBOT_API_URL": "https://app.staticbot.dev"
       }
     }
   }
@@ -92,15 +107,15 @@ Point your MCP client at:
 
 ```
 command: npx -y staticbot-mcp
-env: STATICBOT_API_KEY=sk-your-api-key-here
+env: STATICBOT_API_KEY=sk-your-api-key-here, STATICBOT_API_URL=https://app.staticbot.dev
 ```
 
 ### Environment variables
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `STATICBOT_API_KEY` | Yes | — | API key from Staticbot Settings → API Keys |
-| `STATICBOT_API_URL` | No | `http://localhost:9000` | Override for self-hosted instances |
+| `STATICBOT_API_KEY` | Yes | — | API key — generate at **Developer → API Keys** in the Staticbot UI |
+| `STATICBOT_API_URL` | No | `http://localhost:9000` | Base URL of the Staticbot API. Set this to your instance — `https://app.staticbot.dev` for the hosted service. The `localhost:9000` default is for local development only. |
 
 ## Available tools
 
@@ -137,7 +152,7 @@ env: STATICBOT_API_KEY=sk-your-api-key-here
 | `create_migration` | Create and start a new migration pipeline (`sourceType`: Lovable/Bolt/Firebase/Base44; `targetType`: managed cloud or downloadable self-hosted package) |
 | `download_package` | Fetch the presigned URL + AES-256 password for a migration's downloadable zip (self-hosted delivery, or portable backup for cloud migrations) |
 | `list_migrations` | List all migrations; optionally filter by status |
-| `get_migration` | Get migration status and phase breakdown |
+| `get_migration` | Get migration status, phase breakdown, preview deployment, `failureBanner` (categorized error), and `pendingAction` (the next step + endpoint to call) |
 | `get_migration_jobs` | List all jobs with dependencies, input/output data, and results |
 | `confirm_migration` | Approve a migration after discovery completes (requires user consent) |
 | `resume_migration` | Resume a paused migration |

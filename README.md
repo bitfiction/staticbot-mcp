@@ -150,6 +150,11 @@ env: STATICBOT_API_KEY=sk-your-api-key-here
 | `rechoose_data_import_method` | Reset Phase 3 choice to switch between automated and manual |
 | `choose_backend_switchover` | Phase 7: switch env vars fully, split preview/prod, or skip (Base44: updates platform secrets) |
 | `choose_frontend_deploy` | Phase 8: set up continuous sync, deploy via Staticbot, or skip |
+| `create_migration_preview` | Trigger (or retrieve) a preview deployment to verify the migrated app works on Staticbot infra |
+| `choose_hosting` | Phase Hosting: choose Staticbot hosting (Path B) or host elsewhere |
+| `provide_base44_secrets` | Provide Base44 API key secrets for Base44-native migrations |
+| `resolve_schema_gap` | Resolve a schema-drift gate: recheck or abort |
+| `promote_to_hosting` | Promote a validated preview to production hosting |
 | `validate_function_url` | Verify an edge function URL is deployed and responding |
 
 ### Integration utilities

@@ -282,8 +282,8 @@ server.tool(
 
 server.tool(
   "get_migration",
-  "Get the current status and phase breakdown of a migration. The response includes all 8 phases (Discovery, DB Migration, Data Import, Edge Functions, Storage, Auth Config, Backend Switchover, Frontend Deploy) with their individual statuses, plus sourceType (LOVABLE_SUPABASE / BOLT_SUPABASE / FIREBASE / BASE44_SUPABASE / BASE44_NATIVE), targetType (SUPABASE_CLOUD / SUPABASE_SELF_HOSTED), and packageAvailable (true once the downloadable zip is ready — fetch via download_package).\n\n" +
-  "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. When `pendingAction` is non-null, read its `type` field to determine what to do: CONFIRM → call confirm_migration, RETRY_OR_SKIP → call retry_migration_job or skip_migration_job, CHOOSE_HOSTING → call choose_hosting, PROVIDE_BASE44_SECRETS → call provide_base44_secrets, RESOLVE_SCHEMA_GAP → call resolve_schema_gap, CHOOSE_BACKEND_SWITCHOVER → call choose_backend_switchover, CHOOSE_DATA_IMPORT_METHOD → call choose_data_import_method, CHOOSE_FRONTEND_DEPLOY → call choose_frontend_deploy, COMPLETE_MANUAL_JOB → call complete_migration_job. When `pendingAction` is null, the migration is flowing (IN_PROGRESS) or finished (COMPLETED/FAILED) — polling is then your only job.\n\n" +
+  "Get the current status and phase breakdown of a migration. The response includes all migration phases (Discovery, DB Migration, Data Import, Edge Functions, Storage Buckets, Auth Config, Backend Switchover, Preview & Verify, Continuous Sync, Download, Follow-ups) with their individual statuses, plus sourceType (LOVABLE_SUPABASE / BOLT_SUPABASE / FIREBASE / BASE44_SUPABASE / BASE44_NATIVE), targetType (SUPABASE_CLOUD / SUPABASE_SELF_HOSTED), and packageAvailable (true once the downloadable zip is ready — fetch via download_package).\n\n" +
+  "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. When `pendingAction` is non-null, read its `type` field to determine what to do: CONFIRM → call confirm_migration, RETRY_OR_SKIP → call retry_migration_job or skip_migration_job, PROVIDE_BASE44_SECRETS → call provide_base44_secrets, RESOLVE_SCHEMA_GAP → call resolve_schema_gap, CHOOSE_BACKEND_SWITCHOVER → call choose_backend_switchover, CHOOSE_DATA_IMPORT_METHOD → call choose_data_import_method, CHOOSE_FRONTEND_DEPLOY → call choose_frontend_deploy, COMPLETE_MANUAL_JOB → call complete_migration_job. When `pendingAction` is null, the migration is flowing (IN_PROGRESS) or finished (COMPLETED/FAILED) — polling is then your only job.\n\n" +
   "The response also includes `failureBanner` with categorised error info (category, title, body, severity, actionable) when a job has a categorised failure. Use this to present richer error feedback.\n\n" +
   "**Polling Phase 7 (Backend Switchover):** the response also includes `previewDeployment` (null until Phase 7 provisions one) with its own independent status. Important: the migration itself can be marked COMPLETED while `previewDeployment.status` is still IN_PROGRESS — the preview Terraform applies in the background. When babysitting a migration toward 'live preview ready', also poll `previewDeployment.status` until it reaches COMPLETED. Treat anything other than COMPLETED/FAILED/ABORTED/DESTROYED/CLEANED_UP as 'still progressing'. Use `previewDeployment.createdAt` to compute elapsed time so you can give the user a sense of progress without spamming this endpoint — once-every-5s is plenty.",
   {
@@ -382,7 +382,7 @@ server.tool(
 
 server.tool(
   "create_migration",
-  "Create a new migration. Starts an 8-phase pipeline: Discovery → DB Migration → Data Import → Edge Functions → Storage → Auth Config → Backend Switchover → Frontend Deploy.\n\n" +
+  "Create a new migration. Starts a multi-phase pipeline: Discovery → DB Migration → Data Import → Edge Functions → Storage Buckets → Auth Config → Backend Switchover → Preview & Verify → Continuous Sync → Download → Follow-ups.\n\n" +
   "Two delivery modes via targetType:\n" +
   "  • SUPABASE_CLOUD (default) — Staticbot applies the migration end-to-end against a managed Supabase project you own. Requires targetSupabaseProjectRef plus the Supabase integration instance.\n" +
   "  • SUPABASE_SELF_HOSTED — Staticbot runs discovery + data export, then produces a downloadable AES-256-encrypted zip the user applies to their self-hosted Supabase (typically with Claude Code following the bundled CLAUDE.md). Skip target* params; once the GENERATE_PACKAGE job completes, call download_package to fetch the zip + password.\n\n" +
@@ -915,27 +915,6 @@ server.tool(
 );
 
 server.tool(
-  "choose_hosting",
-  "Choose how to handle hosting for a migration. Call when MANUAL_CHOOSE_HOSTING is READY. " +
-  "IMPORTANT: You MUST present these options to the user and ask them to choose before calling:\n" +
-  "  1. 'staticbot' — Staticbot hosts the migrated app (Path B).\n" +
-  "  2. 'elsewhere' — The user will host the app themselves.\n" +
-  "Do NOT pick an option without asking the user first.",
-  {
-    migrationId: z.string().uuid().describe("Migration ID"),
-    jobId: z.string().uuid().describe("The MANUAL_CHOOSE_HOSTING job ID"),
-    choice: z.enum(["staticbot", "elsewhere"]).describe("Hosting choice"),
-  },
-  async ({ migrationId, jobId, choice }) => {
-    const data = await apiFetch(`/api/v1/migrations/${migrationId}/jobs/${jobId}/choose-hosting`, {
-      method: "POST",
-      body: JSON.stringify({ choice }),
-    });
-    return { content: [{ type: "text", text: toText(data) }] };
-  }
-);
-
-server.tool(
   "provide_base44_secrets",
   "Provide Base44 API key secrets required to complete a Base44-native migration. " +
   "Call when MANUAL_PROVIDE_BASE44_SECRETS is READY. " +
@@ -975,21 +954,6 @@ server.tool(
   }
 );
 
-server.tool(
-  "promote_to_hosting",
-  "Promote a migration with a validated preview to production hosting. " +
-  "Records hosting intent and triggers the Hosting phase chain. " +
-  "Call when the preview deployment is COMPLETED and the user wants to switch production over.",
-  {
-    migrationId: z.string().uuid().describe("Migration ID"),
-  },
-  async ({ migrationId }) => {
-    const data = await apiFetch(`/api/v1/migrations/${migrationId}/promote-to-hosting`, {
-      method: "POST",
-    });
-    return { content: [{ type: "text", text: toText(data) }] };
-  }
-);
 // ─── Start ───────────────────────────────────────────────────────────────────
 
 const transport = new StdioServerTransport();

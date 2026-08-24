@@ -52,7 +52,7 @@ The Discovery phase inventories the source project before any changes are made. 
 
 - `get_migration_jobs()` → find the DISCOVERY job → read its `outputData` for structured inventory: tables, edge functions, storage buckets, secrets, migration files, resolved commit SHA
 - Migration pauses (`PAUSED_FOR_APPROVAL`) — the agent presents the inventory to the user and calls `confirm_migration` only after explicit approval
-- Sync runs expose a `diffInventory` field with granular change detection: `new_migrations`, `changed_functions`, `frontend_changed`, `storage_changed`, `auth_changed`
+- Sync runs expose the target commit, human and AI summaries, error details, and their individual jobs through `get_sync_run` and `get_sync_run_jobs`
 
 ### Safety & approval gates
 
@@ -61,7 +61,7 @@ The Discovery phase inventories the source project before any changes are made. 
 - **Non-destructive syncs** auto-complete without approval
 - **Best-effort jobs** (storage copy, secrets, cron, auth identities) never block the pipeline — they always succeed at the job level and report outcomes via result fields (`copy_result`, etc.)
 - **Choice gates** (data import method, backend switchover, Base44 secrets, schema-drift review) require an explicit user decision — tool descriptions enforce "MUST present options to user"
-- **Self-navigation** — `get_migration` returns a `pendingAction` object (`type`, `jobId`, `endpoint`) naming the next step to take, and a `failureBanner` with a categorized, actionable explanation when a job has failed. An agent can drive a migration end-to-end by following `pendingAction` rather than hard-coding phase logic.
+- **Self-navigation** — `get_migration` returns a `pendingAction` object (`type`, `jobId`, `endpoint`) naming the next step to take, and a `failureBanner` with a categorized, actionable explanation when a job has failed. The banner's `retryable` field helps agents avoid repeating deterministic SQL failures. An agent can drive a migration end-to-end by following `pendingAction` rather than hard-coding phase logic.
 
 ### Template versioning & reproducibility
 
@@ -144,6 +144,12 @@ env: STATICBOT_API_KEY=sk-your-api-key-here, STATICBOT_API_URL=https://app.stati
 | `create_deployment` | Create a deployment for a stack (does not start it) |
 | `start_deployment` | Start a created deployment — provisions infrastructure in AWS |
 | `get_deployment` | Get deployment status + per-domain DNS state (`dns` array — read on every poll). See "Agent guidance: handling DNS" below |
+| `get_auto_deploy_settings` | Get automatic-update flags for a deployment |
+| `update_auto_deploy_settings` | Update automatic-update flags; omitted fields are preserved |
+| `get_auto_deploy_info` | Check Automatic Updates availability and GitHub webhook state |
+| `list_rollback_versions` | List valid commit-pinned website rollback targets |
+| `rollback_website` | Roll the static website back to a confirmed template version |
+| `redeploy_website` | Rebuild the pinned website version or pull and deploy the latest version |
 
 ### Migrations
 
@@ -162,7 +168,6 @@ env: STATICBOT_API_KEY=sk-your-api-key-here, STATICBOT_API_URL=https://app.stati
 | `complete_migration_job` | Complete a manual job (e.g. MANUAL_SYNC_LOVABLE, MANUAL_SYNC_BASE44) with required data |
 | `get_migration_deployments` | List AWS deployments for a migration's infrastructure |
 | `choose_data_import_method` | Phase 3: choose automated (edge function) or manual data import |
-| `rechoose_data_import_method` | Reset Phase 3 choice to switch between automated and manual |
 | `choose_backend_switchover` | Phase 7: switch env vars fully, split preview/prod, or skip (Base44: updates platform secrets) |
 | `choose_frontend_deploy` | Phase 8: set up continuous sync, deploy via Staticbot, or skip |
 | `create_migration_preview` | Trigger (or retrieve) a preview deployment to verify the migrated app works on Staticbot infra |
@@ -192,9 +197,12 @@ env: STATICBOT_API_KEY=sk-your-api-key-here, STATICBOT_API_URL=https://app.stati
 | `get_connected_project` | Get project details: sync mode, webhook status, linked migration and deployment |
 | `trigger_sync` | Trigger a manual sync — detects and applies changes since last sync |
 | `list_sync_runs` | List sync run history (most recent first) |
-| `get_sync_run` | Get sync run status, diff inventory, summary, and AI-generated description |
+| `get_sync_run` | Get sync run status, target commit, summary, AI-generated description, and errors |
 | `get_sync_run_jobs` | Get individual sync jobs (apply_migration, deploy_edge_function, frontend_deploy) |
 | `confirm_sync_run` | Approve a sync paused for review (destructive migrations); optionally skip destructive ops |
+| `retry_sync_run` | Retry all failed jobs in a failed sync run |
+| `skip_sync_run` | Skip all failed jobs in a failed sync run after user confirmation |
+| `set_connected_project_sync_mode` | Change sync mode after user confirmation |
 
 ## Typical workflows
 
@@ -245,7 +253,7 @@ Agent:
   2. get_connected_project(id) → check sync mode and webhook status
   3. trigger_sync(id) → start sync
   4. list_sync_runs(id) → get latest run ID
-  5. get_sync_run(projectId, runId) → check diffInventory and status
+  5. get_sync_run(projectId, runId) → check status, commit, summaries, and errors
   6. If PAUSED_FOR_REVIEW → "Destructive migration detected. Apply or skip?"
      → confirm_sync_run(projectId, runId, skipDestructive)
   7. get_sync_run_jobs(projectId, runId) → verify all jobs completed

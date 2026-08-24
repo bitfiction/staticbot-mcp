@@ -36,7 +36,7 @@ function toText(data: unknown): string {
 
 const server = new McpServer({
   name: "staticbot",
-  version: "1.6.0",
+  version: "1.7.0",
 });
 
 // ─── Templates ───────────────────────────────────────────────────────────────
@@ -253,12 +253,106 @@ server.tool(
   "- `mailRecordsDetected` — true when MX/TXT/SRV/CAA records exist on the apex. **Treat as a hard block on any " +
   "advice that involves changing nameservers** — doing so would risk breaking the customer's mail.\n" +
   "- `cloudflareLinked` — true when the domain is wired to a Cloudflare integration in Staticbot.\n" +
-  "- `records` — flat list of `{type, host, value, description}` to surface to the user.",
+  "- `records` — flat list of `{type, host, value, description}` to surface to the user.\n\n" +
+  "The response also includes `failureSummary` when a worker job is failing or has been retried. Surface its `summary`; when `terminal=true`, include the `statusUrl` so the user can inspect the full failure.",
   {
     id: z.string().uuid().describe("Deployment ID"),
   },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/deployments/${id}`);
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
+
+// ─── Deployment management ─────────────────────────────────────────────
+
+server.tool(
+  "get_auto_deploy_settings",
+  "Get the automatic-update flags for a deployment. `autoDeployLatestWebsite` controls whether a new website template version is deployed automatically; `autoDeployLatestInfra` is reserved for infrastructure updates.",
+  {
+    id: z.string().uuid().describe("Deployment ID"),
+  },
+  async ({ id }) => {
+    const data = await apiFetch(`/api/v1/deployments/${id}/auto-deploy-settings`);
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
+
+server.tool(
+  "update_auto_deploy_settings",
+  "Update automatic-update flags for a deployment. Omitted fields keep their current values. " +
+  "IMPORTANT: Confirm the requested settings with the user before calling this tool.",
+  {
+    id: z.string().uuid().describe("Deployment ID"),
+    autoDeployLatestWebsite: z.boolean().optional().describe("Enable or disable automatic deployment of new website template versions"),
+    autoDeployLatestInfra: z.boolean().optional().describe("Enable or disable automatic infrastructure template updates (reserved for future use)"),
+  },
+  async ({ id, autoDeployLatestWebsite, autoDeployLatestInfra }) => {
+    const body: Record<string, boolean> = {};
+    if (autoDeployLatestWebsite !== undefined) body.autoDeployLatestWebsite = autoDeployLatestWebsite;
+    if (autoDeployLatestInfra !== undefined) body.autoDeployLatestInfra = autoDeployLatestInfra;
+    const data = await apiFetch(`/api/v1/deployments/${id}/auto-deploy-settings`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
+
+server.tool(
+  "get_auto_deploy_info",
+  "Check whether Automatic Updates are available for a deployment and inspect its GitHub webhook state. Returns fields including `available`, `webhookConfigured`, `canSetupWebhook`, and `isGithubRepo`. Automatic Updates do not apply to preview stacks.",
+  {
+    id: z.string().uuid().describe("Deployment ID"),
+  },
+  async ({ id }) => {
+    const data = await apiFetch(`/api/v1/deployments/${id}/auto-deploy-info`);
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
+
+server.tool(
+  "list_rollback_versions",
+  "List the recent commit-pinned website template versions that are valid rollback targets for a deployment, newest first. Use a returned `templateId` with rollback_website.",
+  {
+    id: z.string().uuid().describe("Deployment ID"),
+  },
+  async ({ id }) => {
+    const data = await apiFetch(`/api/v1/deployments/${id}/rollback-versions`);
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
+
+server.tool(
+  "rollback_website",
+  "Roll a static website back to a specific commit-pinned template version. Call list_rollback_versions first. " +
+  "IMPORTANT: Present the target version to the user and get explicit confirmation before calling this tool. " +
+  "Returns the worker job ID; poll get_deployment to track progress.",
+  {
+    id: z.string().uuid().describe("Deployment ID"),
+    templateId: z.string().uuid().describe("Target template version ID from list_rollback_versions"),
+  },
+  async ({ id, templateId }) => {
+    const data = await apiFetch(
+      `/api/v1/deployments/${id}/rollback-website?templateId=${encodeURIComponent(templateId)}`,
+      { method: "POST" }
+    );
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
+
+server.tool(
+  "redeploy_website",
+  "Rebuild and redeploy the static website component. By default it redeploys the currently pinned template version; set `useLatest=true` to pull the latest version first. Returns the worker job ID; poll get_deployment to track progress.",
+  {
+    id: z.string().uuid().describe("Deployment ID"),
+    useLatest: z.boolean().optional().describe("Pull the latest website template version before redeploying (default: false)"),
+  },
+  async ({ id, useLatest }) => {
+    const data = await apiFetch(
+      `/api/v1/deployments/${id}/redeploy-website?useLatest=${useLatest ?? false}`,
+      { method: "POST" }
+    );
     return { content: [{ type: "text", text: toText(data) }] };
   }
 );
@@ -269,9 +363,7 @@ server.tool(
   "list_migrations",
   "List all migrations. Optionally filter by status. Migrations orchestrate moving a full project (database, auth, storage, edge functions) from a source platform (Lovable, Bolt, Firebase, Base44) to target Supabase infrastructure.",
   {
-    status: z.string().optional().describe(
-      "Filter by status: PENDING, IN_PROGRESS, PAUSED_FOR_APPROVAL, PAUSED_FOR_USER_ACTION, PAUSED_BY_USER, COMPLETED, COMPLETED_WITH_ERRORS, FAILED"
-    ),
+    status: z.enum(["PENDING", "IN_PROGRESS", "PAUSED_FOR_APPROVAL", "PAUSED_FOR_USER_ACTION", "PAUSED_BY_USER", "COMPLETED", "COMPLETED_WITH_ERRORS", "FAILED", "ARCHIVED"]).optional().describe("Filter by migration status"),
   },
   async ({ status }) => {
     const qs = status ? `?status=${encodeURIComponent(status)}` : "";
@@ -284,7 +376,7 @@ server.tool(
   "get_migration",
   "Get the current status and phase breakdown of a migration. The response includes all migration phases (Discovery, DB Migration, Data Import, Edge Functions, Storage Buckets, Auth Config, Backend Switchover, Preview & Verify, Continuous Sync, Download, Follow-ups) with their individual statuses, plus sourceType (LOVABLE_SUPABASE / BOLT_SUPABASE / FIREBASE / BASE44_SUPABASE / BASE44_NATIVE), targetType (SUPABASE_CLOUD / SUPABASE_SELF_HOSTED), and packageAvailable (true once the downloadable zip is ready — fetch via download_package).\n\n" +
   "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. When `pendingAction` is non-null, read its `type` field to determine what to do: CONFIRM → call confirm_migration, RETRY_OR_SKIP → call retry_migration_job or skip_migration_job, PROVIDE_BASE44_SECRETS → call provide_base44_secrets, RESOLVE_SCHEMA_GAP → call resolve_schema_gap, CHOOSE_BACKEND_SWITCHOVER → call choose_backend_switchover, CHOOSE_DATA_IMPORT_METHOD → call choose_data_import_method, CHOOSE_FRONTEND_DEPLOY → call choose_frontend_deploy, COMPLETE_MANUAL_JOB → call complete_migration_job. When `pendingAction` is null, the migration is flowing (IN_PROGRESS) or finished (COMPLETED/FAILED) — polling is then your only job.\n\n" +
-  "The response also includes `failureBanner` with categorised error info (category, title, body, severity, actionable) when a job has a categorised failure. Use this to present richer error feedback.\n\n" +
+  "The response also includes `failureBanner` with categorised error info (category, title, body, severity, actionable, followupNote, retryable) when a job has a categorised failure. Use this to present richer error feedback. When `retryable=false`, prefer skip_migration_job or an AI-assisted fix over repeating deterministic SQL that will fail again; `retryable=null` means the cause may be environmental.\n\n" +
   "**Polling Phase 7 (Backend Switchover):** the response also includes `previewDeployment` (null until Phase 7 provisions one) with its own independent status. Important: the migration itself can be marked COMPLETED while `previewDeployment.status` is still IN_PROGRESS — the preview Terraform applies in the background. When babysitting a migration toward 'live preview ready', also poll `previewDeployment.status` until it reaches COMPLETED. Treat anything other than COMPLETED/FAILED/ABORTED/DESTROYED/CLEANED_UP as 'still progressing'. Use `previewDeployment.createdAt` to compute elapsed time so you can give the user a sense of progress without spamming this endpoint — once-every-5s is plenty.",
   {
     id: z.string().uuid().describe("Migration ID"),
@@ -389,11 +481,11 @@ server.tool(
   "Source platforms via sourceType:\n" +
   "  • LOVABLE_SUPABASE (default) — Lovable-built apps on Supabase.\n" +
   "  • BOLT_SUPABASE — Bolt.new apps on Supabase (Phase 3 Lovable-specific steps are adjusted).\n" +
-  "  • FIREBASE — Firebase-to-Supabase migration (different pipeline).\n" +
+  "  • FIREBASE — Firebase-to-Supabase migration (different pipeline). Requires firebaseServiceAccountJson; the Git repo is optional.\n" +
   "  • BASE44_SUPABASE — Base44 apps backed by Supabase. Requires sourceSupabaseUrl + sourceSupabaseAnonKey (use parse_source_keys or scan_deployed_url). Backend switchover updates Base44 platform secrets (not GitHub env vars).\n" +
   "  • BASE44_NATIVE — Base44 apps using @base44/sdk against Base44's managed backend (no source Supabase). Requires sourceIntegrationInstanceId (the Base44 integration). Discovery hits Base44's REST API, DDL is synthesised from entity schemas, data is imported directly. sourceSupabaseUrl and sourceSupabaseAnonKey are NOT needed.\n\n" +
   "BEFORE calling this tool, follow these steps to gather the required parameters:\n" +
-  "1. Ask the user for their GitHub repo URL and source platform.\n" +
+  "1. Ask the user for their source platform and GitHub repo URL (the repo is optional for FIREBASE). For FIREBASE, securely collect firebaseServiceAccountJson.\n" +
   "2. Ask the user whether the target is managed Supabase (SUPABASE_CLOUD) or their own self-hosted install (SUPABASE_SELF_HOSTED).\n" +
   "3. Call list_integration_instances — use the instance with type='supabase' as supabaseIntegrationInstanceId, type='github' as githubIntegrationInstanceId, and type='base44' as sourceIntegrationInstanceId (for BASE44_NATIVE).\n" +
   "4. For Supabase-backed sources (LOVABLE_SUPABASE, BOLT_SUPABASE, BASE44_SUPABASE): call parse_source_keys with the GitHub repo URL. For Base44 apps where the repo .env only has placeholders, use scan_deployed_url to extract keys from the deployed *.base44.app JS bundle.\n" +
@@ -404,6 +496,7 @@ server.tool(
   "After creation, the migration starts with a DISCOVERY job. Once discovery completes, it pauses (PAUSED_FOR_APPROVAL) — present the inventory to the user and call confirm_migration if they approve.",
   {
     name: z.string().describe("Human-readable name for this migration"),
+    description: z.string().optional().describe("Optional human-readable migration description"),
     sourceSupabaseUrl: z.string().optional().describe("Source Supabase project URL (e.g. https://abcdef.supabase.co). Required for LOVABLE_SUPABASE, BOLT_SUPABASE, BASE44_SUPABASE. Omit for BASE44_NATIVE and FIREBASE."),
     sourceSupabaseAnonKey: z.string().optional().describe("Source Supabase anon key. Required for LOVABLE_SUPABASE, BOLT_SUPABASE, BASE44_SUPABASE. Omit for BASE44_NATIVE and FIREBASE."),
     sourceType: z.enum(["LOVABLE_SUPABASE", "BOLT_SUPABASE", "FIREBASE", "BASE44_SUPABASE", "BASE44_NATIVE"]).optional().describe("Source platform. Defaults to LOVABLE_SUPABASE."),
@@ -416,9 +509,12 @@ server.tool(
     targetSupabaseAnonKey: z.string().optional().describe("Target anon key (auto-fetched from Supabase API if omitted). Ignored for SUPABASE_SELF_HOSTED."),
     targetSupabaseServiceRoleKey: z.string().optional().describe("Target service role key (auto-fetched if omitted). Ignored for SUPABASE_SELF_HOSTED."),
     githubIntegrationInstanceId: z.string().uuid().optional().describe("GitHub integration instance ID for repo access"),
+    targetSchemaName: z.string().optional().describe("Optional target Postgres schema name"),
     configOverrides: z.record(z.string()).optional().describe("Template config overrides"),
+    firebaseServiceAccountJson: z.string().optional().describe("Firebase service-account JSON. Required for FIREBASE migrations; sent directly to Staticbot and treated as a secret."),
     githubRepoUrl: z.string().optional().describe("GitHub repo URL"),
     gitRepoAvailable: z.boolean().optional().describe("Whether the git repo is available"),
+    packageOptions: z.record(z.unknown()).optional().describe("Optional self-hosted package build options. Currently used for BASE44_NATIVE to SUPABASE_SELF_HOSTED migrations."),
   },
   async (params) => {
     // Validate source and target are different projects (cloud target + Supabase-backed sources only)
@@ -509,23 +605,6 @@ server.tool(
     const data = await apiFetch(`/api/v1/migrations/${migrationId}/jobs/${jobId}/choose-method`, {
       method: "POST",
       body: JSON.stringify({ method }),
-    });
-    return { content: [{ type: "text", text: toText(data) }] };
-  }
-);
-
-server.tool(
-  "rechoose_data_import_method",
-  "Reset the Phase 3 data import choice so the user can switch from manual to automated or vice versa. " +
-  "Call when the user wants to go back and re-decide their data import method before proceeding. " +
-  "This deletes all downstream jobs from the previous choice and re-opens the CHOOSE gate.",
-  {
-    migrationId: z.string().uuid().describe("Migration ID"),
-    jobId: z.string().uuid().describe("The MANUAL_CHOOSE_DATA_IMPORT_METHOD job ID (must be COMPLETED)"),
-  },
-  async ({ migrationId, jobId }) => {
-    const data = await apiFetch(`/api/v1/migrations/${migrationId}/jobs/${jobId}/rechoose-method`, {
-      method: "POST",
     });
     return { content: [{ type: "text", text: toText(data) }] };
   }
@@ -800,7 +879,7 @@ server.tool(
   "list_connected_projects",
   "List all connected projects. Connected projects sync changes from a GitHub repo to a target Supabase instance and optional AWS deployment. After a migration completes, enable continuous sync to keep the target up-to-date with Lovable.",
   {
-    syncMode: z.string().optional().describe("Filter by sync mode: AUTOMATIC, MANUAL, PAUSED, ARCHIVED"),
+    syncMode: z.enum(["AUTOMATIC", "MANUAL", "PAUSED", "ARCHIVED"]).optional().describe("Filter by sync mode"),
   },
   async ({ syncMode }) => {
     const qs = syncMode ? `?syncMode=${encodeURIComponent(syncMode)}` : "";
@@ -894,6 +973,54 @@ server.tool(
   }
 );
 
+
+server.tool(
+  "retry_sync_run",
+  "Retry a connected-project sync run in FAILED status. Resets its failed jobs to PENDING and reopens the run. Use get_sync_run and get_sync_run_jobs first to explain the failure to the user.",
+  {
+    projectId: z.string().uuid().describe("Connected project ID"),
+    runId: z.string().uuid().describe("Failed sync run ID"),
+  },
+  async ({ projectId, runId }) => {
+    const data = await apiFetch(`/api/v1/connected-projects/${projectId}/sync-runs/${runId}/retry`, {
+      method: "POST",
+    });
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
+
+server.tool(
+  "skip_sync_run",
+  "Skip all failed jobs in a connected-project sync run, marking them completed with `skipped=true`. The run must be FAILED. " +
+  "IMPORTANT: Explain which failed work will be skipped and get explicit user confirmation before calling this tool.",
+  {
+    projectId: z.string().uuid().describe("Connected project ID"),
+    runId: z.string().uuid().describe("Failed sync run ID"),
+  },
+  async ({ projectId, runId }) => {
+    const data = await apiFetch(`/api/v1/connected-projects/${projectId}/sync-runs/${runId}/skip`, {
+      method: "POST",
+    });
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
+
+server.tool(
+  "set_connected_project_sync_mode",
+  "Change a connected project's continuous-sync mode. AUTOMATIC syncs every push (and requires a Supabase backend), MANUAL syncs only when trigger_sync is called, PAUSED ignores pushes, and ARCHIVED stops syncing. " +
+  "IMPORTANT: Confirm the new mode with the user before calling this tool.",
+  {
+    id: z.string().uuid().describe("Connected project ID"),
+    syncMode: z.enum(["AUTOMATIC", "MANUAL", "PAUSED", "ARCHIVED"]).describe("New continuous-sync mode"),
+  },
+  async ({ id, syncMode }) => {
+    const data = await apiFetch(`/api/v1/connected-projects/${id}/sync-mode`, {
+      method: "PATCH",
+      body: JSON.stringify({ syncMode }),
+    });
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
 
 // ─── Gate/action tools (P0 — 2026-07-30) ────────────────────────────────────
 

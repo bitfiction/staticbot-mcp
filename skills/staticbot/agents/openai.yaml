@@ -1,0 +1,4 @@
+interface:
+  display_name: "Staticbot"
+  short_description: "Deploy, migrate, and manage Staticbot through its REST API"
+  default_prompt: "Use $staticbot to manage this project through the Staticbot REST API."

@@ -313,7 +313,7 @@ server.tool(
 
 server.tool(
   "list_rollback_versions",
-  "List the recent commit-pinned website template versions that are valid rollback targets for a deployment, newest first. Use a returned `templateId` with rollback_website.",
+  "List the recent commit-pinned website template versions that are valid rollback targets for a deployment, newest first. Use only a returned `templateId` with rollback_website; do not infer a target from a commit SHA or version label.",
   {
     id: z.string().uuid().describe("Deployment ID"),
   },
@@ -326,7 +326,7 @@ server.tool(
 server.tool(
   "rollback_website",
   "Roll a static website back to a specific commit-pinned template version. Call list_rollback_versions first. " +
-  "IMPORTANT: Present the target version to the user and get explicit confirmation before calling this tool. " +
+  "IMPORTANT: Present the exact returned target version and commit to the user and get explicit confirmation before calling this tool. Never supply an inferred or unverified template ID. " +
   "Returns the worker job ID; poll get_deployment to track progress.",
   {
     id: z.string().uuid().describe("Deployment ID"),
@@ -931,7 +931,7 @@ server.tool(
 
 server.tool(
   "get_sync_run",
-  "Get details of a specific sync run including status, commit SHA, summary of changes, and error message if failed. Statuses: PENDING → IN_PROGRESS → COMPLETED/FAILED. Destructive migrations cause PAUSED_FOR_REVIEW.",
+  "Get details of a specific sync run including status, source and target repository versions, summary of changes, and error information. Use the returned version fields when explaining or reviewing the diff; do not infer them. Statuses: PENDING → IN_PROGRESS → COMPLETED/FAILED. Destructive migrations cause PAUSED_FOR_REVIEW.",
   {
     projectId: z.string().uuid().describe("Connected project ID"),
     runId: z.string().uuid().describe("Sync run ID"),

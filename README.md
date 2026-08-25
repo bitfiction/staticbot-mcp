@@ -73,18 +73,18 @@ The Discovery phase inventories the source project before any changes are made. 
 ## Prerequisites
 
 - A [Staticbot](https://www.staticbot.dev) account
-- An API key — generate one at **Developer → API Keys** in the Staticbot UI
-- Node.js 18+
+- An API key — open **API** in the Staticbot menu (or visit `https://app.staticbot.dev/developer`) and create one in the **API Keys** section
+- Node.js 20+
 
 ## API Reference
 
-The full interactive API documentation is available at **Developer → API Reference** in the Staticbot UI. It's powered by Stoplight Elements and lets you browse all endpoints, see request/response schemas, and try requests directly from the browser.
+The full interactive API documentation is available from **API** in the Staticbot menu at `https://app.staticbot.dev/developer`. The page includes an **API Reference** powered by Stoplight Elements for browsing endpoints and request/response schemas.
 
 ## Setup
 
 ### Claude Code
 
-Add to your project's `.mcp.json` or global MCP config:
+Add the published server to your project's `.mcp.json` or global MCP config:
 
 ```json
 {
@@ -103,7 +103,7 @@ Add to your project's `.mcp.json` or global MCP config:
 
 ### Cursor / other MCP clients
 
-Point your MCP client at:
+Point your MCP client at the published package:
 
 ```
 command: npx -y staticbot-mcp
@@ -114,7 +114,7 @@ env: STATICBOT_API_KEY=sk-your-api-key-here, STATICBOT_API_URL=https://app.stati
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `STATICBOT_API_KEY` | Yes | — | API key — generate at **Developer → API Keys** in the Staticbot UI |
+| `STATICBOT_API_KEY` | Yes | — | API key — open **API** in the Staticbot menu (or visit `https://app.staticbot.dev/developer`) and use the **API Keys** section |
 | `STATICBOT_API_URL` | No | `http://localhost:9000` | Base URL of the Staticbot API. Set this to your instance — `https://app.staticbot.dev` for the hosted service. The `localhost:9000` default is for local development only. |
 
 ## Available tools

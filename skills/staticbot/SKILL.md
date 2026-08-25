@@ -10,7 +10,7 @@ Use Staticbot's REST API through `scripts/staticbot-api.sh`. Resolve all referen
 ## Prepare
 
 1. Require `curl`; use `jq` when available for inspecting JSON.
-2. Check whether `STATICBOT_API_KEY` is set without printing its value. If it is absent, tell the user to create a key in the Staticbot dashboard under **Developer → API Keys**, export it in their shell, and retry. Never ask the user to paste a key into chat, write it into repository files, or place it in a command argument.
+2. Check whether `STATICBOT_API_KEY` is set without printing its value. If it is absent, tell the user to open **API** in the Staticbot menu (or visit `https://app.staticbot.dev/developer`), create a key in the **API Keys** section, export it in their shell, and retry. Never ask the user to paste a key into chat, write it into repository files, or place it in a command argument.
 3. Default to hosted Staticbot at `https://app.staticbot.dev`. Honor `STATICBOT_API_URL` for self-hosted or local instances.
 4. Fetch the current OpenAPI document before constructing an unfamiliar mutation. The public schema is available through `scripts/staticbot-api.sh spec`; inspect the relevant path and request schema instead of guessing field names.
 5. Read [references/api-workflows.md](references/api-workflows.md) for the endpoint family and workflow involved in the request.

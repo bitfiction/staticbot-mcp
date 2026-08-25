@@ -68,9 +68,21 @@ case $1 in
 esac
 
 if [[ -z ${STATICBOT_API_KEY:-} ]]; then
-  printf 'Error: STATICBOT_API_KEY is required. Create one under Developer -> API Keys and export it in your shell.\n' >&2
+  printf 'Error: STATICBOT_API_KEY is required. Open API in the Staticbot menu (https://app.staticbot.dev/developer), create one in the API Keys section, and export it in your shell.\n' >&2
   exit 78
 fi
+
+# Pass the bearer header through a restrictive temporary curl config instead of
+# exposing the key in curl's process arguments. Do not pass the exported key on
+# to curl's environment either.
+auth_config=$(mktemp "${TMPDIR:-/tmp}/staticbot-curl.XXXXXX")
+chmod 600 "$auth_config"
+cleanup() {
+  rm -f "$auth_config"
+}
+trap cleanup EXIT HUP INT TERM
+printf 'header = "Authorization: Bearer %s"\n' "$STATICBOT_API_KEY" > "$auth_config"
+unset STATICBOT_API_KEY
 
 if [[ $request_path == *://* || $request_path != /* ]]; then
   printf 'Error: PATH must be a relative path beginning with /. Absolute URLs are refused.\n' >&2
@@ -88,7 +100,7 @@ curl_args=(
   --silent
   --show-error
   --request "$method"
-  --header "Authorization: Bearer ${STATICBOT_API_KEY}"
+  --config "$auth_config"
   --header 'Accept: application/json'
 )
 
@@ -104,4 +116,4 @@ if [[ -n $body_source ]]; then
   curl_args+=(--header 'Content-Type: application/json' --data-binary "@${body_source}")
 fi
 
-exec curl "${curl_args[@]}" "${api_origin}${normalized_path}"
+curl "${curl_args[@]}" "${api_origin}${normalized_path}"

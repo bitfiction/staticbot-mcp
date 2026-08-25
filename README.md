@@ -1,4 +1,4 @@
-# staticbot-mcp
+# Staticbot MCP server
 
 MCP server for [Staticbot](https://www.staticbot.dev) — lets AI agents (Claude Code, Cursor, and any MCP-compatible runtime) orchestrate deployment and migration workflows via the Staticbot API.
 
@@ -91,10 +91,9 @@ Add the published server to your project's `.mcp.json` or global MCP config:
   "mcpServers": {
     "staticbot": {
       "command": "npx",
-      "args": ["-y", "staticbot-mcp"],
+      "args": ["-y", "@staticbot/mcp"],
       "env": {
-        "STATICBOT_API_KEY": "sk-your-api-key-here",
-        "STATICBOT_API_URL": "https://app.staticbot.dev"
+        "STATICBOT_API_KEY": "sk-your-api-key-here"
       }
     }
   }
@@ -106,8 +105,8 @@ Add the published server to your project's `.mcp.json` or global MCP config:
 Point your MCP client at the published package:
 
 ```
-command: npx -y staticbot-mcp
-env: STATICBOT_API_KEY=sk-your-api-key-here, STATICBOT_API_URL=https://app.staticbot.dev
+command: npx -y @staticbot/mcp
+env: STATICBOT_API_KEY=sk-your-api-key-here
 ```
 
 ### Environment variables
@@ -115,7 +114,7 @@ env: STATICBOT_API_KEY=sk-your-api-key-here, STATICBOT_API_URL=https://app.stati
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `STATICBOT_API_KEY` | Yes | — | API key — open **API** in the Staticbot menu (or visit `https://app.staticbot.dev/developer`) and use the **API Keys** section |
-| `STATICBOT_API_URL` | No | `http://localhost:9000` | Base URL of the Staticbot API. Set this to your instance — `https://app.staticbot.dev` for the hosted service. The `localhost:9000` default is for local development only. |
+| `STATICBOT_API_URL` | No | `https://app.staticbot.dev` | Base URL of the Staticbot API. Hosted Staticbot works without setting this variable; override it only for a self-hosted or local API. |
 
 ## Available tools
 

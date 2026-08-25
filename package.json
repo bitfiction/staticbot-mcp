@@ -1,6 +1,6 @@
 {
-  "name": "staticbot-mcp",
-  "version": "1.7.0",
+  "name": "@staticbot/mcp",
+  "version": "1.7.1",
   "description": "MCP server for the Staticbot API",
   "license": "MIT",
   "repository": {

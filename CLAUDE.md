@@ -19,7 +19,7 @@ npm run start    # node dist/index.js
 Environment:
 
 - `STATICBOT_API_KEY` (required) — bearer token for the Staticbot API
-- `STATICBOT_API_URL` (optional, default `http://localhost:9000`) — API base URL
+- `STATICBOT_API_URL` (optional, default `https://app.staticbot.dev`) — override only for a self-hosted or local API
 
 ## Architecture
 

@@ -6,7 +6,7 @@ This guide teaches Claude Code how to run a migration end-to-end using the Stati
 
 ## Prerequisites
 
-- Staticbot MCP configured with `STATICBOT_API_KEY` and `STATICBOT_API_URL`
+- Staticbot MCP configured with `STATICBOT_API_KEY`; `STATICBOT_API_URL` is optional and only needed for a self-hosted or local API
 - For Supabase-backed sources: source Supabase project URL and anon key (from the Lovable/Bolt/Base44 dashboard, or auto-extracted via `parse_source_keys`/`scan_deployed_url`)
 - For Base44 Native: a Base44 integration connected in the Staticbot dashboard
 - A target Supabase project created (you need the project ref)

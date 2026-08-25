@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-const API_URL = process.env.STATICBOT_API_URL ?? "http://localhost:9000";
+const API_URL = process.env.STATICBOT_API_URL ?? "https://app.staticbot.dev";
 const API_KEY = process.env.STATICBOT_API_KEY;
 
 if (!API_KEY) {
@@ -36,7 +36,7 @@ function toText(data: unknown): string {
 
 const server = new McpServer({
   name: "staticbot",
-  version: "1.7.0",
+  version: "1.7.1",
 });
 
 // ─── Templates ───────────────────────────────────────────────────────────────

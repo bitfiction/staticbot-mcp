@@ -29,6 +29,7 @@
   "files": [
     "dist",
     ".codex-plugin",
+    ".claude-plugin",
     ".mcp.json",
     "skills",
     "evals",

@@ -18,6 +18,19 @@ This repository is also a Codex plugin. Its manifest bundles the Staticbot MCP s
 
 The general `staticbot` skill remains available as a direct REST API fallback. The plugin can be tested from a local marketplace today; public directory submission additionally requires registering the hosted Staticbot MCP connection with OpenAI.
 
+## Install as a Claude Code plugin
+
+Claude Code does not require Staticbot to be accepted into a central plugin registry. Add the self-hosted marketplace directly from this GitHub repository, then install the plugin:
+
+```text
+/plugin marketplace add bitfiction/staticbot-mcp
+/plugin install staticbot@staticbot
+```
+
+Set `STATICBOT_API_KEY` in the environment that launches Claude Code. The plugin starts the published `@staticbot/mcp` package with `npx` and inherits that environment; `STATICBOT_API_URL` remains optional for self-hosted or local Staticbot APIs.
+
+The installed skills are namespaced by the plugin. For example, use `/staticbot:deploy-web-app-with-staticbot`, `/staticbot:migrate-vibe-coded-app`, or `/staticbot:sync-vibe-coded-app`. Restart Claude Code or run `/reload-plugins` after installation if the plugin is not immediately available.
+
 ## Configure your MCP client directly
 
 Add the published package to your project or global MCP configuration:

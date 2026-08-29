@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "staticbot",
+  "description": "Official Staticbot plugins for deploying, migrating, and synchronizing web applications with Claude Code.",
+  "owner": {
+    "name": "BITFICTION, s.r.o.",
+    "email": "hello@staticbot.dev"
+  },
+  "plugins": [
+    {
+      "name": "staticbot",
+      "source": "./",
+      "strict": true,
+      "description": "Deploy analyzed repositories, migrate vibe-coded apps, and keep customer-owned infrastructure synchronized with Staticbot.",
+      "author": {
+        "name": "BITFICTION, s.r.o.",
+        "email": "hello@staticbot.dev"
+      },
+      "homepage": "https://www.staticbot.dev/platform/mcp-server",
+      "repository": "https://github.com/bitfiction/staticbot-mcp",
+      "license": "MIT",
+      "keywords": [
+        "staticbot",
+        "deployment",
+        "migration",
+        "continuous-sync",
+        "vendor-lock-in"
+      ]
+    }
+  ]
+}

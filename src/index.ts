@@ -69,6 +69,7 @@ server.tool(
 server.tool(
   "create_template",
   "Create a new template by scanning a GitHub repository. Auto-detects platforms, env vars, and builders. " +
+  "Staticbot also classifies the repository's hosting workload; inspect the returned `hostingWorkload` and `isSsr` fields instead of choosing AWS or Cloudflare from agent-side heuristics. " +
   "Use this when the user wants to migrate a repo that doesn't match any existing template from list_templates. " +
   "The name is optional — if omitted, it's derived from the repo name.",
   {
@@ -133,7 +134,7 @@ server.tool(
 
 server.tool(
   "create_stack",
-  "Create a new infrastructure stack from a template. A stack ties a template to a domain and becomes deployable. Call list_templates first to find the right templateId. Returns the stack ID and a statusUrl link to the Staticbot UI.\n\nFor templates that use Supabase (VITE_SUPABASE_URL and friends in configOverrides), pass supabaseIntegrationInstanceId + supabaseProjectRef to have Staticbot auto-refresh anon keys from your Supabase account on each deploy. Get these from list_integration_instances (oauthProvider='supabase') and list_supabase_projects.",
+  "Create a new infrastructure stack from a template. A stack ties a template to a domain and becomes deployable. Call list_templates first to find the right templateId. Staticbot analyzes the template's repository and owns the hosting decision: static sites route to the supported AWS static target, SSR/full-stack apps route to the supported Cloudflare Workers target, and Staticbot applies the ownership model available for that flow. Do not infer or send a provider choice. Report the returned `hostingWorkload`, `deploymentTarget`, and `infrastructureOwnership` fields to the user.\n\nFor templates that use Supabase (VITE_SUPABASE_URL and friends in configOverrides), pass supabaseIntegrationInstanceId + supabaseProjectRef to have Staticbot auto-refresh anon keys from your Supabase account on each deploy. Get these from list_integration_instances (oauthProvider='supabase') and list_supabase_projects.",
   {
     name: z.string().describe("Human-readable name for the stack (e.g. 'My Portfolio Site')"),
     templateId: z.string().uuid().describe("Template ID — get this from list_templates"),
@@ -217,7 +218,7 @@ server.tool(
 
 server.tool(
   "start_deployment",
-  "Start a deployment that was created with create_deployment. The deployment must be in CREATED status. Once started, Staticbot provisions infrastructure in the target AWS account. Poll get_deployment to track progress.",
+  "Start a deployment that was created with create_deployment. The deployment must be in CREATED status. Once started, Staticbot provisions the repository-derived target stored on the stack. Poll get_deployment to track progress.",
   {
     id: z.string().uuid().describe("Deployment ID"),
   },
@@ -645,7 +646,7 @@ server.tool(
   "Choose how to handle frontend deployment in Phase 8 (Next Steps). Call when MANUAL_CHOOSE_FRONTEND_DEPLOY is READY. " +
   "IMPORTANT: You MUST present these options to the user and ask them to choose before calling this tool:\n" +
   "  1. 'continuous-sync' (method='continuous-sync', choice='setup-continuous-sync') — Sets up automatic GitHub-to-target sync. Every push to the repo automatically deploys to the new Supabase. Recommended for most users.\n" +
-  "  2. 'staticbot' (method='staticbot', choice='deploy-with-staticbot') — Deploy the frontend via Staticbot's own infrastructure (S3 + CloudFront).\n" +
+  "  2. 'staticbot' (method='staticbot', choice='deploy-with-staticbot') — Deploy the frontend with Staticbot. Staticbot analyzes the repository and selects the supported target and ownership model; do not promise AWS or Cloudflare before that analysis.\n" +
   "  3. 'skip' (method='skip') — Skip frontend deployment entirely.\n" +
   "Do NOT pick an option without asking the user first.",
   {
@@ -877,7 +878,7 @@ server.tool(
 
 server.tool(
   "list_connected_projects",
-  "List all connected projects. Connected projects sync changes from a GitHub repo to a target Supabase instance and optional AWS deployment. After a migration completes, enable continuous sync to keep the target up-to-date with Lovable.",
+  "List all connected projects. Connected projects sync changes from a GitHub repo to a target Supabase instance and optional Staticbot deployment. After a migration completes, enable continuous sync to keep the target up-to-date with Lovable, Bolt, Base44, or Firebase changes.",
   {
     syncMode: z.enum(["AUTOMATIC", "MANUAL", "PAUSED", "ARCHIVED"]).optional().describe("Filter by sync mode"),
   },
@@ -902,7 +903,7 @@ server.tool(
 
 server.tool(
   "trigger_sync",
-  "Trigger a manual sync for a connected project. Detects changes since the last sync (new database migrations, edge function updates, frontend changes) and applies them to the target Supabase instance and AWS deployment.",
+  "Trigger a manual sync for a connected project. Detects changes since the last sync (new database migrations, edge function updates, frontend changes) and applies them to the target Supabase instance and the project's Staticbot-selected deployment target.",
   {
     id: z.string().uuid().describe("Connected project ID"),
     commitSha: z.string().optional().describe("Specific commit SHA to sync to (defaults to latest on branch)"),

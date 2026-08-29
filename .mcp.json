@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "staticbot": {
+      "command": "node",
+      "args": [
+        "./dist/index.js"
+      ],
+      "cwd": ".",
+      "enabled": true,
+      "env_vars": [
+        "STATICBOT_API_KEY",
+        "STATICBOT_API_URL"
+      ],
+      "startup_timeout_sec": 15,
+      "tool_timeout_sec": 3600
+    }
+  }
+}

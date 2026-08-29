@@ -1,0 +1,50 @@
+{
+  "name": "staticbot",
+  "version": "1.7.1",
+  "description": "Migrate vibe-coded apps, deploy analyzed repositories, and keep customer-owned infrastructure synchronized with Staticbot.",
+  "author": {
+    "name": "BITFICTION, s.r.o.",
+    "email": "hello@staticbot.dev",
+    "url": "https://www.staticbot.dev/"
+  },
+  "homepage": "https://www.staticbot.dev/platform/mcp-server",
+  "repository": "https://github.com/bitfiction/staticbot-mcp",
+  "license": "MIT",
+  "keywords": [
+    "staticbot",
+    "deployment",
+    "migration",
+    "continuous sync",
+    "vendor lock-in",
+    "base44",
+    "lovable",
+    "bolt",
+    "firebase",
+    "supabase",
+    "aws",
+    "cloudflare"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Staticbot",
+    "shortDescription": "Migrate, deploy, and sync apps on infrastructure you own",
+    "longDescription": "Move Base44, Lovable, Bolt, and Firebase apps to customer-owned Supabase infrastructure, deploy repositories through Staticbot's workload-aware AWS or Cloudflare routing and ownership model, and keep future changes synchronized with explicit approval gates.",
+    "developerName": "BITFICTION, s.r.o.",
+    "category": "Engineering",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://www.staticbot.dev/",
+    "privacyPolicyURL": "https://www.staticbot.dev/privacy",
+    "termsOfServiceURL": "https://www.staticbot.dev/terms",
+    "defaultPrompt": [
+      "Deploy this repository with Staticbot and explain the selected target",
+      "Migrate my Base44 app to a Supabase project I own",
+      "Review and run the latest Continuous Sync changes"
+    ],
+    "brandColor": "#0F766E"
+  }
+}

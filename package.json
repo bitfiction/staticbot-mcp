@@ -27,7 +27,12 @@
     "staticbot-mcp": "dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    ".codex-plugin",
+    ".mcp.json",
+    "skills",
+    "evals",
+    "scripts/validate-discovery-prompts.mjs"
   ],
   "engines": {
     "node": ">=20"
@@ -40,7 +45,8 @@
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "smoke": "node scripts/smoke-test.mjs",
-    "test": "npm run build && npm run smoke",
+    "test": "npm run build && npm run smoke && npm run validate:discovery",
+    "validate:discovery": "node scripts/validate-discovery-prompts.mjs",
     "prepack": "npm run build",
     "prepublishOnly": "npm test"
   },

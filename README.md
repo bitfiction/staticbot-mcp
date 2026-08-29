@@ -8,7 +8,17 @@ Give Codex, Claude, Cursor, and other MCP-compatible agents safe access to [Stat
 - A Staticbot API key from [app.staticbot.dev/developer](https://app.staticbot.dev/developer)
 - Node.js 20 or newer
 
-## Configure your MCP client
+## Install as a Codex plugin
+
+This repository is also a Codex plugin. Its manifest bundles the Staticbot MCP server with three intent-focused skills:
+
+- `deploy-web-app-with-staticbot` deploys a repository without making the agent choose a cloud provider. Staticbot analyzes the repo, classifies the workload, and selects the supported AWS or Cloudflare target plus its customer-owned or Staticbot-managed ownership model.
+- `migrate-vibe-coded-app` moves Base44, Lovable, Bolt, or Firebase backends to customer-owned Supabase infrastructure with discovery and approval gates.
+- `sync-vibe-coded-app` keeps migrated projects synchronized while preserving destructive-change review.
+
+The general `staticbot` skill remains available as a direct REST API fallback. The plugin can be tested from a local marketplace today; public directory submission additionally requires registering the hosted Staticbot MCP connection with OpenAI.
+
+## Configure your MCP client directly
 
 Add the published package to your project or global MCP configuration:
 
@@ -64,9 +74,9 @@ Staticbot tools are designed around explicit human control:
 
 When a migration response contains `pendingAction`, the client should treat it as the source of truth for the next step. Clients should not hard-code Staticbot's internal pipeline phases.
 
-## Staticbot Skill
+## Staticbot skills
 
-The repository also includes a [Staticbot Skill](https://github.com/bitfiction/staticbot-mcp/tree/main/skills/staticbot) for Codex or Claude environments that can operate the REST API directly without an MCP server. It fetches the live OpenAPI contract and applies the same approval and credential-handling rules.
+The repository includes focused deployment, migration, and Continuous Sync skills plus a [general Staticbot Skill](https://github.com/bitfiction/staticbot-mcp/tree/main/skills/staticbot) for Codex or Claude environments that can operate the REST API directly without an MCP server. The direct-API workflow fetches the live OpenAPI contract and applies the same approval and credential-handling rules.
 
 Use the MCP package when your client supports MCP. Use the Skill when direct API access from a command-line agent is more appropriate.
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Migrate Vibe-Coded App"
+  short_description: "Move AI-built apps to infrastructure you control"
+  default_prompt: "Use $migrate-vibe-coded-app to discover and plan this migration, stopping for approval after discovery."

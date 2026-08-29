@@ -1,6 +1,6 @@
 ---
 name: staticbot
-description: Operate Staticbot directly through its REST API from a command line, without an MCP server. Use when a Claude Code or Codex user wants to inspect Staticbot resources, deploy a web app, migrate a Lovable/Bolt/Firebase/Base44 project, manage a migration, or run Continuous Sync using STATICBOT_API_KEY.
+description: Operate Staticbot directly through its REST API when Staticbot MCP tools are unavailable. Use for general Staticbot resource administration or as the direct-API fallback for the focused deployment, migration, and Continuous Sync skills.
 ---
 
 # Staticbot

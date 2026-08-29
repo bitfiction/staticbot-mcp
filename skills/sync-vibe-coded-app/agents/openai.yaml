@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sync Vibe-Coded App"
+  short_description: "Review and apply Continuous Sync changes safely"
+  default_prompt: "Use $sync-vibe-coded-app to review this project's latest sync changes before applying anything destructive."

@@ -1,0 +1,28 @@
+# Migration Workflow
+
+The live Staticbot tool schemas and `pendingAction` response are authoritative.
+
+## Prepare
+
+1. Identify the source type: `LOVABLE_SUPABASE`, `BOLT_SUPABASE`, `FIREBASE`, `BASE44_SUPABASE`, or `BASE44_NATIVE`.
+2. Call `list_integration_instances`. Use returned GitHub, Supabase, and Base44 instance IDs; do not invent identifiers.
+3. For Supabase-backed sources, use `parse_source_keys`. For a Base44 deployment whose repo contains placeholders, use `scan_deployed_url` only for a `*.base44.app` URL.
+4. Ask whether the target is `SUPABASE_CLOUD` or `SUPABASE_SELF_HOSTED`. For cloud, call `list_supabase_projects` and ensure the source and target projects differ.
+5. Use `list_templates`/`get_template`, or `create_template` so Staticbot analyzes the supplied repository.
+
+## Run
+
+1. Call `create_migration` only after the required source, target, integrations, and template are known.
+2. Poll `get_migration` until discovery pauses. Fetch `get_migration_jobs`, present the inventory, and wait for explicit approval before `confirm_migration`.
+3. Route every non-null `pendingAction` to the matching tool and use the IDs/options it returns:
+   - `CONFIRM` → `confirm_migration`
+   - `RETRY_OR_SKIP` → inspect jobs, then `retry_migration_job` or confirmed `skip_migration_job`
+   - `PROVIDE_BASE44_SECRETS` → `provide_base44_secrets`
+   - `RESOLVE_SCHEMA_GAP` → `resolve_schema_gap`
+   - `CHOOSE_DATA_IMPORT_METHOD` → `choose_data_import_method`
+   - `CHOOSE_BACKEND_SWITCHOVER` → `choose_backend_switchover`
+   - `CHOOSE_FRONTEND_DEPLOY` → `choose_frontend_deploy`
+   - `COMPLETE_MANUAL_JOB` → `complete_migration_job`
+4. Use `create_migration_preview` when the user wants verification before switchover. A completed migration can still have an in-progress preview deployment; monitor both when preview readiness is part of the requested outcome.
+
+Treat package download URLs and passwords as secrets. Fetch a package only when requested.

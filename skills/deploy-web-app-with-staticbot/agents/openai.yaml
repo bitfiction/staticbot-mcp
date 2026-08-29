@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deploy Web App with Staticbot"
+  short_description: "Deploy repos through Staticbot's workload-aware routing"
+  default_prompt: "Use $deploy-web-app-with-staticbot to deploy this repository and explain Staticbot's selected target."

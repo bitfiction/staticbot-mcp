@@ -17,6 +17,7 @@ server.tool(
   {
     syncMode: z.enum(["AUTOMATIC", "MANUAL", "PAUSED", "ARCHIVED"]).optional().describe("Filter by sync mode"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ syncMode }) => {
     const qs = syncMode ? `?syncMode=${encodeURIComponent(syncMode)}` : "";
     const data = await apiFetch(`/api/v1/connected-projects${qs}`);
@@ -30,6 +31,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Connected project ID"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/connected-projects/${id}`);
     return { content: [{ type: "text", text: toText(data) }] };
@@ -43,6 +45,7 @@ server.tool(
     id: z.string().uuid().describe("Connected project ID"),
     commitSha: z.string().optional().describe("Specific commit SHA to sync to (defaults to latest on branch)"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   async ({ id, commitSha }) => {
     const body = commitSha ? { commitSha } : {};
     const data = await apiFetch(`/api/v1/connected-projects/${id}/sync`, {
@@ -59,6 +62,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Connected project ID"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/connected-projects/${id}/sync-runs`);
     return { content: [{ type: "text", text: toText(data) }] };
@@ -72,6 +76,7 @@ server.tool(
     projectId: z.string().uuid().describe("Connected project ID"),
     runId: z.string().uuid().describe("Sync run ID"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ projectId, runId }) => {
     const data = await apiFetch(`/api/v1/connected-projects/${projectId}/sync-runs/${runId}`);
     return { content: [{ type: "text", text: toText(data) }] };
@@ -85,6 +90,7 @@ server.tool(
     projectId: z.string().uuid().describe("Connected project ID"),
     runId: z.string().uuid().describe("Sync run ID"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ projectId, runId }) => {
     const data = await apiFetch(`/api/v1/connected-projects/${projectId}/sync-runs/${runId}/jobs`);
     return { content: [{ type: "text", text: toText(data) }] };
@@ -99,6 +105,7 @@ server.tool(
     runId: z.string().uuid().describe("Sync run ID"),
     skipDestructive: z.boolean().optional().describe("If true, skip destructive migrations instead of applying them"),
   },
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
   async ({ projectId, runId, skipDestructive }) => {
     const body = skipDestructive !== undefined ? { skipDestructive } : {};
     const data = await apiFetch(`/api/v1/connected-projects/${projectId}/sync-runs/${runId}/confirm`, {
@@ -117,6 +124,7 @@ server.tool(
     projectId: z.string().uuid().describe("Connected project ID"),
     runId: z.string().uuid().describe("Failed sync run ID"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   async ({ projectId, runId }) => {
     const data = await apiFetch(`/api/v1/connected-projects/${projectId}/sync-runs/${runId}/retry`, {
       method: "POST",
@@ -133,6 +141,7 @@ server.tool(
     projectId: z.string().uuid().describe("Connected project ID"),
     runId: z.string().uuid().describe("Failed sync run ID"),
   },
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   async ({ projectId, runId }) => {
     const data = await apiFetch(`/api/v1/connected-projects/${projectId}/sync-runs/${runId}/skip`, {
       method: "POST",
@@ -149,6 +158,7 @@ server.tool(
     id: z.string().uuid().describe("Connected project ID"),
     syncMode: z.enum(["AUTOMATIC", "MANUAL", "PAUSED", "ARCHIVED"]).describe("New continuous-sync mode"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ id, syncMode }) => {
     const data = await apiFetch(`/api/v1/connected-projects/${id}/sync-mode`, {
       method: "PATCH",

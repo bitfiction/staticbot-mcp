@@ -20,6 +20,7 @@ server.tool(
     migrationId: z.string().uuid().describe("Migration ID"),
     mode: z.enum(["light", "full"]).optional().describe("Preview mode (default: light)"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   async ({ migrationId, mode }) => {
     const data = await apiFetch(`/api/v1/migrations/${migrationId}/preview?mode=${mode ?? "light"}`, {
       method: "POST",
@@ -38,6 +39,7 @@ server.tool(
     jobId: z.string().uuid().describe("The MANUAL_PROVIDE_BASE44_SECRETS job ID"),
     secrets: z.record(z.string()).describe("Map of secret name to value"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ migrationId, jobId, secrets }) => {
     const data = await apiFetch(`/api/v1/migrations/${migrationId}/jobs/${jobId}/provide-base44-secrets`, {
       method: "POST",
@@ -59,6 +61,7 @@ server.tool(
     jobId: z.string().uuid().describe("The MANUAL_REVIEW_SCHEMA_GAP job ID"),
     action: z.enum(["recheck", "abort"]).describe("Resolution action"),
   },
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   async ({ migrationId, jobId, action }) => {
     const data = await apiFetch(`/api/v1/migrations/${migrationId}/jobs/${jobId}/resolve-schema-gap`, {
       method: "POST",

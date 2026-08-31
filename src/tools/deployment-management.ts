@@ -17,6 +17,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Deployment ID"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/deployments/${id}/auto-deploy-settings`);
     return { content: [{ type: "text", text: toText(data) }] };
@@ -32,6 +33,7 @@ server.tool(
     autoDeployLatestWebsite: z.boolean().optional().describe("Enable or disable automatic deployment of new website template versions"),
     autoDeployLatestInfra: z.boolean().optional().describe("Enable or disable automatic infrastructure template updates (reserved for future use)"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ id, autoDeployLatestWebsite, autoDeployLatestInfra }) => {
     const body: Record<string, boolean> = {};
     if (autoDeployLatestWebsite !== undefined) body.autoDeployLatestWebsite = autoDeployLatestWebsite;
@@ -50,6 +52,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Deployment ID"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/deployments/${id}/auto-deploy-info`);
     return { content: [{ type: "text", text: toText(data) }] };
@@ -62,6 +65,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Deployment ID"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/deployments/${id}/rollback-versions`);
     return { content: [{ type: "text", text: toText(data) }] };
@@ -77,6 +81,7 @@ server.tool(
     id: z.string().uuid().describe("Deployment ID"),
     templateId: z.string().uuid().describe("Target template version ID from list_rollback_versions"),
   },
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
   async ({ id, templateId }) => {
     const data = await apiFetch(
       `/api/v1/deployments/${id}/rollback-website?templateId=${encodeURIComponent(templateId)}`,
@@ -93,6 +98,7 @@ server.tool(
     id: z.string().uuid().describe("Deployment ID"),
     useLatest: z.boolean().optional().describe("Pull the latest website template version before redeploying (default: false)"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   async ({ id, useLatest }) => {
     const data = await apiFetch(
       `/api/v1/deployments/${id}/redeploy-website?useLatest=${useLatest ?? false}`,

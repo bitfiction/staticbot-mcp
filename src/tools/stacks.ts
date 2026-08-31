@@ -15,6 +15,7 @@ server.tool(
   "list_stacks",
   "List all infrastructure stacks. A stack groups one or more templates with a domain assignment. Each stack can have multiple deployments.",
   {},
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async () => {
     const data = await apiFetch("/api/v1/stacks");
     return { content: [{ type: "text", text: toText(data) }] };
@@ -27,6 +28,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Stack ID"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/stacks/${id}`);
     return { content: [{ type: "text", text: toText(data) }] };
@@ -62,6 +64,7 @@ server.tool(
       "Optional. Supabase project reference (the subdomain part of https://<ref>.supabase.co) — get it from list_supabase_projects. Must be set together with supabaseIntegrationInstanceId to enable auto-refresh."
     ),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ name, templateId, configOverrides, domainOption, supabaseIntegrationInstanceId, supabaseProjectRef }) => {
     const body: Record<string, unknown> = {
       name,

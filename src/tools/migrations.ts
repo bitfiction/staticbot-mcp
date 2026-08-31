@@ -17,6 +17,7 @@ server.tool(
   {
     status: z.enum(["PENDING", "IN_PROGRESS", "PAUSED_FOR_APPROVAL", "PAUSED_FOR_USER_ACTION", "PAUSED_BY_USER", "COMPLETED", "COMPLETED_WITH_ERRORS", "FAILED", "ARCHIVED"]).optional().describe("Filter by migration status"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ status }) => {
     const qs = status ? `?status=${encodeURIComponent(status)}` : "";
     const data = await apiFetch(`/api/v1/migrations${qs}`);
@@ -33,6 +34,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Migration ID"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/migrations/${id}`);
     return { content: [{ type: "text", text: toText(data) }] };
@@ -46,6 +48,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Migration ID"),
   },
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/migrations/${id}/confirm`, { method: "POST" });
     return { content: [{ type: "text", text: toText(data) }] };
@@ -58,6 +61,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Migration ID"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/migrations/${id}/resume`, { method: "POST" });
     return { content: [{ type: "text", text: toText(data) }] };
@@ -70,6 +74,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Migration ID"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/migrations/${id}/pause`, { method: "POST" });
     return { content: [{ type: "text", text: toText(data) }] };
@@ -82,6 +87,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Migration ID"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/migrations/${id}/jobs`);
     return { content: [{ type: "text", text: toText(data) }] };
@@ -94,6 +100,7 @@ server.tool(
   {
     jobId: z.string().uuid().describe("Migration job ID (from get_migration_jobs)"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ jobId }) => {
     const data = await apiFetch(`/api/v1/migrations/jobs/${jobId}/retry`, { method: "POST" });
     return { content: [{ type: "text", text: toText(data) }] };
@@ -106,6 +113,7 @@ server.tool(
   {
     jobId: z.string().uuid().describe("Migration job ID (from get_migration_jobs)"),
   },
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   async ({ jobId }) => {
     const data = await apiFetch(`/api/v1/migrations/jobs/${jobId}/skip`, { method: "POST" });
     return { content: [{ type: "text", text: toText(data) }] };
@@ -118,6 +126,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Migration ID"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/migrations/${id}/deployments`);
     return { content: [{ type: "text", text: toText(data) }] };
@@ -168,6 +177,7 @@ server.tool(
     gitRepoAvailable: z.boolean().optional().describe("Whether the git repo is available"),
     packageOptions: z.record(z.unknown()).optional().describe("Optional self-hosted package build options. Currently used for BASE44_NATIVE to SUPABASE_SELF_HOSTED migrations."),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async (params) => {
     // Validate source and target are different projects (cloud target + Supabase-backed sources only)
     const sourceType = params.sourceType ?? "LOVABLE_SUPABASE";
@@ -210,6 +220,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Migration ID"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/migrations/${id}/download-package`);
     return { content: [{ type: "text", text: toText(data) }] };
@@ -230,6 +241,7 @@ server.tool(
     jobId: z.string().uuid().describe("Migration job ID (from get_migration_jobs)"),
     functionUrl: z.string().optional().describe("Edge function URL (required for MANUAL_SYNC_LOVABLE; omit for MANUAL_SYNC_BASE44)"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ jobId, functionUrl }) => {
     const body = functionUrl ? { functionUrl } : {};
     const data = await apiFetch(`/api/v1/migrations/jobs/${jobId}/complete`, {
@@ -252,6 +264,7 @@ server.tool(
     jobId: z.string().uuid().describe("The MANUAL_CHOOSE_DATA_IMPORT_METHOD job ID"),
     method: z.enum(["automated", "manual"]).describe("Import method"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ migrationId, jobId, method }) => {
     const data = await apiFetch(`/api/v1/migrations/${migrationId}/jobs/${jobId}/choose-method`, {
       method: "POST",
@@ -282,6 +295,7 @@ server.tool(
     method: z.enum(["auto", "skip"]).describe("Switchover method"),
     choice: z.string().optional().describe("Switchover strategy: 'switch-fully-to-supabase' | 'source-preview-supabase-prod' | 'source-primary-supabase-backup' | 'handle-myself' (or the deprecated `lovable-*` aliases for backward compat)"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ migrationId, jobId, method, choice }) => {
     const data = await apiFetch(`/api/v1/migrations/${migrationId}/jobs/${jobId}/choose-backend-switchover`, {
       method: "POST",
@@ -305,6 +319,7 @@ server.tool(
     method: z.enum(["continuous-sync", "staticbot", "skip"]).describe("Deploy method"),
     choice: z.string().optional().describe("Deploy strategy"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ migrationId, jobId, method, choice }) => {
     const data = await apiFetch(`/api/v1/migrations/${migrationId}/jobs/${jobId}/choose-frontend-deploy`, {
       method: "POST",
@@ -326,6 +341,7 @@ server.tool(
     jobId: z.string().uuid().describe("The MANUAL_SYNC_LOVABLE job ID"),
     functionUrl: z.string().describe("Edge function URL to validate"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ jobId, functionUrl }) => {
     const data = await apiFetch(`/api/v1/migrations/jobs/${jobId}/validate-function`, {
       method: "POST",
@@ -342,6 +358,7 @@ server.tool(
   "as supabaseIntegrationInstanceId, type='github' as githubIntegrationInstanceId, and type='base44' " +
   "as sourceIntegrationInstanceId (for BASE44_NATIVE migrations) when calling create_migration.",
   {},
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async () => {
     const data = await apiFetch("/api/v1/migrations/integrations/instances");
     return { content: [{ type: "text", text: toText(data) }] };
@@ -357,6 +374,7 @@ server.tool(
   {
     githubRepoUrl: z.string().describe("GitHub repo URL (e.g. https://github.com/owner/repo)"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ githubRepoUrl }) => {
     const data = await apiFetch(
       `/api/v1/migrations/parse-source-keys?githubRepoUrl=${encodeURIComponent(githubRepoUrl)}`
@@ -375,6 +393,7 @@ server.tool(
   {
     supabaseIntegrationInstanceId: z.string().uuid().describe("Supabase integration instance ID (from list_integration_instances)"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ supabaseIntegrationInstanceId }) => {
     const data = await apiFetch(
       `/api/v1/migrations/integrations/instances/${supabaseIntegrationInstanceId}/supabase-projects`

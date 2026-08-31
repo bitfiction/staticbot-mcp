@@ -18,6 +18,7 @@ server.tool(
   "When preparing a migration, ask the user: do they want to pick an existing template from this list, " +
   "or create a new one from their GitHub repo using create_template?",
   {},
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async () => {
     const data = await apiFetch("/api/v1/templates");
     return { content: [{ type: "text", text: toText(data) }] };
@@ -30,6 +31,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Template ID"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/templates/${id}`);
     return { content: [{ type: "text", text: toText(data) }] };
@@ -46,6 +48,7 @@ server.tool(
     repoLink: z.string().describe("GitHub repository URL (e.g. https://github.com/owner/repo)"),
     name: z.string().optional().describe("Template name (derived from repo name if omitted)"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ repoLink, name }) => {
     const body: Record<string, string> = { repoLink };
     if (name) body.name = name;
@@ -69,6 +72,7 @@ server.tool(
   {
     deployedUrl: z.string().describe("Deployed Base44 app URL (e.g. https://myapp.base44.app)"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ deployedUrl }) => {
     const data = await apiFetch("/api/v1/templates/scan-deployed-url", {
       method: "POST",

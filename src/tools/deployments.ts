@@ -17,6 +17,7 @@ server.tool(
   {
     stackId: z.string().uuid().optional().describe("Filter deployments by stack ID"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ stackId }) => {
     const qs = stackId ? `?stackId=${encodeURIComponent(stackId)}` : "";
     const data = await apiFetch(`/api/v1/deployments${qs}`);
@@ -33,6 +34,7 @@ server.tool(
       "APPLY creates real infrastructure (default). PLAN shows what would change without creating anything. DRY_RUN validates the template."
     ),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ stackId, deploymentType }) => {
     const body = { stackId, deploymentType: deploymentType ?? "APPLY" };
     const data = await apiFetch("/api/v1/deployments", {
@@ -49,6 +51,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Deployment ID"),
   },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/deployments/${id}/start`, { method: "POST" });
     return { content: [{ type: "text", text: toText(data) }] };
@@ -88,6 +91,7 @@ server.tool(
   {
     id: z.string().uuid().describe("Deployment ID"),
   },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/deployments/${id}`);
     return { content: [{ type: "text", text: toText(data) }] };

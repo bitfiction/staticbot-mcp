@@ -24,6 +24,7 @@ export function registerDeploymentDnsTools(
         "Exact domainId from the OFFER_CLOUDFLARE_PUSH item in get_deployment.dns",
       ),
     },
+    { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     async ({ deploymentId, domainId }) => {
       const data = await apiFetch(
         `/api/v1/deployments/${deploymentId}/dns/${domainId}/push-cloudflare`,
@@ -44,6 +45,7 @@ export function registerDeploymentDnsTools(
     {
       deploymentId: z.string().uuid().describe("Cloudflare Workers deployment ID"),
     },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ deploymentId }) => {
       const data = await apiFetch(
         `/api/v1/deployments/${deploymentId}/worker-app-dns/recheck`,

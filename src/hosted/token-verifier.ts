@@ -23,7 +23,7 @@ export class TokenVerificationError extends Error {}
  */
 export function createTokenVerifier(config: HostedConfig) {
   // Caches keys and refetches on unknown kid, so a Keycloak key rotation does not need a restart.
-  const jwks = createRemoteJWKSet(new URL(`${config.issuer}/protocol/openid-connect/certs`));
+  const jwks = createRemoteJWKSet(new URL(config.jwksUrl));
 
   return async function verify(token: string): Promise<Actor> {
     let payload: JWTPayload;

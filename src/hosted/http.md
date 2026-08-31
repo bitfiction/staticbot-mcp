@@ -42,6 +42,18 @@ supported scopes. A 401 carries `WWW-Authenticate: Bearer resource_metadata="…
 without that hint the client has a 401 and nowhere to go, and the connect flow stalls before it
 starts.
 
+## `KEYCLOAK_ISSUER` vs `KEYCLOAK_JWKS_URL`
+
+In production they are the same host and the JWKS URL should be left unset. They come apart in local
+development: a token minted through the browser carries `iss: http://localhost:9080/...`, so the
+issuer must be exactly that or validation fails — but a container cannot reach the host's localhost,
+so the keys must be fetched over the compose network. Validation identity and network route are
+different concerns, and `KEYCLOAK_JWKS_URL` exists to separate them.
+
+`docker compose --profile mcp up mcp` sets both accordingly. The service is profile-gated because it
+needs the `staticbot_mcp_service` secret, which only exists after `apply-mcp-clients.sh` has run
+against that Keycloak.
+
 ## Gotchas
 
 - **`/healthz` and `/readyz` do not touch Keycloak or Staticbot.** A probe that fails when a

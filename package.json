@@ -24,7 +24,8 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "staticbot-mcp": "dist/index.js"
+    "staticbot-mcp": "dist/index.js",
+    "staticbot-mcp-http": "dist/hosted/index.js"
   },
   "files": [
     "dist",
@@ -49,11 +50,13 @@
     "test": "npm run build && npm run smoke && npm run validate:discovery",
     "validate:discovery": "node scripts/validate-discovery-prompts.mjs",
     "prepack": "npm run build",
-    "prepublishOnly": "npm test"
+    "prepublishOnly": "npm test",
+    "start:http": "node dist/hosted/index.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "jose": "^6.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

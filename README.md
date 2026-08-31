@@ -2,11 +2,24 @@
 
 Give Codex, Claude, Cursor, and other MCP-compatible agents safe access to [Staticbot](https://www.staticbot.dev). The server exposes typed tools for deploying websites, migrating application backends, and operating continuous sync while Staticbot keeps credentials and long-running workflow state outside the model context.
 
-## Prerequisites
+## Two ways to connect
 
-- A Staticbot account
-- A Staticbot API key from [app.staticbot.dev/developer](https://app.staticbot.dev/developer)
-- Node.js 20 or newer
+**Connect the hosted server** — no install, no API key. Point an MCP client that supports remote
+servers with OAuth at:
+
+```text
+https://mcp.staticbot.dev/mcp
+```
+
+You sign in to Staticbot, choose what to grant, and the client stores the connection. If you do not
+have a Staticbot account yet, one is created when you first connect.
+
+**Run it locally** — for clients that launch MCP servers as a local process. Needs Node.js 20 or
+newer and a Staticbot API key from
+[app.staticbot.dev/developer](https://app.staticbot.dev/developer).
+
+Both expose the same tools. The hosted server acts as the person who authorized it and never sees an
+API key; the local server uses the API key you give it.
 
 ## Install as a Codex plugin
 
@@ -16,7 +29,7 @@ This repository is also a Codex plugin. Its manifest bundles the Staticbot MCP s
 - `migrate-vibe-coded-app` moves Base44, Lovable, Bolt, or Firebase backends to customer-owned Supabase infrastructure with discovery and approval gates.
 - `sync-vibe-coded-app` keeps migrated projects synchronized while preserving destructive-change review.
 
-The general `staticbot` skill remains available as a direct REST API fallback. The plugin can be tested from a local marketplace today; public directory submission additionally requires registering the hosted Staticbot MCP connection with OpenAI.
+The general `staticbot` skill remains available as a direct REST API fallback.
 
 ## Install as a Claude Code plugin
 
@@ -32,6 +45,14 @@ Set `STATICBOT_API_KEY` in the environment that launches Claude Code. The plugin
 The installed skills are namespaced by the plugin. For example, use `/staticbot:deploy-web-app-with-staticbot`, `/staticbot:migrate-vibe-coded-app`, or `/staticbot:sync-vibe-coded-app`. Restart Claude Code or run `/reload-plugins` after installation if the plugin is not immediately available.
 
 ## Configure your MCP client directly
+
+### Hosted (OAuth)
+
+For clients that support remote MCP servers, add `https://mcp.staticbot.dev/mcp` and authorize when
+prompted. The client discovers where to sign in from the server itself; there is nothing to copy or
+paste, and no credential is stored on your machine.
+
+### Local (API key)
 
 Add the published package to your project or global MCP configuration:
 
@@ -86,6 +107,8 @@ Staticbot tools are designed around explicit human control:
 - Failed work is explained before an agent retries or skips it.
 - Rollbacks use an exact version returned by `list_rollback_versions` and require confirmation.
 - Long-running operations return durable state that can be resumed across agent sessions.
+- The hosted server acts strictly as the person who authorized it, within the permissions they
+  granted, and can reach nothing outside their own organization.
 
 When a migration response contains `pendingAction`, the client should treat it as the source of truth for the next step. Clients should not hard-code Staticbot's internal pipeline phases.
 
@@ -96,6 +119,8 @@ The repository includes focused deployment, migration, and Continuous Sync skill
 Use the MCP package when your client supports MCP. Use the Skill when direct API access from a command-line agent is more appropriate.
 
 ## Environment variables
+
+These apply to the local server. The hosted server needs none of them.
 
 | Variable | Required | Default | Purpose |
 |---|---:|---|---|

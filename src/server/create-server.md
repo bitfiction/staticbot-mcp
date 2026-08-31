@@ -20,19 +20,17 @@ Anything that varies by caller belongs in `ToolContext`. Reaching for a module-l
 a tool is the mistake this shape exists to prevent — it will work in stdio and leak across users when
 hosted.
 
-## `lovable_sync` is stdio-only, and must stay that way
+## Every tool is transport-agnostic
 
-`registerLovableSyncBridge` is deliberately not in `createServer`. The tool needs a Chrome extension
-on the **user's own machine** to reach a bridge on `127.0.0.1:3847`, keeps the pending request in
-module state, and blocks up to three minutes waiting for the extension.
+There is no stdio-only carve-out, and adding one should be resisted. A `lovable_sync` tool used to
+drive a Chrome extension over a bridge on `127.0.0.1:3847`, holding the pending request in module
+state and blocking for three minutes — none of which survives a hosted deployment. It was removed
+rather than special-cased: the extension was never approved, and the orchestration it attempted now
+happens client-side, where an agent runs Lovable's own MCP alongside Staticbot's. Staticbot does not
+call Lovable's MCP itself.
 
-Hosted, all three break: the server runs in Kubernetes where no browser extension can reach it,
-module state is not shared between replicas, and every replica would try to bind the same port.
-Registering it over HTTP would advertise a tool that can only ever time out. The hosted server
-therefore exposes **49** tools, not 50 — that difference is intentional, not drift.
-
-Calling `registerLovableSyncBridge` starts the listener as a side effect, so only the stdio
-entrypoint may call it.
+The manual path it fell back to is the only path now, and it is the one the pipeline already
+describes: the user pastes "deploy staticbot edge function" into the Lovable AI chat.
 
 ## Statelessness
 

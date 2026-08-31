@@ -220,8 +220,7 @@ server.tool(
   "complete_migration_job",
   "Complete a manual job that requires user action. Used for jobs with type MANUAL_SYNC_LOVABLE, " +
   "MANUAL_SYNC_BASE44, MANUAL_EXPORT_DATA, MANUAL_IMPORT_DATA, etc. The job must be in READY status. " +
-  "For MANUAL_SYNC_LOVABLE: first try lovable_sync to auto-deploy via Chrome extension. " +
-  "If the extension is not available, ask the user to open their Lovable project and paste " +
+  "For MANUAL_SYNC_LOVABLE: ask the user to open their Lovable project and paste " +
   "'deploy staticbot edge function' into the Lovable AI chat. Once deployed, " +
   "use validate_function_url to verify, then call this tool with the functionUrl. " +
   "For MANUAL_SYNC_BASE44: ask the user to sync their Base44 project from GitHub, " +
@@ -318,8 +317,8 @@ server.tool(
 server.tool(
   "validate_function_url",
   "Validate that a Supabase edge function URL is reachable and responding. Use during Phase 3 " +
-  "after the edge function has been deployed — either automatically via lovable_sync (Chrome extension) " +
-  "or manually by the user pasting 'deploy staticbot edge function' into the Lovable AI chat. " +
+  "after the edge function has been deployed by the user pasting 'deploy staticbot edge function' " +
+  "into the Lovable AI chat. " +
   "The function URL can be derived as https://{sourceProjectRef}.supabase.co/functions/v1/{functionName} " +
   "where functionName is in the MANUAL_SYNC_LOVABLE job's inputData. Returns {status: 'ok'|'error', message}. " +
   "Poll every 15-30 seconds if waiting for deployment.",

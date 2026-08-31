@@ -31,6 +31,15 @@ This repository is also a Codex plugin. Its manifest bundles the Staticbot MCP s
 
 The general `staticbot` skill remains available as a direct REST API fallback.
 
+Add the public GitHub marketplace, then install Staticbot:
+
+```bash
+codex plugin marketplace add bitfiction/staticbot-mcp
+codex plugin add staticbot@staticbot
+```
+
+Restart the ChatGPT desktop app or Codex after adding the marketplace if Staticbot does not appear immediately. This preview plugin uses the local MCP transport, so set `STATICBOT_API_KEY` in the environment that launches the app. The hosted OAuth connection at `https://mcp.staticbot.dev/mcp` remains the lowest-friction option when you only need MCP tools rather than the bundled skills.
+
 ## Install as a Claude Code plugin
 
 Claude Code does not require Staticbot to be accepted into a central plugin registry. Add the self-hosted marketplace directly from this GitHub repository, then install the plugin:

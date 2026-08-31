@@ -1,0 +1,20 @@
+{
+  "name": "staticbot",
+  "interface": {
+    "displayName": "Staticbot"
+  },
+  "plugins": [
+    {
+      "name": "staticbot",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Engineering"
+    }
+  ]
+}

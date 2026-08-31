@@ -11,7 +11,7 @@ import { registerStackTools } from "../tools/stacks.js";
 import { registerTemplateTools } from "../tools/templates.js";
 
 export const SERVER_NAME = "staticbot";
-export const SERVER_VERSION = "1.7.1";
+export const SERVER_VERSION = "1.8.0";
 
 /**
  * The tool registry, shared by every transport.

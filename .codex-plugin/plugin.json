@@ -1,6 +1,6 @@
 {
   "name": "staticbot",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "description": "Migrate vibe-coded apps, deploy analyzed repositories, and keep customer-owned infrastructure synchronized with Staticbot.",
   "author": {
     "name": "BITFICTION, s.r.o.",

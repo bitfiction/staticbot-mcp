@@ -24,9 +24,10 @@ Read [references/deployment-workflow.md](references/deployment-workflow.md) for 
 
 - Inspect templates, stacks, and integrations before creating duplicates.
 - Ask for a domain strategy and any required configuration values that cannot be discovered safely.
-- Treat stack creation, deployment creation/start, settings changes, redeploy, and rollback as external mutations. A direct request to deploy authorizes the normal create-and-start flow; otherwise stop before the first mutation.
+- Treat stack creation, deployment creation/start, DNS push, settings changes, redeploy, and rollback as external mutations. A direct request to deploy authorizes the normal create-and-start flow, but not an external DNS write unless the request also asked Staticbot to configure DNS. Otherwise stop before the first mutation.
 - Inspect the created stack and state the repository-derived workload, target, and ownership before starting unless the user explicitly asked for the full deployment flow.
 - Use `PLAN` when the user asks for a dry run. Do not describe it as a production deployment.
 - Poll at a moderate interval and report meaningful transitions, final URL, and required DNS actions.
+- For `OFFER_CLOUDFLARE_PUSH`, use the exact returned `domainId`, explain that Staticbot will upsert deployment-owned records without changing nameservers or mail, and obtain authorization before calling `push_dns_to_cloudflare`.
 
 For rollback, list valid versions first, present the exact target and commit, and obtain explicit confirmation. Never infer a rollback template ID.

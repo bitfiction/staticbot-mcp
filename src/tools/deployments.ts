@@ -69,8 +69,9 @@ server.tool(
   "- `MANUAL_RECORDS_AT_REGISTRAR` — present `records` (cert CNAME + ALIAS/CNAME for the website) to the user, " +
   "asking them to add them at whatever DNS provider currently serves their domain. **Do NOT** suggest changing " +
   "nameservers — Staticbot intentionally does not recommend NS takeover as a default path.\n" +
-  "- `OFFER_CLOUDFLARE_PUSH` — domain is on Cloudflare and an integration is linked. The Staticbot UI exposes a " +
-  "push-records button; tell the user about it (and the deep link in `statusUrl`).\n" +
+  "- `OFFER_CLOUDFLARE_PUSH` — domain is on Cloudflare and an integration is linked. Offer " +
+  "push_dns_to_cloudflare using this item's exact `domainId`; obtain authorization before the external DNS write. " +
+  "Manual records at the current provider remain the fallback.\n" +
   "- `OFFER_CLOUDFLARE_CONNECT` — domain is on Cloudflare without an integration. Suggest connecting Cloudflare " +
   "(direct the user to the integrations page) for the smoothest no-NS-change path.\n" +
   "- `REGISTER_DOMAIN_FIRST` — domain is not registered. Block and ask the user to register it first.\n\n" +
@@ -81,6 +82,7 @@ server.tool(
   "- `mailRecordsDetected` — true when MX/TXT/SRV/CAA records exist on the apex. **Treat as a hard block on any " +
   "advice that involves changing nameservers** — doing so would risk breaking the customer's mail.\n" +
   "- `cloudflareLinked` — true when the domain is wired to a Cloudflare integration in Staticbot.\n" +
+  "- `domainId` — Staticbot DNS-domain ID; pass this exact value to push_dns_to_cloudflare.\n" +
   "- `records` — flat list of `{type, host, value, description}` to surface to the user.\n\n" +
   "The response also includes `failureSummary` when a worker job is failing or has been retried. Surface its `summary`; when `terminal=true`, include the `statusUrl` so the user can inspect the full failure.",
   {

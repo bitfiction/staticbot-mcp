@@ -5,10 +5,12 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 49;
+const expectedToolCount = 51;
 const expectedTools = [
   "list_templates",
   "get_deployment",
+  "push_dns_to_cloudflare",
+  "recheck_dns_verification",
   "get_migration",
   "create_migration_preview",
   "set_connected_project_sync_mode",

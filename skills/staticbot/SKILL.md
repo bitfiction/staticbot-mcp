@@ -36,7 +36,7 @@ Pretty-print responses with `jq` only after preserving the command's failure sta
 ## Choose Actions Safely
 
 - Use `GET` calls freely when they are relevant to the user's request.
-- Treat template, stack, deployment, migration, rollback, redeploy, sync, and settings writes as external mutations. Perform them only when the user's request authorizes that operation.
+- Treat template, stack, deployment, DNS, migration, rollback, redeploy, sync, and settings writes as external mutations. Perform them only when the user's request authorizes that operation.
 - Creating a deployment and starting it are separate actions. Inspect the created deployment before starting it unless the user explicitly requested the full deployment flow.
 - Before a website rollback, show the exact pinned version and obtain explicit confirmation.
 - After migration discovery pauses, fetch the migration and its jobs, summarize the discovered tables, functions, storage, auth, and notable warnings, then obtain explicit approval before calling `/migrations/{id}/confirm`.
@@ -52,6 +52,7 @@ Poll deployment, migration, or sync status at a moderate interval, normally 10â€
 For migrations, treat `pendingAction` as the source of truth for the next step. When it is null, poll only if the migration is still flowing. On completion, report the final state, preview/live URLs, skipped jobs, partial best-effort failures, and any required manual follow-up.
 
 For deployments, inspect the `dns` array on every poll. Present records exactly as returned and follow the DNS rules in the reference. Never recommend nameserver delegation as the default.
+When an item offers a linked-Cloudflare push, use only its returned `domainId` and obtain authorization before the DNS write. Rechecking verification does not write DNS.
 
 ## Keep the Contract Current
 

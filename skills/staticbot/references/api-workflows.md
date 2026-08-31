@@ -34,6 +34,8 @@ A stack combines one or more templates with domain and infrastructure configurat
 - `GET /deployments/{id}/rollback-versions`
 - `POST /deployments/{id}/rollback-website?templateId=...`
 - `POST /deployments/{id}/redeploy-website?useLatest=true|false`
+- `POST /deployments/{id}/dns/{domainId}/push-cloudflare`
+- `POST /deployments/{id}/worker-app-dns/recheck`
 
 Typical deployment flow: inspect or create a template, create a stack, create a deployment, inspect it, start it, and poll `GET /deployments/{id}`. Share its `statusUrl`. Read `dns` on every response, not only while the deployment is waiting.
 
@@ -41,11 +43,16 @@ DNS actions:
 
 - `NO_ACTION`: DNS is already delegated correctly; do not ask for changes.
 - `MANUAL_RECORDS_AT_REGISTRAR`: show `records` verbatim and tell the user to add them at the current DNS provider. Do not suggest nameserver changes.
-- `OFFER_CLOUDFLARE_PUSH`: point the user to the push-records action at `statusUrl`; show manual records as fallback.
+- `OFFER_CLOUDFLARE_PUSH`: offer the linked-zone push using this item's exact `domainId`; explain the external DNS write and obtain authorization first. Show manual records as fallback.
 - `OFFER_CLOUDFLARE_CONNECT`: suggest connecting Cloudflare; show manual records as fallback.
 - `REGISTER_DOMAIN_FIRST`: stop and ask the user to register the domain.
 
 If `mailRecordsDetected` is true, treat that as a hard block on nameserver-change advice.
+
+The Cloudflare push idempotently writes only deployment-owned certificate-validation and website
+routing records. It does not delegate nameservers or modify mail records. Present its structured
+record outcomes. The recheck endpoint retriggers custom-hostname validation without writing DNS; do
+not report a Workers custom hostname live until both returned status fields are `active`.
 
 ### Migrations
 

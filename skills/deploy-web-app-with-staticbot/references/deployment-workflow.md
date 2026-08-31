@@ -24,10 +24,15 @@ Always inspect every `dns` item:
 
 - `NO_ACTION`: no DNS change is needed.
 - `MANUAL_RECORDS_AT_REGISTRAR`: present returned records verbatim and keep the current nameservers.
-- `OFFER_CLOUDFLARE_PUSH`: offer the linked Staticbot action and show manual records as fallback.
+- `OFFER_CLOUDFLARE_PUSH`: offer `push_dns_to_cloudflare` using this item's exact `domainId`; explain the external DNS write and obtain authorization first. Show manual records as fallback.
 - `OFFER_CLOUDFLARE_CONNECT`: suggest connecting Cloudflare and show manual records as fallback.
 - `REGISTER_DOMAIN_FIRST`: stop until the domain is registered.
 
 Never recommend nameserver delegation as the default. If `mailRecordsDetected` is true, treat nameserver-change advice as blocked.
+
+After a linked-Cloudflare push, present the response's `message` and every per-record error. For a
+Cloudflare Workers custom hostname, call `recheck_dns_verification` after records are published. Do
+not report the domain live until both returned status fields are `active`; surface
+`verificationErrors` otherwise.
 
 Finish with the selected workload/target/ownership, final status, URL, DNS work, and any `failureSummary` or manual follow-up.

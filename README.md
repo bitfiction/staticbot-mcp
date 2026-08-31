@@ -59,6 +59,7 @@ The server groups its tools around user outcomes:
 
 - Inspect templates, stacks, deployments, and integration connections
 - Create and monitor static-site and SSR deployments
+- Inspect deployment DNS, safely push deployment-owned records to linked Cloudflare zones, and recheck custom-hostname verification
 - Migrate Lovable, Bolt, Firebase, and Base44 projects to Supabase targets
 - Inspect migration discovery results and guide users through approval and choice gates
 - Create previews and download portable migration packages
@@ -70,6 +71,7 @@ The tool schemas and descriptions are the runtime contract seen by MCP clients. 
 ## Example requests
 
 - “Deploy this repository with Staticbot and tell me what DNS records I need.”
+- “Push this deployment's required records to my linked Cloudflare zone, then recheck verification.”
 - “Migrate my Base44 app to my Supabase project. Stop for approval before making changes.”
 - “Show me what changed in the latest sync run and explain any destructive SQL.”
 - “List valid rollback versions for this deployment, but do not roll back yet.”

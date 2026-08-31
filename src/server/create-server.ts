@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { ToolContext } from "../context.js";
 import { registerConnectedProjectTools } from "../tools/connected-projects.js";
+import { registerDeploymentDnsTools } from "../tools/deployment-dns.js";
 import { registerDeploymentManagementTools } from "../tools/deployment-management.js";
 import { registerDeploymentTools } from "../tools/deployments.js";
 import { registerGateTools } from "../tools/gates.js";
@@ -28,6 +29,7 @@ export function createServer(context: ToolContext): McpServer {
   registerTemplateTools(server, context);
   registerStackTools(server, context);
   registerDeploymentTools(server, context);
+  registerDeploymentDnsTools(server, context);
   registerDeploymentManagementTools(server, context);
   registerMigrationTools(server, context);
   registerConnectedProjectTools(server, context);

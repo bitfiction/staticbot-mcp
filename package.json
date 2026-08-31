@@ -34,7 +34,8 @@
     ".mcp.json",
     "skills",
     "evals",
-    "scripts/validate-discovery-prompts.mjs"
+    "scripts/validate-discovery-prompts.mjs",
+    "scripts/check-versions.mjs"
   ],
   "engines": {
     "node": ">=20"
@@ -47,11 +48,12 @@
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "smoke": "node scripts/smoke-test.mjs",
-    "test": "npm run build && npm run smoke && npm run validate:discovery",
+    "test": "npm run build && npm run smoke && npm run validate:discovery && npm run validate:versions",
     "validate:discovery": "node scripts/validate-discovery-prompts.mjs",
     "prepack": "npm run build",
     "prepublishOnly": "npm test",
-    "start:http": "node dist/hosted/index.js"
+    "start:http": "node dist/hosted/index.js",
+    "validate:versions": "node scripts/check-versions.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

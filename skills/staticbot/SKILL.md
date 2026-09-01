@@ -41,6 +41,8 @@ Pretty-print responses with `jq` only after preserving the command's failure sta
 - Before a website rollback, show the exact pinned version and obtain explicit confirmation.
 - After migration discovery pauses, fetch the migration and its jobs, summarize the discovered tables, functions, storage, auth, and notable warnings, then obtain explicit approval before calling `/migrations/{id}/confirm`.
 - Follow the migration response's `pendingAction` object. Present every choice gate to the user; do not invent a default for data import, backend switchover, frontend deployment, Base44 secrets, schema-gap resolution, retry/skip, or manual completion.
+- For `REVIEW_TARGET_CONFLICTS`, present `targetConflictReport` and obtain explicit confirmation for its exact project ref and cleanup scope before `POST /migrations/{id}/clean-target`. Never treat migration approval as cleanup authorization. If the user declines cleanup, call `/confirm` only after recording that decision; wait for cleanup completion before resolving a simultaneous strategy gate.
+- For `CHOOSE_MIGRATION_STRATEGY`, present every enabled `preFlightGate` action and consequence and submit the user's exact action ID as `gateChoice` to `/migrations/{id}/confirm`. Do not silently use the recommendation.
 - Read `failureBanner.retryable` before retrying. Do not repeatedly retry deterministic failures. Explain the consequences and get confirmation before skipping failed work.
 - When a sync run is `PAUSED_FOR_REVIEW`, show its destructive SQL or diff inventory and ask whether to apply or skip the destructive operations before confirming.
 - Get explicit confirmation before changing a connected project's sync mode.

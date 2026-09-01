@@ -59,6 +59,7 @@ not report a Workers custom hostname live until both returned status fields are 
 - `GET|POST /migrations`
 - `GET /migrations/{id}`
 - `POST /migrations/{id}/confirm|resume|pause`
+- `POST /migrations/{id}/clean-target`
 - `GET /migrations/{id}/jobs`
 - `POST /migrations/jobs/{jobId}/retry|skip|complete`
 - `GET /migrations/{id}/deployments`
@@ -82,12 +83,14 @@ Typical migration flow:
 2. Create the migration with fields validated against the live schema.
 3. Poll until discovery reaches `PAUSED_FOR_APPROVAL`.
 4. Fetch jobs and present the discovery inventory to the user.
-5. Confirm only after explicit approval.
-6. Poll and follow `pendingAction`. Present choices rather than selecting defaults.
-7. On failure, inspect `failureBanner`, job details, and `retryable`; ask before retrying or skipping when consequences are material.
-8. Finish with status, preview/live URLs, partial failures, skipped jobs, and manual follow-ups.
+5. If `targetConflictReport.clashesFound` is true, present the conflicts and cleanup consequences. Cleanup requires a separate explicit confirmation for the exact scope and `confirmationProjectRef`; migration approval does not authorize deletion.
+6. If `preFlightGate` is present, present its enabled actions and consequences and submit the user's exact action ID as `gateChoice` to the confirm endpoint.
+7. Otherwise, confirm only after explicit approval.
+8. Poll and follow `pendingAction`. Present choices rather than selecting defaults.
+9. On failure, inspect `failureBanner`, job details, and `retryable`; ask before retrying or skipping when consequences are material. A failed target cleanup is retry-only.
+10. Finish with status, preview/live URLs, partial failures, skipped jobs, and manual follow-ups.
 
-`pendingAction.type` can include `CONFIRM`, `RETRY_OR_SKIP`, `PROVIDE_BASE44_SECRETS`, `RESOLVE_SCHEMA_GAP`, `CHOOSE_BACKEND_SWITCHOVER`, `CHOOSE_DATA_IMPORT_METHOD`, `CHOOSE_FRONTEND_DEPLOY`, and `COMPLETE_MANUAL_JOB`. Use its returned IDs and endpoint rather than reconstructing them from phase assumptions.
+`pendingAction.type` can include `REVIEW_TARGET_CONFLICTS`, `WAIT_FOR_TARGET_CLEANUP`, `RETRY_TARGET_CLEANUP`, `CHOOSE_MIGRATION_STRATEGY`, `CONFIRM`, `RETRY_OR_SKIP`, `PROVIDE_BASE44_SECRETS`, `RESOLVE_SCHEMA_GAP`, `CHOOSE_BACKEND_SWITCHOVER`, `CHOOSE_DATA_IMPORT_METHOD`, `CHOOSE_FRONTEND_DEPLOY`, and `COMPLETE_MANUAL_JOB`. Use its returned IDs and endpoint rather than reconstructing them from phase assumptions.
 
 ### Connected Projects and Continuous Sync
 

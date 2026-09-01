@@ -5,13 +5,14 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 51;
+const expectedToolCount = 52;
 const expectedTools = [
   "list_templates",
   "get_deployment",
   "push_dns_to_cloudflare",
   "recheck_dns_verification",
   "get_migration",
+  "clean_migration_target",
   "create_migration_preview",
   "set_connected_project_sync_mode",
 ];
@@ -54,6 +55,19 @@ try {
     assert(tool.description, `tool ${tool.name} must have a description`);
     assert(tool.inputSchema, `tool ${tool.name} must have an input schema`);
   }
+
+  const confirmMigration = tools.find(({ name }) => name === "confirm_migration");
+  assert(confirmMigration?.inputSchema?.properties?.gateChoice, "confirm_migration must expose gateChoice");
+  assert(confirmMigration?.inputSchema?.properties?.gateSelection, "confirm_migration must expose gateSelection");
+
+  const cleanTarget = tools.find(({ name }) => name === "clean_migration_target");
+  assert.equal(cleanTarget?.annotations?.readOnlyHint, false, "target cleanup changes state");
+  assert.equal(cleanTarget?.annotations?.destructiveHint, true, "target cleanup must be marked destructive");
+  assert.deepEqual(
+    cleanTarget?.inputSchema?.properties?.scope?.enum,
+    ["DATABASE", "STORAGE", "PROJECT"],
+    "target cleanup scopes must match the public API",
+  );
 
   console.log(`MCP smoke test passed: ${tools.length} tools registered`);
 } finally {

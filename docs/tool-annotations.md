@@ -3,7 +3,7 @@
 Every tool declares `readOnlyHint`, `destructiveHint` and `openWorldHint`. OpenAI's plugin review
 requires all three, and a client uses them to decide how much confirmation a call needs.
 
-51 tools: **24 read-only**, **7 destructive**, **8 that change publicly visible state**.
+52 tools: **24 read-only**, **8 destructive**, **8 that change publicly visible state**.
 
 ## How each is decided
 
@@ -32,6 +32,7 @@ The submission form requires a justification naming what is irreversible and wha
 | `push_dns_to_cloudflare` | Writes records into the customer's live Cloudflare zone and can overwrite existing ones. A wrong record takes the domain offline until corrected. | Pushes only deployment-owned records, never nameservers or mail records; reports every per-record result. Requires an exact `domainId` from an `OFFER_CLOUDFLARE_PUSH` item. |
 | `rollback_website` | Replaces what is publicly served with an earlier version; the replaced version is only recoverable by rolling forward again. | Requires an exact version from `list_rollback_versions`; the tool description requires confirmation. |
 | `confirm_migration` | Starts the migration proper — applies schema and imports data into the customer's target database. | Discovery results are presented for review first; this is the gate that turns a plan into writes. |
+| `clean_migration_target` | Permanently deletes target database/authentication data, Storage buckets and files, or both. | Requires an exact scope and the target project ref returned by `get_migration`; the tool description requires presenting consequences and obtaining explicit confirmation. |
 | `skip_migration_job` | Marks a pipeline job completed without running it. A skipped job cannot be un-skipped and its work is never performed. | Staticbot explains the failure before an agent may skip; retry is the non-destructive alternative. |
 | `confirm_sync_run` | Applies the sync run's SQL to the customer's database, which can drop or rewrite data. | Destructive statements are surfaced for review first; this tool is the approval step and must not be called before the user has seen them. |
 | `skip_sync_run` | Marks a sync run handled without applying it; source and target diverge permanently. | The run's contents are inspectable via `get_sync_run_jobs` beforehand. |

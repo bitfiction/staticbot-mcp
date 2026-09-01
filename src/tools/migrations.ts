@@ -28,7 +28,8 @@ server.tool(
 server.tool(
   "get_migration",
   "Get the current status and phase breakdown of a migration. The response includes all migration phases (Discovery, DB Migration, Data Import, Edge Functions, Storage Buckets, Auth Config, Backend Switchover, Preview & Verify, Continuous Sync, Download, Follow-ups) with their individual statuses, plus sourceType (LOVABLE_SUPABASE / BOLT_SUPABASE / FIREBASE / BASE44_SUPABASE / BASE44_NATIVE), targetType (SUPABASE_CLOUD / SUPABASE_SELF_HOSTED), and packageAvailable (true once the downloadable zip is ready — fetch via download_package).\n\n" +
-  "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. When `pendingAction` is non-null, read its `type` field to determine what to do: CONFIRM → call confirm_migration, RETRY_OR_SKIP → call retry_migration_job or skip_migration_job, PROVIDE_BASE44_SECRETS → call provide_base44_secrets, RESOLVE_SCHEMA_GAP → call resolve_schema_gap, CHOOSE_BACKEND_SWITCHOVER → call choose_backend_switchover, CHOOSE_DATA_IMPORT_METHOD → call choose_data_import_method, CHOOSE_FRONTEND_DEPLOY → call choose_frontend_deploy, COMPLETE_MANUAL_JOB → call complete_migration_job. When `pendingAction` is null, the migration is flowing (IN_PROGRESS) or finished (COMPLETED/FAILED) — polling is then your only job.\n\n" +
+  "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. New pre-flight states are explicit: REVIEW_TARGET_CONFLICTS → present `targetConflictReport`, then either call clean_migration_target after destructive confirmation or call confirm_migration only after the user explicitly declines cleanup; WAIT_FOR_TARGET_CLEANUP → poll; RETRY_TARGET_CLEANUP → call retry_migration_job (never skip cleanup); CHOOSE_MIGRATION_STRATEGY → present `preFlightGate.actions` and consequences, then call confirm_migration with the selected gateChoice. Other types: CONFIRM, RETRY_OR_SKIP, PROVIDE_BASE44_SECRETS, RESOLVE_SCHEMA_GAP, CHOOSE_BACKEND_SWITCHOVER, CHOOSE_DATA_IMPORT_METHOD, CHOOSE_FRONTEND_DEPLOY, COMPLETE_MANUAL_JOB. When `pendingAction` is null, poll only while the status is flowing.\n\n" +
+  "The response exposes `preFlightGate` with backend-authored labels, consequences, export files, and the accepted choice IDs. It also exposes `targetConflictReport` with conflicting objects, cleanup scopes, `confirmationProjectRef`, and endpoint paths. Present these fields instead of inventing or defaulting a choice.\n\n" +
   "The response also includes `failureBanner` with categorised error info (category, title, body, severity, actionable, followupNote, retryable) when a job has a categorised failure. Use this to present richer error feedback. When `retryable=false`, prefer skip_migration_job or an AI-assisted fix over repeating deterministic SQL that will fail again; `retryable=null` means the cause may be environmental.\n\n" +
   "**Polling Phase 7 (Backend Switchover):** the response also includes `previewDeployment` (null until Phase 7 provisions one) with its own independent status. Important: the migration itself can be marked COMPLETED while `previewDeployment.status` is still IN_PROGRESS — the preview Terraform applies in the background. When babysitting a migration toward 'live preview ready', also poll `previewDeployment.status` until it reaches COMPLETED. Treat anything other than COMPLETED/FAILED/ABORTED/DESTROYED/CLEANED_UP as 'still progressing'. Use `previewDeployment.createdAt` to compute elapsed time so you can give the user a sense of progress without spamming this endpoint — once-every-5s is plenty.",
   {
@@ -43,14 +44,37 @@ server.tool(
 
 server.tool(
   "confirm_migration",
-  "Approve a migration that is PAUSED_FOR_APPROVAL. This happens after the Discovery phase completes — Staticbot has inventoried the source project and is waiting for the user to review before proceeding with the actual migration. " +
-  "IMPORTANT: Before calling this tool, you MUST present the discovery inventory to the user and ask for their explicit approval to proceed.",
+  "Approve a migration after discovery, or resolve a pre-flight migration-strategy gate. Before calling, get the migration and present the discovery inventory. If `preFlightGate` is non-null, present every enabled action and its consequence verbatim, obtain the user's explicit choice, and pass that exact action ID as gateChoice. For USE_OFFICIAL_EXPORT, gateSelection may select an offered export file path; omit it to use the newest. Never infer a gate choice or bypass REVIEW_TARGET_CONFLICTS without discussing the detected target objects.",
   {
     id: z.string().uuid().describe("Migration ID"),
+    gateChoice: z.string().min(1).optional().describe("Exact enabled action ID from get_migration.preFlightGate.actions. Required when pendingAction.type is CHOOSE_MIGRATION_STRATEGY; do not invent or default a value."),
+    gateSelection: z.string().optional().describe("For USE_OFFICIAL_EXPORT only: a path from preFlightGate.exportFiles. Omit to restore the newest detected export."),
   },
   { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
-  async ({ id }) => {
-    const data = await apiFetch(`/api/v1/migrations/${id}/confirm`, { method: "POST" });
+  async ({ id, gateChoice, gateSelection }) => {
+    const body = gateChoice ? { gateChoice, ...(gateSelection ? { gateSelection } : {}) } : undefined;
+    const data = await apiFetch(`/api/v1/migrations/${id}/confirm`, {
+      method: "POST",
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    return { content: [{ type: "text", text: toText(data) }] };
+  }
+);
+
+server.tool(
+  "clean_migration_target",
+  "Destructively clean conflicting objects from a Supabase Cloud migration target before execution starts. DATABASE deletes user-created database objects, Supabase migration history, and existing authentication users/sessions while preserving Storage. STORAGE empties and deletes every Storage bucket and file while preserving database/auth data. PROJECT performs both cleanups. This cannot be undone. Before calling, get the migration, present the exact scope consequences and targetConflictReport.confirmationProjectRef, and obtain explicit user confirmation for that exact project and scope. Copy the returned confirmationProjectRef into confirmProjectRef; never guess it. The migration remains paused after cleanup.",
+  {
+    id: z.string().uuid().describe("Migration ID"),
+    scope: z.enum(["DATABASE", "STORAGE", "PROJECT"]).describe("Exact destructive scope explicitly approved by the user"),
+    confirmProjectRef: z.string().min(1).describe("Exact targetConflictReport.confirmationProjectRef repeated after explicit user confirmation"),
+  },
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+  async ({ id, scope, confirmProjectRef }) => {
+    const data = await apiFetch(`/api/v1/migrations/${id}/clean-target`, {
+      method: "POST",
+      body: JSON.stringify({ scope, confirmProjectRef }),
+    });
     return { content: [{ type: "text", text: toText(data) }] };
   }
 );

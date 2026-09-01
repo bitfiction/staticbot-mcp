@@ -121,6 +121,12 @@ Staticbot tools are designed around explicit human control:
 
 When a migration response contains `pendingAction`, the client should treat it as the source of truth for the next step. Clients should not hard-code Staticbot's internal pipeline phases.
 
+Migration discovery can expose two additional reviewed actions. `preFlightGate` contains the exact
+export-versus-replay choices an agent must present before calling `confirm_migration` with the
+selected `gateChoice`. `targetConflictReport` lists objects already present on the target and offers
+database, Storage, or whole-project cleanup. `clean_migration_target` is irreversible and requires
+separate confirmation of both the exact scope and returned target project ref.
+
 ## Staticbot skills
 
 The repository includes focused deployment, migration, and Continuous Sync skills plus a [general Staticbot Skill](https://github.com/bitfiction/staticbot-mcp/tree/main/skills/staticbot) for Codex or Claude environments that can operate the REST API directly without an MCP server. The direct-API workflow fetches the live OpenAPI contract and applies the same approval and credential-handling rules.

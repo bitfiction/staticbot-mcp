@@ -61,7 +61,7 @@ server.tool(
     jobId: z.string().uuid().describe("The MANUAL_REVIEW_SCHEMA_GAP job ID"),
     action: z.enum(["recheck", "abort"]).describe("Resolution action"),
   },
-  { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
   async ({ migrationId, jobId, action }) => {
     const data = await apiFetch(`/api/v1/migrations/${migrationId}/jobs/${jobId}/resolve-schema-gap`, {
       method: "POST",

@@ -98,7 +98,7 @@ server.tool(
     id: z.string().uuid().describe("Deployment ID"),
     useLatest: z.boolean().optional().describe("Pull the latest website template version before redeploying (default: false)"),
   },
-  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
   async ({ id, useLatest }) => {
     const data = await apiFetch(
       `/api/v1/deployments/${id}/redeploy-website?useLatest=${useLatest ?? false}`,

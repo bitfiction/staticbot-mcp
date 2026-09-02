@@ -64,7 +64,7 @@ server.tool(
       "Optional. Supabase project reference (the subdomain part of https://<ref>.supabase.co) — get it from list_supabase_projects. Must be set together with supabaseIntegrationInstanceId to enable auto-refresh."
     ),
   },
-  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   async ({ name, templateId, configOverrides, domainOption, supabaseIntegrationInstanceId, supabaseProjectRef }) => {
     const body: Record<string, unknown> = {
       name,

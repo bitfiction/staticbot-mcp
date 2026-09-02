@@ -141,7 +141,7 @@ server.tool(
     projectId: z.string().uuid().describe("Connected project ID"),
     runId: z.string().uuid().describe("Failed sync run ID"),
   },
-  { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
   async ({ projectId, runId }) => {
     const data = await apiFetch(`/api/v1/connected-projects/${projectId}/sync-runs/${runId}/skip`, {
       method: "POST",

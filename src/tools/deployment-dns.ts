@@ -45,7 +45,7 @@ export function registerDeploymentDnsTools(
     {
       deploymentId: z.string().uuid().describe("Cloudflare Workers deployment ID"),
     },
-    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async ({ deploymentId }) => {
       const data = await apiFetch(
         `/api/v1/deployments/${deploymentId}/worker-app-dns/recheck`,

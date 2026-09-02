@@ -48,7 +48,7 @@ server.tool(
     repoLink: z.string().describe("GitHub repository URL (e.g. https://github.com/owner/repo)"),
     name: z.string().optional().describe("Template name (derived from repo name if omitted)"),
   },
-  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   async ({ repoLink, name }) => {
     const body: Record<string, string> = { repoLink };
     if (name) body.name = name;
@@ -72,7 +72,7 @@ server.tool(
   {
     deployedUrl: z.string().describe("Deployed Base44 app URL (e.g. https://myapp.base44.app)"),
   },
-  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
   async ({ deployedUrl }) => {
     const data = await apiFetch("/api/v1/templates/scan-deployed-url", {
       method: "POST",

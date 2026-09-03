@@ -167,57 +167,39 @@ server.tool(
   "  • LOVABLE_SUPABASE (default) — Lovable-built apps on Supabase.\n" +
   "  • BOLT_SUPABASE — Bolt.new apps on Supabase (Phase 3 Lovable-specific steps are adjusted).\n" +
   "  • FIREBASE — Firebase-to-Supabase migration (different pipeline). Requires firebaseServiceAccountJson; the Git repo is optional.\n" +
-  "  • BASE44_SUPABASE — Base44 apps backed by Supabase. Requires sourceSupabaseUrl + sourceSupabaseAnonKey (use parse_source_keys or scan_deployed_url). Backend switchover updates Base44 platform secrets (not GitHub env vars).\n" +
-  "  • BASE44_NATIVE — Base44 apps using @base44/sdk against Base44's managed backend (no source Supabase). Requires sourceIntegrationInstanceId (the Base44 integration). Discovery hits Base44's REST API, DDL is synthesised from entity schemas, data is imported directly. sourceSupabaseUrl and sourceSupabaseAnonKey are NOT needed.\n\n" +
+  "  • BASE44_SUPABASE — Base44 apps backed by Supabase. If repository discovery cannot resolve the source, pass sourceDeployedUrl and Staticbot will inspect the deployed app server-side. Backend switchover updates Base44 platform secrets (not GitHub env vars).\n" +
+  "  • BASE44_NATIVE — Base44 apps using @base44/sdk against Base44's managed backend (no source Supabase). Requires sourceIntegrationInstanceId (the Base44 integration). Discovery hits Base44's REST API, DDL is synthesised from entity schemas, and data is imported directly.\n\n" +
   "BEFORE calling this tool, follow these steps to gather the required parameters:\n" +
   "1. Ask the user for their source platform and GitHub repo URL (the repo is optional for FIREBASE). For FIREBASE, securely collect firebaseServiceAccountJson.\n" +
   "2. Ask the user whether the target is managed Supabase (SUPABASE_CLOUD) or their own self-hosted install (SUPABASE_SELF_HOSTED).\n" +
   "3. Call list_integration_instances — use the instance with type='supabase' as supabaseIntegrationInstanceId, type='github' as githubIntegrationInstanceId, and type='base44' as sourceIntegrationInstanceId (for BASE44_NATIVE).\n" +
-  "4. For Supabase-backed sources (LOVABLE_SUPABASE, BOLT_SUPABASE, BASE44_SUPABASE): call parse_source_keys with the GitHub repo URL. For Base44 apps where the repo .env only has placeholders, use scan_deployed_url to extract keys from the deployed *.base44.app JS bundle.\n" +
+  "4. Source Supabase metadata is discovered by Staticbot. For a BASE44_SUPABASE app whose repository contains placeholders, provide its deployed *.base44.app URL as sourceDeployedUrl. Never ask the user for Supabase API keys.\n" +
   "5. For SUPABASE_CLOUD only: call list_supabase_projects with the Supabase integration instance — ask the user which ACTIVE project to use as the target. Skip this step for SUPABASE_SELF_HOSTED.\n" +
   "6. For templateId: either ask the user to pick from list_templates, or create a new template from their repo using create_template.\n\n" +
-  "IMPORTANT (SUPABASE_CLOUD + Supabase-backed sources only): The source and target Supabase projects MUST be different. Compare the project ref from sourceSupabaseUrl " +
-  "(the subdomain in https://{ref}.supabase.co) with targetSupabaseProjectRef — if they match, stop and ask the user for a different target project. Skip this check for BASE44_NATIVE (no source Supabase).\n\n" +
+  "IMPORTANT: Source and target Supabase projects must be different. Staticbot validates this after source discovery; if it reports a match, ask the user to choose another target.\n\n" +
   "After creation, the migration starts with a DISCOVERY job. Once discovery completes, it pauses (PAUSED_FOR_APPROVAL) — present the inventory to the user and call confirm_migration if they approve.",
   {
     name: z.string().describe("Human-readable name for this migration"),
     description: z.string().optional().describe("Optional human-readable migration description"),
-    sourceSupabaseUrl: z.string().optional().describe("Source Supabase project URL (e.g. https://abcdef.supabase.co). Required for LOVABLE_SUPABASE, BOLT_SUPABASE, BASE44_SUPABASE. Omit for BASE44_NATIVE and FIREBASE."),
-    sourceSupabaseAnonKey: z.string().optional().describe("Source Supabase anon key. Required for LOVABLE_SUPABASE, BOLT_SUPABASE, BASE44_SUPABASE. Omit for BASE44_NATIVE and FIREBASE."),
     sourceType: z.enum(["LOVABLE_SUPABASE", "BOLT_SUPABASE", "FIREBASE", "BASE44_SUPABASE", "BASE44_NATIVE"]).optional().describe("Source platform. Defaults to LOVABLE_SUPABASE."),
     targetType: z.enum(["SUPABASE_CLOUD", "SUPABASE_SELF_HOSTED"]).optional().describe("Target delivery mode. SUPABASE_CLOUD (default) for managed Supabase; SUPABASE_SELF_HOSTED produces a downloadable package instead of applying to a target project."),
     sourceIntegrationInstanceId: z.string().uuid().optional().describe("Source integration instance ID. Required for BASE44_NATIVE (the Base44 integration from list_integration_instances). Omit for other source types."),
     supabaseIntegrationInstanceId: z.string().uuid().optional().describe("Supabase integration instance ID (from list_integration_instances). Required for SUPABASE_CLOUD; omit for SUPABASE_SELF_HOSTED."),
     templateId: z.string().uuid().describe("Template ID for the target infrastructure (from list_templates)"),
     targetSupabaseProjectRef: z.string().optional().describe("Target Supabase project reference (the subdomain part of the URL). Required for SUPABASE_CLOUD; omit for SUPABASE_SELF_HOSTED."),
-    targetSupabaseUrl: z.string().optional().describe("Target Supabase URL (auto-derived from projectRef if omitted). Ignored for SUPABASE_SELF_HOSTED."),
-    targetSupabaseAnonKey: z.string().optional().describe("Target anon key (auto-fetched from Supabase API if omitted). Ignored for SUPABASE_SELF_HOSTED."),
-    targetSupabaseServiceRoleKey: z.string().optional().describe("Target service role key (auto-fetched if omitted). Ignored for SUPABASE_SELF_HOSTED."),
     githubIntegrationInstanceId: z.string().uuid().optional().describe("GitHub integration instance ID for repo access"),
     targetSchemaName: z.string().optional().describe("Optional target Postgres schema name"),
-    configOverrides: z.record(z.string()).optional().describe("Template config overrides"),
+    configOverrides: z.record(z.string()).optional().describe("Non-secret template configuration overrides. Do not place credentials here; connected integrations supply provider credentials."),
     firebaseServiceAccountJson: z.string().optional().describe("Firebase service-account JSON. Required for FIREBASE migrations; sent directly to Staticbot and treated as a secret."),
-    githubRepoUrl: z.string().optional().describe("GitHub repo URL"),
-    gitRepoAvailable: z.boolean().optional().describe("Whether the git repo is available"),
-    packageOptions: z.record(z.unknown()).optional().describe("Optional self-hosted package build options. Currently used for BASE44_NATIVE to SUPABASE_SELF_HOSTED migrations."),
+    sourceDeployedUrl: z.string().url().optional().describe("Deployed *.base44.app URL used only for legacy BASE44_SUPABASE source discovery. Staticbot extracts source metadata server-side and never returns keys."),
+    packageOptions: z.object({
+      includeEntityData: z.boolean().optional().describe("Include Base44 entity data. Defaults to true."),
+      includeStorageFiles: z.boolean().optional().describe("Include Base44 storage files. Defaults to false."),
+    }).optional().describe("Optional self-hosted package build options for BASE44_NATIVE migrations."),
   },
-  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async (params) => {
-    // Validate source and target are different projects (cloud target + Supabase-backed sources only)
     const sourceType = params.sourceType ?? "LOVABLE_SUPABASE";
-    const hasSourceSupabase = ["LOVABLE_SUPABASE", "BOLT_SUPABASE", "BASE44_SUPABASE"].includes(sourceType);
-    if ((params.targetType ?? "SUPABASE_CLOUD") === "SUPABASE_CLOUD" && params.targetSupabaseProjectRef && hasSourceSupabase && params.sourceSupabaseUrl) {
-      const sourceRefMatch = params.sourceSupabaseUrl.match(/https:\/\/([a-zA-Z0-9]+)\.supabase\.co/);
-      const sourceRef = sourceRefMatch?.[1];
-      if (sourceRef && sourceRef === params.targetSupabaseProjectRef) {
-        return { content: [{ type: "text", text: JSON.stringify({
-          error: "Source and target Supabase projects must be different. " +
-            "The source project ref '" + sourceRef + "' is the same as the target. " +
-            "Please select a different target Supabase project."
-        }, null, 2) }] };
-      }
-    }
-
     // For BASE44_NATIVE, validate sourceIntegrationInstanceId is provided
     if (sourceType === "BASE44_NATIVE" && !params.sourceIntegrationInstanceId) {
       return { content: [{ type: "text", text: JSON.stringify({
@@ -359,13 +341,14 @@ server.tool(
   "after the edge function has been deployed by the user pasting 'deploy staticbot edge function' " +
   "into the Lovable AI chat. " +
   "The function URL can be derived as https://{sourceProjectRef}.supabase.co/functions/v1/{functionName} " +
-  "where functionName is in the MANUAL_SYNC_LOVABLE job's inputData. Returns {status: 'ok'|'error', message}. " +
+  "where functionName is in the MANUAL_SYNC_LOVABLE job's inputData. The validation updates the job's " +
+  "stored verification state and returns {status: 'ok'|'error', message}. " +
   "Poll every 15-30 seconds if waiting for deployment.",
   {
     jobId: z.string().uuid().describe("The MANUAL_SYNC_LOVABLE job ID"),
     functionUrl: z.string().describe("Edge function URL to validate"),
   },
-  { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ jobId, functionUrl }) => {
     const data = await apiFetch(`/api/v1/migrations/jobs/${jobId}/validate-function`, {
       method: "POST",
@@ -390,24 +373,6 @@ server.tool(
 );
 
 server.tool(
-  "parse_source_keys",
-  "Parse source Supabase URL and anon key from a GitHub repository's .env file. " +
-  "This eliminates the need to ask the user for these values — just provide the repo URL. " +
-  "Call this BEFORE create_migration to auto-fill sourceSupabaseUrl and sourceSupabaseAnonKey. " +
-  "Uses the organization's GitHub integration token for private repos.",
-  {
-    githubRepoUrl: z.string().describe("GitHub repo URL (e.g. https://github.com/owner/repo)"),
-  },
-  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-  async ({ githubRepoUrl }) => {
-    const data = await apiFetch(
-      `/api/v1/migrations/parse-source-keys?githubRepoUrl=${encodeURIComponent(githubRepoUrl)}`
-    );
-    return { content: [{ type: "text", text: toText(data) }] };
-  }
-);
-
-server.tool(
   "list_supabase_projects",
   "List all Supabase projects accessible through a connected Supabase integration instance. " +
   "Returns project name, reference ID, region, and status. Use the project's id field as " +
@@ -417,7 +382,7 @@ server.tool(
   {
     supabaseIntegrationInstanceId: z.string().uuid().describe("Supabase integration instance ID (from list_integration_instances)"),
   },
-  { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ supabaseIntegrationInstanceId }) => {
     const data = await apiFetch(
       `/api/v1/migrations/integrations/instances/${supabaseIntegrationInstanceId}/supabase-projects`

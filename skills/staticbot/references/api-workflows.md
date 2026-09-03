@@ -72,14 +72,13 @@ not report a Workers custom hostname live until both returned status fields are 
 - `POST /migrations/{migrationId}/jobs/{jobId}/resolve-schema-gap`
 - `POST /migrations/jobs/{jobId}/validate-function`
 - `GET /migrations/integrations/instances`
-- `GET /migrations/parse-source-keys?githubRepoUrl=...`
 - `GET /migrations/integrations/instances/{id}/supabase-projects`
 
 Supported source types include `LOVABLE_SUPABASE`, `BOLT_SUPABASE`, `FIREBASE`, `BASE44_SUPABASE`, and `BASE44_NATIVE`. Never assume their request fields are identical; consult the live schema.
 
 Typical migration flow:
 
-1. Inspect integration instances, source credentials or integration, target, and template.
+1. Inspect integration instances, source platform/repository, target, and template. Source and target Supabase credentials are resolved server-side from discovery and connected integrations.
 2. Create the migration with fields validated against the live schema.
 3. Poll until discovery reaches `PAUSED_FOR_APPROVAL`.
 4. Fetch jobs and present the discovery inventory to the user.

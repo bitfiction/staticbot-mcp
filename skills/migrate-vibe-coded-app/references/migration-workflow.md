@@ -6,8 +6,8 @@ The live Staticbot tool schemas and `pendingAction` response are authoritative.
 
 1. Identify the source type: `LOVABLE_SUPABASE`, `BOLT_SUPABASE`, `FIREBASE`, `BASE44_SUPABASE`, or `BASE44_NATIVE`.
 2. Call `list_integration_instances`. Use returned GitHub, Supabase, and Base44 instance IDs; do not invent identifiers.
-3. For Supabase-backed sources, use `parse_source_keys`. For a Base44 deployment whose repo contains placeholders, use `scan_deployed_url` only for a `*.base44.app` URL.
-4. Ask whether the target is `SUPABASE_CLOUD` or `SUPABASE_SELF_HOSTED`. For cloud, call `list_supabase_projects` and ensure the source and target projects differ.
+3. Staticbot discovers Supabase source metadata internally. Never ask the user for source or target API keys. For a `BASE44_SUPABASE` repo containing placeholders, pass its `*.base44.app` URL as `sourceDeployedUrl`; the keys remain server-side.
+4. Ask whether the target is `SUPABASE_CLOUD` or `SUPABASE_SELF_HOSTED`. For cloud, call `list_supabase_projects`; Staticbot rejects a discovered source that matches the selected target before migration writes begin.
 5. Use `list_templates`/`get_template`, or `create_template` so Staticbot analyzes the supplied repository.
 
 ## Run

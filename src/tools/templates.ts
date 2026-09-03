@@ -27,7 +27,7 @@ server.tool(
 
 server.tool(
   "get_template",
-  "Get details of a template including its configuration variables. Use this to see what configOverrides are available when creating a stack. The configVariables field lists environment variables the template supports (e.g. VITE_SUPABASE_URL).",
+  "Get details of a template including its configuration variable names and whether each is configured. Values are never returned. Use this to see which non-secret configOverrides are available when creating a stack.",
   {
     id: z.string().uuid().describe("Template ID"),
   },
@@ -48,7 +48,7 @@ server.tool(
     repoLink: z.string().describe("GitHub repository URL (e.g. https://github.com/owner/repo)"),
     name: z.string().optional().describe("Template name (derived from repo name if omitted)"),
   },
-  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ repoLink, name }) => {
     const body: Record<string, string> = { repoLink };
     if (name) body.name = name;
@@ -60,25 +60,4 @@ server.tool(
   }
 );
 
-server.tool(
-  "scan_deployed_url",
-  "Scan a deployed Base44 app URL for inlined Supabase credentials. " +
-  "Vite bakes import.meta.env.VITE_* into the JS bundle at build time. For Base44 users " +
-  "whose GitHub .env only has placeholders (or for BASE44_SUPABASE migrations where " +
-  "parse_source_keys returns empty values), this tool fetches the deployed *.base44.app HTML, " +
-  "finds /assets/index-*.js, and regex-extracts the Supabase URL + anon key. " +
-  "Restricted to *.base44.app hosts. Use the returned supabaseUrl and supabaseAnonKey " +
-  "as sourceSupabaseUrl and sourceSupabaseAnonKey in create_migration.",
-  {
-    deployedUrl: z.string().describe("Deployed Base44 app URL (e.g. https://myapp.base44.app)"),
-  },
-  { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
-  async ({ deployedUrl }) => {
-    const data = await apiFetch("/api/v1/templates/scan-deployed-url", {
-      method: "POST",
-      body: JSON.stringify({ deployedUrl }),
-    });
-    return { content: [{ type: "text", text: toText(data) }] };
-  }
-);
 }

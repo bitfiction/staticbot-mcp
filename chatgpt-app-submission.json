@@ -1,0 +1,480 @@
+{
+  "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
+  "schema_version": 1,
+  "app_info": {
+    "display_name": "Staticbot",
+    "subtitle": "Deploy and migrate web apps",
+    "description": "Staticbot helps users deploy websites, manage deployment DNS and updates, migrate application backends to Supabase, and operate continuous sync through ChatGPT.",
+    "category": "DEVELOPER_TOOLS"
+  },
+  "tools": {
+    "list_templates": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves the organization's available Staticbot templates.",
+        "open_world_justification": "Does not change public internet state or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "get_template": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves configuration details for the selected template.",
+        "open_world_justification": "Does not change public internet state or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "create_template": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Creates a private Staticbot template by scanning the specified GitHub repository.",
+        "open_world_justification": "Only creates private Staticbot configuration and does not modify the GitHub repository.",
+        "destructive_justification": "Adds a template without deleting or overwriting existing resources."
+      }
+    },
+    "list_stacks": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves the organization's infrastructure stacks.",
+        "open_world_justification": "Does not change public internet state or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "get_stack": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves the selected stack and its configuration.",
+        "open_world_justification": "Does not change public internet state or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "create_stack": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Creates a private Staticbot stack with template, domain, and integration configuration.",
+        "open_world_justification": "Does not provision infrastructure, publish a website, or change an external system.",
+        "destructive_justification": "Adds a stack without deleting or overwriting existing resources."
+      }
+    },
+    "list_deployments": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves deployments, optionally filtered by stack.",
+        "open_world_justification": "Does not change public internet state or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "create_deployment": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Creates a prepared deployment record that must be started separately.",
+        "open_world_justification": "Does not provision infrastructure or publish the prepared deployment.",
+        "destructive_justification": "Adds a deployment record without deleting or overwriting resources."
+      }
+    },
+    "start_deployment": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Starts a provisioning workflow for the prepared deployment.",
+        "open_world_justification": "Can provision infrastructure and publish a website to the public internet.",
+        "destructive_justification": "Creates deployment resources without offering a delete or irreversible removal action."
+      }
+    },
+    "get_deployment": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves deployment progress, failures, and DNS requirements.",
+        "open_world_justification": "Does not change public internet state or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "push_dns_to_cloudflare": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Writes deployment-owned certificate and routing records to the linked Cloudflare zone.",
+        "open_world_justification": "Changes live DNS records that affect how a public domain resolves.",
+        "destructive_justification": "Can overwrite live deployment-owned DNS records, although it never changes nameservers or mail records and requires an exact eligible domain ID."
+      }
+    },
+    "recheck_dns_verification": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Requests a new Cloudflare hostname validation attempt and refreshes stored verification state.",
+        "open_world_justification": "Can change external certificate and custom-hostname verification state in Cloudflare.",
+        "destructive_justification": "Does not alter DNS records, nameservers, or user data."
+      }
+    },
+    "get_auto_deploy_settings": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves automatic-update settings for a deployment.",
+        "open_world_justification": "Does not change public internet state or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "update_auto_deploy_settings": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Updates private automatic-deployment settings in Staticbot.",
+        "open_world_justification": "Changes only private configuration and does not immediately publish or modify an external system.",
+        "destructive_justification": "Settings can be changed again and omitted fields retain their existing values."
+      }
+    },
+    "get_auto_deploy_info": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves automatic-update availability and webhook status.",
+        "open_world_justification": "Does not create a webhook or change another system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "list_rollback_versions": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves valid commit-pinned rollback targets for a deployment.",
+        "open_world_justification": "Does not change the deployed website or another external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "rollback_website": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Starts a deployment that replaces the currently served website with a selected earlier version.",
+        "open_world_justification": "Changes the version served on the public website.",
+        "destructive_justification": "Replaces the live version and requires an exact target returned by list_rollback_versions plus explicit confirmation."
+      }
+    },
+    "redeploy_website": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Rebuilds and redeploys the website, optionally after selecting the latest template version.",
+        "open_world_justification": "Replaces the build served on the public website.",
+        "destructive_justification": "Overwrites the currently served build with the requested redeployment."
+      }
+    },
+    "list_migrations": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves migrations, optionally filtered by status.",
+        "open_world_justification": "Does not change a migration or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "get_migration": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves migration status, phases, conflicts, gates, and next actions.",
+        "open_world_justification": "Does not change a migration or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "confirm_migration": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Approves discovery or a selected migration strategy and allows target writes to begin.",
+        "open_world_justification": "Can apply schema, data, storage, functions, and configuration to connected external systems.",
+        "destructive_justification": "Can apply irreversible target changes after the discovery inventory and any pre-flight choice are explicitly reviewed."
+      }
+    },
+    "clean_migration_target": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Deletes the explicitly selected database, authentication, or Storage scope from a connected Supabase target.",
+        "open_world_justification": "Changes data in the user's external Supabase project.",
+        "destructive_justification": "Permanently removes the approved target scope and requires the exact returned project reference plus explicit confirmation."
+      }
+    },
+    "resume_migration": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Releases paused migration work so queued jobs can continue.",
+        "open_world_justification": "Continued jobs can write migrated resources to connected external systems.",
+        "destructive_justification": "The migration can be paused again and this action does not itself delete data."
+      }
+    },
+    "pause_migration": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Changes the migration's private state to prevent new jobs from starting.",
+        "open_world_justification": "Does not modify a public or external system.",
+        "destructive_justification": "The migration can be resumed later and the current job is allowed to finish."
+      }
+    },
+    "get_migration_jobs": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves migration jobs, progress, and failure details.",
+        "open_world_justification": "Does not change migration work or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "retry_migration_job": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Resets a failed migration job and queues it to run again.",
+        "open_world_justification": "The retried job can write migration changes to connected external systems.",
+        "destructive_justification": "Only retries work that already failed and does not skip or delete it."
+      }
+    },
+    "skip_migration_job": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Marks a blocking job skipped and allows dependent migration jobs to proceed.",
+        "open_world_justification": "Dependent jobs can continue changing connected external systems after the skip.",
+        "destructive_justification": "The skipped work is never performed and cannot be unskipped through another tool."
+      }
+    },
+    "get_migration_deployments": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves deployments associated with the migration's stack.",
+        "open_world_justification": "Does not change deployments or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "create_migration": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Creates a private migration and begins the discovery phase.",
+        "open_world_justification": "Discovery reads source systems and pauses for approval before target writes begin.",
+        "destructive_justification": "Does not apply target changes until a later explicit confirmation."
+      }
+    },
+    "download_package": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves a time-limited package URL and its extraction password.",
+        "open_world_justification": "Does not modify the package, migration, or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "complete_migration_job": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Marks a READY manual job complete and lets dependent migration work proceed.",
+        "open_world_justification": "Dependent migration jobs can continue changing connected external systems.",
+        "destructive_justification": "The manual job completion cannot be undone and may advance the pipeline, with function validation required where applicable."
+      }
+    },
+    "choose_data_import_method": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Commits the migration to the user's selected automated or manual data-import path.",
+        "open_world_justification": "The automated path can write data, Storage, authentication, functions, and configuration to Supabase.",
+        "destructive_justification": "The selected path advances the migration and requires the user to choose after reviewing both options."
+      }
+    },
+    "choose_backend_switchover": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Commits the migration to the user's selected backend-switchover strategy.",
+        "open_world_justification": "Some choices create repository changes or alter which external backend the application uses.",
+        "destructive_justification": "The choice can replace environment configuration or permanently skip switchover and must be explicitly selected by the user."
+      }
+    },
+    "choose_frontend_deploy": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Commits the migration to continuous sync, a Staticbot deployment, or a skipped frontend deployment.",
+        "open_world_justification": "Some choices create deployment or synchronization changes in external systems.",
+        "destructive_justification": "The selection advances or permanently skips frontend deployment and must be explicitly chosen by the user."
+      }
+    },
+    "validate_function_url": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Checks the Supabase function and updates the migration job's stored verification state.",
+        "open_world_justification": "Reads the external function without modifying it or another external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter external data."
+      }
+    },
+    "list_integration_instances": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves the organization's connected integration instances.",
+        "open_world_justification": "Does not change an integration or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "list_supabase_projects": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves projects available through the selected Supabase integration.",
+        "open_world_justification": "Does not modify any Supabase project or another external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "list_connected_projects": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves connected projects, optionally filtered by sync mode.",
+        "open_world_justification": "Does not change a connected project or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "get_connected_project": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves the selected connected project's sync and deployment details.",
+        "open_world_justification": "Does not change a connected project or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "trigger_sync": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Starts a synchronization run for the selected connected project.",
+        "open_world_justification": "Can apply repository changes to Supabase and the project's deployed frontend.",
+        "destructive_justification": "Starts a bounded sync workflow whose destructive database changes pause for separate review."
+      }
+    },
+    "list_sync_runs": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves synchronization history for a connected project.",
+        "open_world_justification": "Does not start or modify a synchronization run.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "get_sync_run": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves status, versions, changes, and errors for a sync run.",
+        "open_world_justification": "Does not start or modify a synchronization run.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "get_sync_run_jobs": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Only retrieves the individual jobs belonging to a sync run.",
+        "open_world_justification": "Does not start or modify synchronization work.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "confirm_sync_run": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Approves or skips reviewed destructive database changes in a paused sync run.",
+        "open_world_justification": "Can apply SQL and other synchronization changes to connected external systems.",
+        "destructive_justification": "Can drop or rewrite target data and is only used after the destructive changes are surfaced for review."
+      }
+    },
+    "retry_sync_run": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Resets failed sync jobs and reopens the run for another attempt.",
+        "open_world_justification": "The retried run can write changes to Supabase and the deployed frontend.",
+        "destructive_justification": "Only retries previously failed work and does not skip or delete it."
+      }
+    },
+    "skip_sync_run": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Marks every failed job in the sync run completed without applying that work.",
+        "open_world_justification": "Changes only Staticbot's private run state and does not apply changes externally.",
+        "destructive_justification": "Permanently skips the failed work after the tool description requires explanation and explicit confirmation."
+      }
+    },
+    "set_connected_project_sync_mode": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Updates the connected project's private continuous-sync mode.",
+        "open_world_justification": "Does not immediately synchronize or modify an external system.",
+        "destructive_justification": "The sync mode can be changed again after user confirmation."
+      }
+    },
+    "create_migration_preview": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Creates or retrieves a preview deployment for the selected migration.",
+        "open_world_justification": "Can build and publish a reachable preview on Staticbot infrastructure.",
+        "destructive_justification": "Creates a preview without deleting or overwriting the production deployment."
+      }
+    },
+    "provide_base44_secrets": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Stores the supplied Base44 secret values for a READY migration job.",
+        "open_world_justification": "Transmits secrets only to the private Staticbot migration workflow and does not publish them.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter external resources."
+      }
+    },
+    "resolve_schema_gap": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Either queues a source-schema recheck or aborts the migration as explicitly selected by the user.",
+        "open_world_justification": "Only reads source state or changes the private migration state without writing externally.",
+        "destructive_justification": "The abort option permanently ends the migration, with recheck offered as the safe alternative."
+      }
+    }
+  },
+  "test_cases": [
+    {
+      "description": "List available deployment templates.",
+      "user_prompt": "Show me the Staticbot templates available for deploying my website.",
+      "file_attachment_urls": null,
+      "tools_triggered": "list_templates",
+      "expected_output": "Returns available templates with identifiers, names, categories, and repository links.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Create a template from a public GitHub repository.",
+      "user_prompt": "Create a Staticbot template from https://github.com/bitfiction/staticbot-mcp and name it Staticbot MCP Review.",
+      "file_attachment_urls": null,
+      "tools_triggered": "create_template",
+      "expected_output": "Creates a private template and returns the detected workload and template details without changing the repository.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Inspect a deployment and its DNS requirements.",
+      "user_prompt": "Check my selected Staticbot deployment and tell me its progress and any DNS action I need to take.",
+      "file_attachment_urls": null,
+      "tools_triggered": "get_deployment",
+      "expected_output": "Returns deployment status and explains each domain's required DNS action without making DNS changes.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Inspect the next action for a migration.",
+      "user_prompt": "Show the status and next required action for the Staticbot migration we selected.",
+      "file_attachment_urls": null,
+      "tools_triggered": "get_migration",
+      "expected_output": "Returns migration phases, pending action, relevant review gates, and failure information.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Filter connected projects by a paused sync mode.",
+      "user_prompt": "List my Staticbot connected projects whose continuous sync is paused.",
+      "file_attachment_urls": null,
+      "tools_triggered": "list_connected_projects",
+      "expected_output": "Returns only connected projects in PAUSED sync mode with enough detail to select one.",
+      "expected_output_url": null
+    }
+  ],
+  "negative_test_cases": [
+    {
+      "description": "Do not trigger for a general programming explanation.",
+      "user_prompt": "Explain the difference between server-side rendering and static site generation.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because the request does not require Staticbot account data or an operation.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not trigger for an unrelated GitHub repository edit.",
+      "user_prompt": "Rename the default branch in my GitHub repository.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because it does not provide general GitHub repository administration.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not trigger for domain registration or purchasing.",
+      "user_prompt": "Buy and register example.com for me.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because Staticbot can configure deployment DNS but cannot purchase or register domains.",
+      "expected_output_url": null
+    }
+  ]
+}

@@ -24,7 +24,7 @@ server.tool(
 
 server.tool(
   "get_stack",
-  "Get details of a stack including its templates and configuration.",
+  "Get details of a stack including its templates and configured override keys. Configuration values are always redacted.",
   {
     id: z.string().uuid().describe("Stack ID"),
   },
@@ -37,12 +37,12 @@ server.tool(
 
 server.tool(
   "create_stack",
-  "Create a new infrastructure stack from a template. A stack ties a template to a domain and becomes deployable. Call list_templates first to find the right templateId. Staticbot analyzes the template's repository and owns the hosting decision: static sites route to the supported AWS static target, SSR/full-stack apps route to the supported Cloudflare Workers target, and Staticbot applies the ownership model available for that flow. Do not infer or send a provider choice. Report the returned `hostingWorkload`, `deploymentTarget`, and `infrastructureOwnership` fields to the user.\n\nFor templates that use Supabase (VITE_SUPABASE_URL and friends in configOverrides), pass supabaseIntegrationInstanceId + supabaseProjectRef to have Staticbot auto-refresh anon keys from your Supabase account on each deploy. Get these from list_integration_instances (oauthProvider='supabase') and list_supabase_projects.",
+  "Create a new infrastructure stack from a template. A stack ties a template to a domain and becomes deployable. Call list_templates first to find the right templateId. Staticbot analyzes the template's repository and owns the hosting decision: static sites route to the supported AWS static target, SSR/full-stack apps route to the supported Cloudflare Workers target, and Staticbot applies the ownership model available for that flow. Do not infer or send a provider choice. Report the returned `hostingWorkload`, `deploymentTarget`, and `infrastructureOwnership` fields to the user.\n\nFor templates that use Supabase, pass supabaseIntegrationInstanceId + supabaseProjectRef. Staticbot fills and refreshes the declared Supabase configuration from the connected account; never ask the user for Supabase API keys.",
   {
     name: z.string().describe("Human-readable name for the stack (e.g. 'My Portfolio Site')"),
     templateId: z.string().uuid().describe("Template ID — get this from list_templates"),
     configOverrides: z.record(z.string()).optional().describe(
-      "Key/value overrides for template config variables (e.g. {\"VITE_SUPABASE_URL\": \"https://...\"}). See get_template for available keys."
+      "Non-secret key/value overrides for template config variables. See get_template for available keys. Never put passwords, tokens, private keys, or provider credentials here."
     ),
     domainOption: z.discriminatedUnion("type", [
       z.object({
@@ -64,7 +64,7 @@ server.tool(
       "Optional. Supabase project reference (the subdomain part of https://<ref>.supabase.co) — get it from list_supabase_projects. Must be set together with supabaseIntegrationInstanceId to enable auto-refresh."
     ),
   },
-  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ name, templateId, configOverrides, domainOption, supabaseIntegrationInstanceId, supabaseProjectRef }) => {
     const body: Record<string, unknown> = {
       name,

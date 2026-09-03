@@ -24,7 +24,7 @@ server.tool(
 
 server.tool(
   "get_stack",
-  "Get details of a stack including its templates and configured override keys. Configuration values are always redacted.",
+  "Get details of a stack including its templates and config overrides. Every override key is listed; values are returned for location-shaped keys (URLs, regions, names, branches) and \"[REDACTED]\" for credential-shaped ones.",
   {
     id: z.string().uuid().describe("Stack ID"),
   },

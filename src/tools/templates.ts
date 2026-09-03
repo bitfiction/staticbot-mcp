@@ -27,7 +27,7 @@ server.tool(
 
 server.tool(
   "get_template",
-  "Get details of a template including its configuration variable names and whether each is configured. Values are never returned. Use this to see which non-secret configOverrides are available when creating a stack.",
+  "Get details of a template including its configuration variables. Each entry has `key`, `configured` (whether a value is set at all), and `value`. `value` is the real value for location-shaped keys (URLs, regions, names, branches) and \"[REDACTED]\" for credential-shaped keys — Staticbot never returns secrets, so read `configured` to tell \"withheld\" apart from \"not set\". Use this to see which configOverrides are available when creating a stack.",
   {
     id: z.string().uuid().describe("Template ID"),
   },

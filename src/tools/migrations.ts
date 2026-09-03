@@ -185,7 +185,7 @@ server.tool(
     targetType: z.enum(["SUPABASE_CLOUD", "SUPABASE_SELF_HOSTED"]).optional().describe("Target delivery mode. SUPABASE_CLOUD (default) for managed Supabase; SUPABASE_SELF_HOSTED produces a downloadable package instead of applying to a target project."),
     sourceIntegrationInstanceId: z.string().uuid().optional().describe("Source integration instance ID. Required for BASE44_NATIVE (the Base44 integration from list_integration_instances). Omit for other source types."),
     supabaseIntegrationInstanceId: z.string().uuid().optional().describe("Supabase integration instance ID (from list_integration_instances). Required for SUPABASE_CLOUD; omit for SUPABASE_SELF_HOSTED."),
-    templateId: z.string().uuid().describe("Template ID for the target infrastructure (from list_templates)"),
+    templateId: z.string().uuid().optional().describe("Template ID for the target infrastructure (from list_templates). Required for every source type except FIREBASE, where the Git repo is optional."),
     targetSupabaseProjectRef: z.string().optional().describe("Target Supabase project reference (the subdomain part of the URL). Required for SUPABASE_CLOUD; omit for SUPABASE_SELF_HOSTED."),
     githubIntegrationInstanceId: z.string().uuid().optional().describe("GitHub integration instance ID for repo access"),
     targetSchemaName: z.string().optional().describe("Optional target Postgres schema name"),
@@ -200,6 +200,13 @@ server.tool(
   { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async (params) => {
     const sourceType = params.sourceType ?? "LOVABLE_SUPABASE";
+    if (sourceType !== "FIREBASE" && !params.templateId) {
+      return { content: [{ type: "text", text: JSON.stringify({
+        error: "templateId is required for non-Firebase migrations. " +
+          "Call list_templates to pick one, or create_template to build one from the user's repo."
+      }, null, 2) }] };
+    }
+
     // For BASE44_NATIVE, validate sourceIntegrationInstanceId is provided
     if (sourceType === "BASE44_NATIVE" && !params.sourceIntegrationInstanceId) {
       return { content: [{ type: "text", text: JSON.stringify({
@@ -242,14 +249,20 @@ server.tool(
   "use validate_function_url to verify, then call this tool with the functionUrl. " +
   "For MANUAL_SYNC_BASE44: ask the user to sync their Base44 project from GitHub, " +
   "then call this tool without a functionUrl. " +
-  "Format: https://{projectRef}.supabase.co/functions/v1/{functionName}.",
+  "Format: https://{projectRef}.supabase.co/functions/v1/{functionName}. " +
+  "For MANUAL_REVIEW_SCHEMA (Firebase migrations): show the proposed DDL from the job's inputData, " +
+  "have the user review it, then pass their approved DDL as approvedSql — it is injected into the " +
+  "dependent APPLY_SQL job. Completing without approvedSql leaves APPLY_SQL with no schema to apply.",
   {
     jobId: z.string().uuid().describe("Migration job ID (from get_migration_jobs)"),
     functionUrl: z.string().optional().describe("Edge function URL (required for MANUAL_SYNC_LOVABLE; omit for MANUAL_SYNC_BASE44)"),
+    approvedSql: z.string().optional().describe("User-reviewed DDL (MANUAL_REVIEW_SCHEMA only). Omit for every other manual job type."),
   },
   { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
-  async ({ jobId, functionUrl }) => {
-    const body = functionUrl ? { functionUrl } : {};
+  async ({ jobId, functionUrl, approvedSql }) => {
+    const body: Record<string, string> = {};
+    if (functionUrl) body.functionUrl = functionUrl;
+    if (approvedSql) body.approvedSql = approvedSql;
     const data = await apiFetch(`/api/v1/migrations/jobs/${jobId}/complete`, {
       method: "POST",
       body: JSON.stringify(body),

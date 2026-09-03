@@ -11,9 +11,8 @@ All authenticated endpoints are under `/api/v1`; the helper adds that prefix to 
 - `GET /templates`
 - `GET /templates/{id}`
 - `POST /templates`
-- `POST /templates/scan-deployed-url`
 
-Templates describe a repository and its supported configuration. List before creating; inspect a chosen template before using its configuration overrides.
+Templates describe a repository and its supported configuration. List before creating; inspect a chosen template before using its configuration overrides. `GET /templates/{id}` returns each configuration variable as `key` + `configured` + `value`. Values come back for location-shaped keys (URLs, regions, names, branches) and as `[REDACTED]` for credential-shaped keys. A `[REDACTED]` value with `configured: true` means the key is set but withheld — not missing. The same rule applies to a stack's `configOverrides`.
 
 ### Stacks
 

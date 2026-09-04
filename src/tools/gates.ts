@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import type { ToolContext } from "../context.js";
+import { apiToolResult, registerApiTool } from "../server/api-tool.js";
 
 /**
  * Registered on every transport. Bodies are unchanged from the original single-file server; the only
@@ -11,7 +12,7 @@ import type { ToolContext } from "../context.js";
 export function registerGateTools(server: McpServer, { apiFetch, toText }: ToolContext): void {
 // ─── Gate/action tools (P0 — 2026-07-30) ────────────────────────────────────
 
-server.tool(
+registerApiTool(server,
   "create_migration_preview",
   "Trigger (or retrieve) a preview deployment for a migration. The preview builds the migrated " +
   "app on Staticbot's infrastructure so the customer can verify it works before finalising " +
@@ -25,11 +26,11 @@ server.tool(
     const data = await apiFetch(`/api/v1/migrations/${migrationId}/preview?mode=${mode ?? "light"}`, {
       method: "POST",
     });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "provide_base44_secrets",
   "Provide Base44 API key secrets required to complete a Base44-native migration. " +
   "Call when MANUAL_PROVIDE_BASE44_SECRETS is READY. " +
@@ -45,11 +46,11 @@ server.tool(
       method: "POST",
       body: JSON.stringify({ secrets }),
     });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "resolve_schema_gap",
   "Resolve a MANUAL_REVIEW_SCHEMA_GAP gate. " +
   "IMPORTANT: You MUST present these options to the user and ask them to choose before calling:\n" +
@@ -67,7 +68,7 @@ server.tool(
       method: "POST",
       body: JSON.stringify({ action }),
     });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 }

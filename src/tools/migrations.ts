@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import type { ToolContext } from "../context.js";
+import { apiToolResult, registerApiTool } from "../server/api-tool.js";
 
 /**
  * Registered on every transport. Bodies are unchanged from the original single-file server; the only
@@ -11,7 +12,7 @@ import type { ToolContext } from "../context.js";
 export function registerMigrationTools(server: McpServer, { apiFetch, toText }: ToolContext): void {
 // ─── Migrations ──────────────────────────────────────────────────────────────
 
-server.tool(
+registerApiTool(server,
   "list_migrations",
   "List all migrations. Optionally filter by status. Migrations orchestrate moving a full project (database, auth, storage, edge functions) from a source platform (Lovable, Bolt, Firebase, Base44) to target Supabase infrastructure.",
   {
@@ -21,17 +22,17 @@ server.tool(
   async ({ status }) => {
     const qs = status ? `?status=${encodeURIComponent(status)}` : "";
     const data = await apiFetch(`/api/v1/migrations${qs}`);
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "get_migration",
   "Get the current status and phase breakdown of a migration. The response includes all migration phases (Discovery, DB Migration, Data Import, Edge Functions, Storage Buckets, Auth Config, Backend Switchover, Preview & Verify, Continuous Sync, Download, Follow-ups) with their individual statuses, plus sourceType (LOVABLE_SUPABASE / BOLT_SUPABASE / FIREBASE / BASE44_SUPABASE / BASE44_NATIVE), targetType (SUPABASE_CLOUD / SUPABASE_SELF_HOSTED), and packageAvailable (true once the downloadable zip is ready — fetch via download_package).\n\n" +
   "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. New pre-flight states are explicit: REVIEW_TARGET_CONFLICTS → present `targetConflictReport`, then either call clean_migration_target after destructive confirmation or call confirm_migration only after the user explicitly declines cleanup; WAIT_FOR_TARGET_CLEANUP → poll; RETRY_TARGET_CLEANUP → call retry_migration_job (never skip cleanup); CHOOSE_MIGRATION_STRATEGY → present `preFlightGate.actions` and consequences, then call confirm_migration with the selected gateChoice. Other types: CONFIRM, RETRY_OR_SKIP, PROVIDE_BASE44_SECRETS, RESOLVE_SCHEMA_GAP, CHOOSE_BACKEND_SWITCHOVER, CHOOSE_DATA_IMPORT_METHOD, CHOOSE_FRONTEND_DEPLOY, COMPLETE_MANUAL_JOB. When `pendingAction` is null, poll only while the status is flowing.\n\n" +
   "The response exposes `preFlightGate` with backend-authored labels, consequences, export files, and the accepted choice IDs. It also exposes `targetConflictReport` with conflicting objects, cleanup scopes, `confirmationProjectRef`, and endpoint paths. Present these fields instead of inventing or defaulting a choice.\n\n" +
   "The response also includes `failureBanner` with categorised error info (category, title, body, severity, actionable, followupNote, retryable) when a job has a categorised failure. Use this to present richer error feedback. When `retryable=false`, prefer skip_migration_job or an AI-assisted fix over repeating deterministic SQL that will fail again; `retryable=null` means the cause may be environmental.\n\n" +
-  "The `support` field reports whether this migration is SELF_SERVICE, SUPPORTED, or SUPPORT_WINDOW_ENDED, together with the configured email, chat, consultation route, and response target. When support is active, use those routes for human escalation instead of implying the MCP itself provides human support. Purchase and operator-grant actions are intentionally unavailable through MCP.\n\n" +
+  "The `support` field reports whether this migration is SELF_SERVICE, SUPPORTED, or SUPPORT_WINDOW_ENDED, together with available human-support contact details. `consultationUrl` is returned only for SUPPORTED migrations and books the optional consultation already included in that migration's existing support entitlement; it is never a purchase, checkout, or upgrade route. When support is active, use those routes for human escalation instead of implying the MCP itself provides human support. Purchase and operator-grant actions are intentionally unavailable through MCP.\n\n" +
   "**Polling Phase 7 (Backend Switchover):** the response also includes `previewDeployment` (null until Phase 7 provisions one) with its own independent status. Important: the migration itself can be marked COMPLETED while `previewDeployment.status` is still IN_PROGRESS — the preview Terraform applies in the background. When babysitting a migration toward 'live preview ready', also poll `previewDeployment.status` until it reaches COMPLETED. Treat anything other than COMPLETED/FAILED/ABORTED/DESTROYED/CLEANED_UP as 'still progressing'. Use `previewDeployment.createdAt` to compute elapsed time so you can give the user a sense of progress without spamming this endpoint — once-every-5s is plenty.",
   {
     id: z.string().uuid().describe("Migration ID"),
@@ -39,11 +40,11 @@ server.tool(
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/migrations/${id}`);
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "confirm_migration",
   "Approve a migration after discovery, or resolve a pre-flight migration-strategy gate. Before calling, get the migration and present the discovery inventory. If `preFlightGate` is non-null, present every enabled action and its consequence verbatim, obtain the user's explicit choice, and pass that exact action ID as gateChoice. For USE_OFFICIAL_EXPORT, gateSelection may select an offered export file path; omit it to use the newest. Never infer a gate choice or bypass REVIEW_TARGET_CONFLICTS without discussing the detected target objects.",
   {
@@ -58,11 +59,11 @@ server.tool(
       method: "POST",
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "clean_migration_target",
   "Destructively clean conflicting objects from a Supabase Cloud migration target before execution starts. DATABASE deletes user-created database objects, Supabase migration history, and existing authentication users/sessions while preserving Storage. STORAGE empties and deletes every Storage bucket and file while preserving database/auth data. PROJECT performs both cleanups. This cannot be undone. Before calling, get the migration, present the exact scope consequences and targetConflictReport.confirmationProjectRef, and obtain explicit user confirmation for that exact project and scope. Copy the returned confirmationProjectRef into confirmProjectRef; never guess it. The migration remains paused after cleanup.",
   {
@@ -76,11 +77,11 @@ server.tool(
       method: "POST",
       body: JSON.stringify({ scope, confirmProjectRef }),
     });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "resume_migration",
   "Resume a migration that is PAUSED_BY_USER or PAUSED_FOR_USER_ACTION. Use this after the user has completed the required manual step (e.g. DNS configuration, backend switchover review).",
   {
@@ -89,11 +90,11 @@ server.tool(
   { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/migrations/${id}/resume`, { method: "POST" });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "pause_migration",
   "Pause a running migration. The current in-progress job will finish, but no new jobs will be started. Use resume_migration to continue later.",
   {
@@ -102,11 +103,11 @@ server.tool(
   { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/migrations/${id}/pause`, { method: "POST" });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "get_migration_jobs",
   "Get all jobs for a migration. Jobs are the individual work units within each phase (e.g. 'migrate_schema', 'import_data', 'deploy_edge_function_X'). Use this to understand what's happening at a granular level, diagnose failures, or find a jobId for retry/skip. For IN_PROGRESS long-running jobs (e.g. CALL_EXPORT_TO_TARGET on multi-table sources), each job's `progressMessage` field carries a human-readable subtitle like \"Exporting table 'startups' (8/10)\" so you can report concrete progress without waiting for completion.",
   {
@@ -115,11 +116,11 @@ server.tool(
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/migrations/${id}/jobs`);
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "retry_migration_job",
   "Retry a failed migration job. The job must be in FAILED status. It will be reset to READY and picked up by the worker again. Use get_migration_jobs first to find the failed job's ID and error message.",
   {
@@ -128,11 +129,11 @@ server.tool(
   { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   async ({ jobId }) => {
     const data = await apiFetch(`/api/v1/migrations/jobs/${jobId}/retry`, { method: "POST" });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "skip_migration_job",
   "Skip a migration job that is blocking progress. The job will be marked as SKIPPED and dependent jobs will proceed. Use this when a job is non-critical (e.g. an edge function that can be deployed manually later) or when retry won't help.",
   {
@@ -141,11 +142,11 @@ server.tool(
   { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
   async ({ jobId }) => {
     const data = await apiFetch(`/api/v1/migrations/jobs/${jobId}/skip`, { method: "POST" });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "get_migration_deployments",
   "List all AWS deployments associated with a migration's infrastructure stack. Migrations that deploy to AWS (self-hosted Supabase) create deployments for the infrastructure provisioning.",
   {
@@ -154,11 +155,11 @@ server.tool(
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/migrations/${id}/deployments`);
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "create_migration",
   "Create a new migration. Starts a multi-phase pipeline: Discovery → DB Migration → Data Import → Edge Functions → Storage Buckets → Auth Config → Backend Switchover → Preview & Verify → Continuous Sync → Download → Follow-ups.\n\n" +
   "Two delivery modes via targetType:\n" +
@@ -202,29 +203,29 @@ server.tool(
   async (params) => {
     const sourceType = params.sourceType ?? "LOVABLE_SUPABASE";
     if (sourceType !== "FIREBASE" && !params.templateId) {
-      return { content: [{ type: "text", text: JSON.stringify({
+      return apiToolResult({
         error: "templateId is required for non-Firebase migrations. " +
           "Call list_templates to pick one, or create_template to build one from the user's repo."
-      }, null, 2) }] };
+      }, toText);
     }
 
     // For BASE44_NATIVE, validate sourceIntegrationInstanceId is provided
     if (sourceType === "BASE44_NATIVE" && !params.sourceIntegrationInstanceId) {
-      return { content: [{ type: "text", text: JSON.stringify({
+      return apiToolResult({
         error: "sourceIntegrationInstanceId is required for BASE44_NATIVE migrations. " +
           "Call list_integration_instances to find the Base44 integration instance ID."
-      }, null, 2) }] };
+      }, toText);
     }
 
     const data = await apiFetch("/api/v1/migrations", {
       method: "POST",
       body: JSON.stringify(params),
     });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "download_package",
   "Fetch the downloadable migration package for a migration. Returns a presigned URL to the AES-256-encrypted zip plus the password to extract it.\n\n" +
   "Availability:\n" +
@@ -237,11 +238,11 @@ server.tool(
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/migrations/${id}/download-package`);
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "complete_migration_job",
   "Complete a manual job that requires user action. Used for jobs with type MANUAL_SYNC_LOVABLE, " +
   "MANUAL_SYNC_BASE44, MANUAL_EXPORT_DATA, MANUAL_IMPORT_DATA, etc. The job must be in READY status. " +
@@ -268,11 +269,11 @@ server.tool(
       method: "POST",
       body: JSON.stringify(body),
     });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "choose_data_import_method",
   "Choose how to import data in Phase 3. Call this when a MANUAL_CHOOSE_DATA_IMPORT_METHOD job is READY. " +
   "IMPORTANT: You MUST present these options to the user and ask them to choose before calling this tool:\n" +
@@ -290,11 +291,11 @@ server.tool(
       method: "POST",
       body: JSON.stringify({ method }),
     });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "choose_backend_switchover",
   "Choose how to handle backend switchover in Phase 7. Call when MANUAL_CHOOSE_BACKEND_SWITCHOVER is READY. " +
   "IMPORTANT: You MUST present these options to the user and ask them to choose before calling this tool. " +
@@ -321,11 +322,11 @@ server.tool(
       method: "POST",
       body: JSON.stringify({ method, choice: choice ?? method }),
     });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "choose_frontend_deploy",
   "Choose how to handle frontend deployment in Phase 8 (Next Steps). Call when MANUAL_CHOOSE_FRONTEND_DEPLOY is READY. " +
   "IMPORTANT: You MUST present these options to the user and ask them to choose before calling this tool:\n" +
@@ -345,11 +346,11 @@ server.tool(
       method: "POST",
       body: JSON.stringify({ method, choice: choice ?? method }),
     });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "validate_function_url",
   "Validate that a Supabase edge function URL is reachable and responding. Use during Phase 3 " +
   "after the edge function has been deployed by the user pasting 'deploy staticbot edge function' " +
@@ -368,11 +369,11 @@ server.tool(
       method: "POST",
       body: JSON.stringify({ functionUrl }),
     });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "list_integration_instances",
   "List all connected integrations for the organization. Each instance has a 'type' field " +
   "identifying whether it is 'supabase', 'github', 'base44', etc. Use the instance with type='supabase' " +
@@ -382,11 +383,11 @@ server.tool(
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async () => {
     const data = await apiFetch("/api/v1/migrations/integrations/instances");
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "list_supabase_projects",
   "List all Supabase projects accessible through a connected Supabase integration instance. " +
   "Returns project name, reference ID, region, and status. Use the project's id field as " +
@@ -401,7 +402,7 @@ server.tool(
     const data = await apiFetch(
       `/api/v1/migrations/integrations/instances/${supabaseIntegrationInstanceId}/supabase-projects`
     );
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 }

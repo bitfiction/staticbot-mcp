@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import type { ToolContext } from "../context.js";
+import { apiToolResult, registerApiTool } from "../server/api-tool.js";
 
 /**
  * Registered on every transport. Bodies are unchanged from the original single-file server; the only
@@ -11,18 +12,18 @@ import type { ToolContext } from "../context.js";
 export function registerStackTools(server: McpServer, { apiFetch, toText }: ToolContext): void {
 // ─── Stacks ──────────────────────────────────────────────────────────────────
 
-server.tool(
+registerApiTool(server,
   "list_stacks",
   "List all infrastructure stacks. A stack groups one or more templates with a domain assignment. Each stack can have multiple deployments.",
   {},
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async () => {
     const data = await apiFetch("/api/v1/stacks");
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "get_stack",
   "Get details of a stack including its templates and config overrides. Every override key is listed; values are returned for location-shaped keys (URLs, regions, names, branches) and \"[REDACTED]\" for credential-shaped ones.",
   {
@@ -31,11 +32,11 @@ server.tool(
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/stacks/${id}`);
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "create_stack",
   "Create a new infrastructure stack from a template. A stack ties a template to a domain and becomes deployable. Call list_templates first to find the right templateId. Staticbot analyzes the template's repository and owns the hosting decision: static sites route to the supported AWS static target, SSR/full-stack apps route to the supported Cloudflare Workers target, and Staticbot applies the ownership model available for that flow. Do not infer or send a provider choice. Report the returned `hostingWorkload`, `deploymentTarget`, and `infrastructureOwnership` fields to the user.\n\nFor templates that use Supabase, pass supabaseIntegrationInstanceId + supabaseProjectRef. Staticbot fills and refreshes the declared Supabase configuration from the connected account; never ask the user for Supabase API keys.",
   {
@@ -82,7 +83,7 @@ server.tool(
       method: "POST",
       body: JSON.stringify(body),
     });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 }

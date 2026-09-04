@@ -2,13 +2,14 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import type { ToolContext } from "../context.js";
+import { apiToolResult, registerApiTool } from "../server/api-tool.js";
 
 /** Safe DNS actions shared by the local and hosted MCP transports. */
 export function registerDeploymentDnsTools(
   server: McpServer,
   { apiFetch, toText }: ToolContext,
 ): void {
-  server.tool(
+  registerApiTool(server,
     "push_dns_to_cloudflare",
     "Push a deployment's certificate-validation and website-routing DNS records into the customer's " +
       "linked Cloudflare zone. This is an external DNS write, although it is idempotent and never changes " +
@@ -30,11 +31,11 @@ export function registerDeploymentDnsTools(
         `/api/v1/deployments/${deploymentId}/dns/${domainId}/push-cloudflare`,
         { method: "POST" },
       );
-      return { content: [{ type: "text", text: toText(data) }] };
+      return apiToolResult(data, toText);
     },
   );
 
-  server.tool(
+  registerApiTool(server,
     "recheck_dns_verification",
     "Ask Cloudflare to retry custom-hostname domain-control validation for a Cloudflare Workers " +
       "deployment, then return refreshed certificate and hostname-routing status. Call this after DNS " +
@@ -51,7 +52,7 @@ export function registerDeploymentDnsTools(
         `/api/v1/deployments/${deploymentId}/worker-app-dns/recheck`,
         { method: "POST" },
       );
-      return { content: [{ type: "text", text: toText(data) }] };
+      return apiToolResult(data, toText);
     },
   );
 }

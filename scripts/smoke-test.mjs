@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createServer } from "node:http";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
   StdioClientTransport,
@@ -19,13 +20,24 @@ const expectedTools = [
 
 const installedCommand = process.env.STATICBOT_MCP_COMMAND;
 
+const apiServer = createServer((_request, response) => {
+  response.writeHead(200, { "Content-Type": "application/json" });
+  response.end("[]");
+});
+await new Promise((resolve, reject) => {
+  apiServer.once("error", reject);
+  apiServer.listen(0, "127.0.0.1", resolve);
+});
+const address = apiServer.address();
+assert(address && typeof address === "object", "mock API server must expose its port");
+
 const transport = new StdioClientTransport({
   command: installedCommand ?? process.execPath,
   args: installedCommand ? [] : ["dist/index.js"],
   env: {
     ...getDefaultEnvironment(),
     STATICBOT_API_KEY: "smoke-test-only",
-    STATICBOT_API_URL: "http://127.0.0.1:9",
+    STATICBOT_API_URL: `http://127.0.0.1:${address.port}`,
   },
   stderr: "pipe",
 });
@@ -54,6 +66,11 @@ try {
   for (const tool of tools) {
     assert(tool.description, `tool ${tool.name} must have a description`);
     assert(tool.inputSchema, `tool ${tool.name} must have an input schema`);
+    assert(tool.outputSchema, `tool ${tool.name} must have an output schema`);
+    assert(
+      tool.outputSchema.properties?.result,
+      `tool ${tool.name} output schema must expose the structured API result`,
+    );
   }
 
   const confirmMigration = tools.find(({ name }) => name === "confirm_migration");
@@ -69,7 +86,17 @@ try {
     "target cleanup scopes must match the public API",
   );
 
+  const listResult = await client.callTool({ name: "list_templates", arguments: {} });
+  assert.deepEqual(
+    listResult.structuredContent,
+    { result: [] },
+    "tools must return the API JSON through structuredContent.result",
+  );
+
   console.log(`MCP smoke test passed: ${tools.length} tools registered`);
 } finally {
   await client.close();
+  await new Promise((resolve, reject) => {
+    apiServer.close((error) => error ? reject(error) : resolve());
+  });
 }

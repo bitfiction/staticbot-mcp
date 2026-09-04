@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import type { ToolContext } from "../context.js";
+import { apiToolResult, registerApiTool } from "../server/api-tool.js";
 
 /**
  * Registered on every transport. Bodies are unchanged from the original single-file server; the only
@@ -11,7 +12,7 @@ import type { ToolContext } from "../context.js";
 export function registerDeploymentTools(server: McpServer, { apiFetch, toText }: ToolContext): void {
 // ─── Deployments ─────────────────────────────────────────────────────────────
 
-server.tool(
+registerApiTool(server,
   "list_deployments",
   "List all deployments. Optionally filter by stackId. Each deployment represents one execution of a stack's infrastructure.",
   {
@@ -21,11 +22,11 @@ server.tool(
   async ({ stackId }) => {
     const qs = stackId ? `?stackId=${encodeURIComponent(stackId)}` : "";
     const data = await apiFetch(`/api/v1/deployments${qs}`);
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "create_deployment",
   "Create a new deployment for a stack. This prepares the deployment but does NOT start it — call start_deployment next. Default type is APPLY (creates real resources). Use PLAN for a dry-run preview.",
   {
@@ -41,11 +42,11 @@ server.tool(
       method: "POST",
       body: JSON.stringify(body),
     });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "start_deployment",
   "Start a deployment that was created with create_deployment. The deployment must be in CREATED status. Once started, Staticbot provisions the repository-derived target stored on the stack. Poll get_deployment to track progress.",
   {
@@ -54,11 +55,11 @@ server.tool(
   { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/deployments/${id}/start`, { method: "POST" });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "get_deployment",
   "Get the status of a deployment and the per-domain DNS state. Poll this for progress. " +
   "Statuses: CREATED → PENDING → IN_PROGRESS → WAITING → COMPLETED (or FAILED).\n\n" +
@@ -94,7 +95,7 @@ server.tool(
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/deployments/${id}`);
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 }

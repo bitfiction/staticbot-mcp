@@ -32,6 +32,18 @@ call Lovable's MCP itself.
 The manual path it fell back to is the only path now, and it is the one the pipeline already
 describes: the user pastes "deploy staticbot edge function" into the Lovable AI chat.
 
+## Structured results
+
+Every API-backed tool is registered through `registerApiTool`. Its descriptor declares the shared
+`outputSchema`, and its result keeps the original JSON text for older clients while also returning
+the parsed public-API response as `structuredContent.result`. The wrapper is deliberate: some API
+endpoints return objects, others return arrays or empty results, while MCP structured content must
+always have an object at the top level.
+
+Keep response DTO details in the public API and its OpenAPI annotations. Duplicating those evolving
+DTOs across all MCP tool files would create a second, stale contract; the MCP layer promises the
+stable `{ result: JSONValue }` envelope and each tool description documents the fields agents need.
+
 ## Statelessness
 
 Nothing here holds cross-request state, which is what makes a hosted transport viable at more than

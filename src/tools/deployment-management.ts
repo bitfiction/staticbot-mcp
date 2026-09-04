@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import type { ToolContext } from "../context.js";
+import { apiToolResult, registerApiTool } from "../server/api-tool.js";
 
 /**
  * Registered on every transport. Bodies are unchanged from the original single-file server; the only
@@ -11,7 +12,7 @@ import type { ToolContext } from "../context.js";
 export function registerDeploymentManagementTools(server: McpServer, { apiFetch, toText }: ToolContext): void {
 // ─── Deployment management ─────────────────────────────────────────────
 
-server.tool(
+registerApiTool(server,
   "get_auto_deploy_settings",
   "Get the automatic-update flags for a deployment. `autoDeployLatestWebsite` controls whether a new website template version is deployed automatically; `autoDeployLatestInfra` is reserved for infrastructure updates.",
   {
@@ -20,11 +21,11 @@ server.tool(
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/deployments/${id}/auto-deploy-settings`);
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "update_auto_deploy_settings",
   "Update automatic-update flags for a deployment. Omitted fields keep their current values. " +
   "IMPORTANT: Confirm the requested settings with the user before calling this tool.",
@@ -42,11 +43,11 @@ server.tool(
       method: "PATCH",
       body: JSON.stringify(body),
     });
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "get_auto_deploy_info",
   "Check whether Automatic Updates are available for a deployment and inspect its GitHub webhook state. Returns fields including `available`, `webhookConfigured`, `canSetupWebhook`, and `isGithubRepo`. Automatic Updates do not apply to preview stacks.",
   {
@@ -55,11 +56,11 @@ server.tool(
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/deployments/${id}/auto-deploy-info`);
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "list_rollback_versions",
   "List the recent commit-pinned website template versions that are valid rollback targets for a deployment, newest first. Use only a returned `templateId` with rollback_website; do not infer a target from a commit SHA or version label.",
   {
@@ -68,11 +69,11 @@ server.tool(
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ id }) => {
     const data = await apiFetch(`/api/v1/deployments/${id}/rollback-versions`);
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "rollback_website",
   "Roll a static website back to a specific commit-pinned template version. Call list_rollback_versions first. " +
   "IMPORTANT: Present the exact returned target version and commit to the user and get explicit confirmation before calling this tool. Never supply an inferred or unverified template ID. " +
@@ -87,11 +88,11 @@ server.tool(
       `/api/v1/deployments/${id}/rollback-website?templateId=${encodeURIComponent(templateId)}`,
       { method: "POST" }
     );
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 
-server.tool(
+registerApiTool(server,
   "redeploy_website",
   "Rebuild and redeploy the static website component. By default it redeploys the currently pinned template version; set `useLatest=true` to pull the latest version first. Returns the worker job ID; poll get_deployment to track progress.",
   {
@@ -104,7 +105,7 @@ server.tool(
       `/api/v1/deployments/${id}/redeploy-website?useLatest=${useLatest ?? false}`,
       { method: "POST" }
     );
-    return { content: [{ type: "text", text: toText(data) }] };
+    return apiToolResult(data, toText);
   }
 );
 }

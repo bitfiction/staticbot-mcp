@@ -4,7 +4,7 @@
   "app_info": {
     "display_name": "Staticbot",
     "subtitle": "Deploy and migrate web apps",
-    "description": "Staticbot helps users deploy websites, manage deployment DNS and updates, migrate application backends to Supabase, and operate continuous sync through ChatGPT.",
+    "description": "Staticbot helps users deploy websites, manage deployment DNS and updates, migrate application backends to Supabase, operate continuous sync, and find available migration support routes through ChatGPT.",
     "category": "DEVELOPER_TOOLS"
   },
   "tools": {
@@ -19,7 +19,7 @@
     "get_template": {
       "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
       "justifications": {
-        "read_only_justification": "Only retrieves configuration details for the selected template.",
+        "read_only_justification": "Only retrieves the selected template's configuration, returning non-secret location values while credential-shaped values remain redacted.",
         "open_world_justification": "Does not change public internet state or an external system.",
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
@@ -43,7 +43,7 @@
     "get_stack": {
       "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
       "justifications": {
-        "read_only_justification": "Only retrieves the selected stack and its configuration.",
+        "read_only_justification": "Only retrieves the selected stack's configuration, returning non-secret location values while credential-shaped values remain redacted.",
         "open_world_justification": "Does not change public internet state or an external system.",
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
@@ -163,7 +163,7 @@
     "get_migration": {
       "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
       "justifications": {
-        "read_only_justification": "Only retrieves migration status, phases, conflicts, gates, and next actions.",
+        "read_only_justification": "Only retrieves migration status, phases, conflicts, gates, next actions, and available human-support routes.",
         "open_world_justification": "Does not change a migration or an external system.",
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
@@ -235,7 +235,7 @@
     "create_migration": {
       "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
       "justifications": {
-        "read_only_justification": "Creates a private migration and begins the discovery phase.",
+        "read_only_justification": "Creates a private migration and begins source discovery, including Firebase migrations that do not require a repository template.",
         "open_world_justification": "Discovery reads source systems and pauses for approval before target writes begin.",
         "destructive_justification": "Does not apply target changes until a later explicit confirmation."
       }
@@ -251,9 +251,9 @@
     "complete_migration_job": {
       "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
-        "read_only_justification": "Marks a READY manual job complete and lets dependent migration work proceed.",
-        "open_world_justification": "Dependent migration jobs can continue changing connected external systems.",
-        "destructive_justification": "The manual job completion cannot be undone and may advance the pipeline, with function validation required where applicable."
+        "read_only_justification": "Marks a READY manual job complete and can attach user-approved DDL for the dependent schema-application job.",
+        "open_world_justification": "Dependent migration jobs can apply the approved schema or other migration changes to connected external systems.",
+        "destructive_justification": "The manual completion and approved DDL cannot be withdrawn through this tool after the migration pipeline advances."
       }
     },
     "choose_data_import_method": {
@@ -419,11 +419,11 @@
       "expected_output_url": null
     },
     {
-      "description": "Create a template from a public GitHub repository.",
-      "user_prompt": "Create a Staticbot template from https://github.com/bitfiction/staticbot-mcp and name it Staticbot MCP Review.",
+      "description": "Complete an explicitly approved Firebase schema-review job.",
+      "user_prompt": "I reviewed and approved the proposed DDL for the selected Firebase migration job. Complete that manual schema-review job using the approved DDL.",
       "file_attachment_urls": null,
-      "tools_triggered": "create_template",
-      "expected_output": "Creates a private template and returns the detected workload and template details without changing the repository.",
+      "tools_triggered": "complete_migration_job",
+      "expected_output": "Records the approved DDL for the selected READY manual job and reports that dependent migration work may proceed.",
       "expected_output_url": null
     },
     {
@@ -439,7 +439,7 @@
       "user_prompt": "Show the status and next required action for the Staticbot migration we selected.",
       "file_attachment_urls": null,
       "tools_triggered": "get_migration",
-      "expected_output": "Returns migration phases, pending action, relevant review gates, and failure information.",
+      "expected_output": "Returns migration phases, pending action, relevant review gates, failure information, and any available human-support route.",
       "expected_output_url": null
     },
     {

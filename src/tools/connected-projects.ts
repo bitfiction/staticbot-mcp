@@ -100,15 +100,20 @@ registerApiTool(server,
 
 registerApiTool(server,
   "confirm_sync_run",
-  "Confirm a sync run that is PAUSED_FOR_REVIEW. Destructive database migrations (DROP TABLE, ALTER COLUMN) pause the sync for review before applying. Optionally skip the destructive migrations instead of applying them.",
+  "Confirm a sync run that is PAUSED_FOR_REVIEW. Destructive database migrations (DROP TABLE, ALTER COLUMN) pause the sync for review before applying. Optionally skip the destructive migrations instead of applying them. " +
+  "WARNING: skipDestructive is PERMANENT, not a deferral. The run still completes, so the next sync diffs from this run's commit and the skipped migrations are never re-applied — they stay in the repo, absent from the live database, and nothing reports the divergence. Later migrations that assume the change will fail with errors that look unrelated. " +
+  "The API returns 400 unless acknowledged is true; show the user the returned consequence and get explicit approval, then re-send. Never set acknowledged just to clear the error.",
   {
     projectId: z.string().uuid().describe("Connected project ID"),
     runId: z.string().uuid().describe("Sync run ID"),
     skipDestructive: z.boolean().optional().describe("If true, skip destructive migrations instead of applying them"),
+    acknowledged: z.boolean().optional().describe("Required with skipDestructive. Only set true after the user has been shown that the skip is permanent and has explicitly agreed."),
   },
   { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
-  async ({ projectId, runId, skipDestructive }) => {
-    const body = skipDestructive !== undefined ? { skipDestructive } : {};
+  async ({ projectId, runId, skipDestructive, acknowledged }) => {
+    const body: Record<string, boolean> = {};
+    if (skipDestructive !== undefined) body.skipDestructive = skipDestructive;
+    if (acknowledged !== undefined) body.acknowledged = acknowledged;
     const data = await apiFetch(`/api/v1/connected-projects/${projectId}/sync-runs/${runId}/confirm`, {
       method: "POST",
       body: JSON.stringify(body),
@@ -137,16 +142,34 @@ registerApiTool(server,
 registerApiTool(server,
   "skip_sync_run",
   "Skip all failed jobs in a connected-project sync run, marking them completed with `skipped=true`. The run must be FAILED. " +
-  "IMPORTANT: Explain which failed work will be skipped and get explicit user confirmation before calling this tool.",
+  "WARNING: this is PERMANENT, not a deferral. The run completes, so the next sync diffs from this run's commit and the skipped migrations are never re-detected — they stay in the repo, absent from the live database, and nothing reports the divergence afterwards. " +
+  "Prefer retry_sync_run: most sync failures are transient (expired token, upstream 5xx, timeout), and re-applying a migration that already landed is safe — it is detected as already-existing rather than failing. " +
+  "The API returns 400 unless acknowledged is true; show the user the returned consequence and get explicit approval, then re-send. Never set acknowledged just to clear the error.",
   {
     projectId: z.string().uuid().describe("Connected project ID"),
     runId: z.string().uuid().describe("Failed sync run ID"),
+    acknowledged: z.boolean().optional().describe("Only set true after the user has been shown which work is permanently discarded and has explicitly agreed."),
   },
   { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
-  async ({ projectId, runId }) => {
+  async ({ projectId, runId, acknowledged }) => {
     const data = await apiFetch(`/api/v1/connected-projects/${projectId}/sync-runs/${runId}/skip`, {
       method: "POST",
+      body: JSON.stringify(acknowledged !== undefined ? { acknowledged } : {}),
     });
+    return apiToolResult(data, toText);
+  }
+);
+
+registerApiTool(server,
+  "get_sync_schema_gaps",
+  "List SQL migrations that continuous sync was asked to apply to this project's live database and never applied — a run failed and was never retried, or the work was skipped — where the diff window has since moved past them, so no future sync will re-offer them. Each entry means the file exists in the repo and is missing from the database. " +
+  "An empty list is the healthy case. Report these to the user; do NOT try to re-apply them automatically — replaying months-old DDL against a live database is the user's decision.",
+  {
+    projectId: z.string().uuid().describe("Connected project ID"),
+  },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  async ({ projectId }) => {
+    const data = await apiFetch(`/api/v1/connected-projects/${projectId}/schema-gaps`);
     return apiToolResult(data, toText);
   }
 );

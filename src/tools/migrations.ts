@@ -31,7 +31,7 @@ registerApiTool(server,
   "Get the current status and phase breakdown of a migration. The response includes all migration phases (Discovery, DB Migration, Data Import, Edge Functions, Storage Buckets, Auth Config, Backend Switchover, Preview & Verify, Continuous Sync, Download, Follow-ups) with their individual statuses, plus sourceType (LOVABLE_SUPABASE / BOLT_SUPABASE / FIREBASE / BASE44_SUPABASE / BASE44_NATIVE), targetType (SUPABASE_CLOUD / SUPABASE_SELF_HOSTED), and packageAvailable (true once the downloadable zip is ready — fetch via download_package).\n\n" +
   "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. New pre-flight states are explicit: REVIEW_TARGET_CONFLICTS → present `targetConflictReport`, then either call clean_migration_target after destructive confirmation or call confirm_migration only after the user explicitly declines cleanup; WAIT_FOR_TARGET_CLEANUP → poll; RETRY_TARGET_CLEANUP → call retry_migration_job (never skip cleanup); CHOOSE_MIGRATION_STRATEGY → present `preFlightGate.actions` and consequences, then call confirm_migration with the selected gateChoice. Other types: CONFIRM, RETRY_OR_SKIP, PROVIDE_BASE44_SECRETS, RESOLVE_SCHEMA_GAP, CHOOSE_BACKEND_SWITCHOVER, CHOOSE_DATA_IMPORT_METHOD, CHOOSE_FRONTEND_DEPLOY, COMPLETE_MANUAL_JOB. When `pendingAction` is null, poll only while the status is flowing.\n\n" +
   "The response exposes `preFlightGate` with backend-authored labels, consequences, export files, and the accepted choice IDs. It also exposes `targetConflictReport` with conflicting objects, cleanup scopes, `confirmationProjectRef`, and endpoint paths. Present these fields instead of inventing or defaulting a choice.\n\n" +
-  "The response also includes `failureBanner` with categorised error info (category, title, body, severity, actionable, followupNote, retryable) when a job has a categorised failure. Use this to present richer error feedback. When `retryable=false`, prefer skip_migration_job or an AI-assisted fix over repeating deterministic SQL that will fail again; `retryable=null` means the cause may be environmental.\n\n" +
+  "The response also includes `failureBanner` with categorised error info (category, title, body, severity, actionable, followupNote, retryable) when a job has a categorised failure. Use this to present richer error feedback. When `retryable=false`, prefer skip_migration_job or an AI-assisted fix over repeating deterministic SQL that will fail again — but check the job's `skipGuard` first, because a guarded job breaks the migration if skipped and needs the user's explicit approval; `retryable=null` means the cause may be environmental.\n\n" +
   "The `support` field reports whether this migration is SELF_SERVICE, SUPPORTED, or SUPPORT_WINDOW_ENDED, together with available human-support contact details. `consultationUrl` is returned only for SUPPORTED migrations and books the optional consultation already included in that migration's existing support entitlement; it is never a purchase, checkout, or upgrade route. When support is active, use those routes for human escalation instead of implying the MCP itself provides human support. Purchase and operator-grant actions are intentionally unavailable through MCP.\n\n" +
   "**Polling Phase 7 (Backend Switchover):** the response also includes `previewDeployment` (null until Phase 7 provisions one) with its own independent status. Important: the migration itself can be marked COMPLETED while `previewDeployment.status` is still IN_PROGRESS — the preview Terraform applies in the background. When babysitting a migration toward 'live preview ready', also poll `previewDeployment.status` until it reaches COMPLETED. Treat anything other than COMPLETED/FAILED/ABORTED/DESTROYED/CLEANED_UP as 'still progressing'. Use `previewDeployment.createdAt` to compute elapsed time so you can give the user a sense of progress without spamming this endpoint — once-every-5s is plenty.",
   {
@@ -109,7 +109,8 @@ registerApiTool(server,
 
 registerApiTool(server,
   "get_migration_jobs",
-  "Get all jobs for a migration. Jobs are the individual work units within each phase (e.g. 'migrate_schema', 'import_data', 'deploy_edge_function_X'). Use this to understand what's happening at a granular level, diagnose failures, or find a jobId for retry/skip. For IN_PROGRESS long-running jobs (e.g. CALL_EXPORT_TO_TARGET on multi-table sources), each job's `progressMessage` field carries a human-readable subtitle like \"Exporting table 'startups' (8/10)\" so you can report concrete progress without waiting for completion.",
+  "Get all jobs for a migration. Jobs are the individual work units within each phase (e.g. 'migrate_schema', 'import_data', 'deploy_edge_function_X'). Use this to understand what's happening at a granular level, diagnose failures, or find a jobId for retry/skip. For IN_PROGRESS long-running jobs (e.g. CALL_EXPORT_TO_TARGET on multi-table sources), each job's `progressMessage` field carries a human-readable subtitle like \"Exporting table 'startups' (8/10)\" so you can report concrete progress without waiting for completion. " +
+  "Each job also carries `skipGuard`: null means it is freely skippable, non-null means skipping it breaks the migration. Read it before offering a skip and relay `consequence` and `alternative` to the user rather than discovering the gate by triggering a 400.",
   {
     id: z.string().uuid().describe("Migration ID"),
   },
@@ -135,13 +136,20 @@ registerApiTool(server,
 
 registerApiTool(server,
   "skip_migration_job",
-  "Skip a migration job that is blocking progress. The job will be marked as SKIPPED and dependent jobs will proceed. Use this when a job is non-critical (e.g. an edge function that can be deployed manually later) or when retry won't help.",
+  "Skip a migration job that is blocking progress. The job will be marked as SKIPPED and dependent jobs will proceed. Use this when a job is non-critical (e.g. an edge function that can be deployed manually later) or when retry won't help. " +
+  "FIRST check the job's `skipGuard` from get_migration_jobs. When it is non-null, skipping breaks the rest of the migration — present `skipGuard.consequence` and `skipGuard.alternative` to the user verbatim, get explicit approval, then call again with acknowledged=true. " +
+  "The jobs that deploy the Staticbot export function to the source project (MANUAL_SYNC_LOVABLE, MANUAL_SYNC_BASE44, LOVABLE_MCP_SYNC, AUTO_DEPLOY_EXPORT_FUNCTION) are the main case: that function is the only way to read the customer's data, so skipping it makes the data import fail with \"function not found\". The API re-checks whether the function is live and returns 400 if it is not. " +
+  "Never set acknowledged just to clear that 400.",
   {
     jobId: z.string().uuid().describe("Migration job ID (from get_migration_jobs)"),
+    acknowledged: z.boolean().optional().describe("Required for jobs with a non-null skipGuard. Only set true after the user has been shown the consequence and has explicitly agreed."),
   },
   { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
-  async ({ jobId }) => {
-    const data = await apiFetch(`/api/v1/migrations/jobs/${jobId}/skip`, { method: "POST" });
+  async ({ jobId, acknowledged }) => {
+    const data = await apiFetch(`/api/v1/migrations/jobs/${jobId}/skip`, {
+      method: "POST",
+      body: JSON.stringify(acknowledged !== undefined ? { acknowledged } : {}),
+    });
     return apiToolResult(data, toText);
   }
 );

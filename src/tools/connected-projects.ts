@@ -150,7 +150,10 @@ registerApiTool(server,
     runId: z.string().uuid().describe("Failed sync run ID"),
     acknowledged: z.boolean().optional().describe("Only set true after the user has been shown which work is permanently discarded and has explicitly agreed."),
   },
-  { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+  // openWorldHint: true — skipping does not just annotate Staticbot's own state. The run returns to
+  // IN_PROGRESS, so its remaining jobs go on to apply SQL to the customer's Supabase and redeploy
+  // their frontend. Same reach as retry_sync_run and confirm_sync_run.
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
   async ({ projectId, runId, acknowledged }) => {
     const data = await apiFetch(`/api/v1/connected-projects/${projectId}/sync-runs/${runId}/skip`, {
       method: "POST",

@@ -369,10 +369,10 @@
       }
     },
     "skip_sync_run": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Marks every failed job in the sync run completed without applying that work.",
-        "open_world_justification": "Changes only Staticbot's private run state and does not apply changes externally.",
+        "open_world_justification": "Reopens the run, so its remaining jobs can apply changes to the connected Supabase project and the deployed frontend.",
         "destructive_justification": "Permanently skips the failed work after the tool description requires explanation and explicit confirmation."
       }
     },

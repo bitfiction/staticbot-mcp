@@ -38,7 +38,9 @@ registerApiTool(server,
 
 registerApiTool(server,
   "create_stack",
-  "Create a new infrastructure stack from a template. A stack ties a template to a domain and becomes deployable. Call list_templates first to find the right templateId. Staticbot analyzes the template's repository and owns the hosting decision: static sites route to the supported AWS static target, SSR/full-stack apps route to the supported Cloudflare Workers target, and Staticbot applies the ownership model available for that flow. Do not infer or send a provider choice. Report the returned `hostingWorkload`, `deploymentTarget`, and `infrastructureOwnership` fields to the user.\n\nFor templates that use Supabase, pass supabaseIntegrationInstanceId + supabaseProjectRef. Staticbot fills and refreshes the declared Supabase configuration from the connected account; never ask the user for Supabase API keys.",
+  "Create a new infrastructure stack from a template. A stack ties a template to a domain and becomes deployable. Call list_templates first to find the right templateId. Staticbot analyzes the template's repository and owns the hosting decision: static sites route to the supported AWS static target, SSR/full-stack apps route to the supported Cloudflare Workers target. Report the returned `hostingWorkload`, `deploymentTarget`, and `infrastructureOwnership` fields to the user.\n\n" +
+  "**Never invent a provider or an account.** Leave `cloudflareChoice` unset and Staticbot hosts the app. The ONE thing you may opt into is WHERE a Cloudflare Workers app is hosted: if the user has connected their own Cloudflare account and wants the Worker deployed into it, call list_cloudflare_hosting_targets, let the user choose, then preflight_cloudflare_hosting and pass the preflight's chosen `value` as cloudflareChoice. Do not guess that choice from their setup, and do not pass an account ID, zone ID or a made-up value — only a `value` the hosting-targets response returned.\n\n" +
+  "For templates that use Supabase, pass supabaseIntegrationInstanceId + supabaseProjectRef. Staticbot fills and refreshes the declared Supabase configuration from the connected account; never ask the user for Supabase API keys.",
   {
     name: z.string().describe("Human-readable name for the stack (e.g. 'My Portfolio Site')"),
     templateId: z.string().uuid().describe("Template ID — get this from list_templates"),
@@ -64,9 +66,12 @@ registerApiTool(server,
     supabaseProjectRef: z.string().optional().describe(
       "Optional. Supabase project reference (the subdomain part of https://<ref>.supabase.co) — get it from list_supabase_projects. Must be set together with supabaseIntegrationInstanceId to enable auto-refresh."
     ),
+    cloudflareChoice: z.string().optional().describe(
+      "Optional, Cloudflare Workers / SSR apps only. Where to host the app: the `value` of a choice from list_cloudflare_hosting_targets (its `managed.value` for Staticbot hosting, or a `customerOptions[].value` for the user's own Cloudflare account). Omit for Staticbot hosting. Only pass a value that response returned, and only after preflight_cloudflare_hosting returned ok — the domain must already live in one of that account's zones."
+    ),
   },
   { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  async ({ name, templateId, configOverrides, domainOption, supabaseIntegrationInstanceId, supabaseProjectRef }) => {
+  async ({ name, templateId, configOverrides, domainOption, supabaseIntegrationInstanceId, supabaseProjectRef, cloudflareChoice }) => {
     const body: Record<string, unknown> = {
       name,
       templateId,
@@ -78,6 +83,11 @@ registerApiTool(server,
     if (supabaseIntegrationInstanceId && supabaseProjectRef) {
       body.supabaseIntegrationInstanceId = supabaseIntegrationInstanceId;
       body.supabaseProjectRef = supabaseProjectRef;
+    }
+    // Only forward a hosting choice the user actually made. The server resolves the zone and
+    // re-validates the choice, so a stale one fails loudly rather than deploying somewhere wrong.
+    if (cloudflareChoice) {
+      body.cloudflareChoice = cloudflareChoice;
     }
     const data = await apiFetch("/api/v1/stacks", {
       method: "POST",

@@ -3,7 +3,8 @@
 Every tool declares `readOnlyHint`, `destructiveHint` and `openWorldHint`. OpenAI's plugin review
 requires all three, and a client uses them to decide how much confirmation a call needs.
 
-50 tools: **21 read-only**, **13 destructive**, **18 that can change public or external state**.
+53 tools: **24 read-only**, **13 destructive**, **19 that can change public or external state**.
+(Counts are measured from the built server, not maintained by hand — see "Keeping this honest" below.)
 
 ## How each is decided
 
@@ -21,6 +22,11 @@ Deliberately **not** destructive, and worth knowing why:
 - `retry_migration_job` / `retry_sync_run` re-run work that already failed.
 - `resume_migration` releases queued work, but the migration can be paused again.
 - `create_deployment` prepares a deployment; `start_deployment` is what publishes.
+- `list_cloudflare_hosting_targets` / `preflight_cloudflare_hosting` only read which Cloudflare
+  accounts may host an app and whether a hostname is usable. `preflight` is named like an action but
+  takes none — it resolves a zone and reports collisions, and never creates, deletes or takes over
+  anything. Choosing an account is a decision the user makes in `create_stack` / `create_deployment`,
+  which carry their own hints.
 
 ## Justifications for destructive tools
 

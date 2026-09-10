@@ -28,16 +28,32 @@ registerApiTool(server,
 
 registerApiTool(server,
   "create_deployment",
-  "Create a new deployment for a stack. This prepares the deployment but does NOT start it — call start_deployment next. Default type is APPLY (creates real resources). Use PLAN for a dry-run preview.",
+  "Create a new deployment for a stack. This prepares the deployment but does NOT start it — call start_deployment next. Default type is APPLY (creates real resources). Use PLAN for a dry-run preview.\n\n" +
+  "Do not set cloudflareChoice or cloudflareHostname unless the user has chosen to host a Cloudflare Workers app in their OWN Cloudflare account: call list_cloudflare_hosting_targets, let the user pick, then preflight_cloudflare_hosting, and pass that choice plus the hostname. Omit both to use the stack's existing hosting, which is the normal case — Staticbot hosts it.",
   {
     stackId: z.string().uuid().describe("Stack ID to deploy"),
     deploymentType: z.enum(["APPLY", "PLAN", "DRY_RUN"]).optional().describe(
       "APPLY creates real infrastructure (default). PLAN shows what would change without creating anything. DRY_RUN validates the template."
     ),
+    cloudflareChoice: z.string().optional().describe(
+      "Optional, Cloudflare Workers apps deployed into the user's own account only. The `value` of a choice from list_cloudflare_hosting_targets. Omit to use the stack's existing hosting (Staticbot's account by default) — that is the normal case."
+    ),
+    cloudflareHostname: z.string().optional().describe(
+      "Optional. The hostname the app will serve, e.g. 'example.com' or 'app.example.com'. Required together with a customer cloudflareChoice, and one of the hostnames that account's zones cover. Apex is supported."
+    ),
   },
   { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  async ({ stackId, deploymentType }) => {
-    const body = { stackId, deploymentType: deploymentType ?? "APPLY" };
+  async ({ stackId, deploymentType, cloudflareChoice, cloudflareHostname }) => {
+    const body: Record<string, unknown> = { stackId, deploymentType: deploymentType ?? "APPLY" };
+    // Forward only a choice the user actually made. The server re-validates it (ownership, zone,
+    // capability, collisions) inside the create transaction, so a stale choice is rejected rather
+    // than deployed somewhere unexpected.
+    if (cloudflareChoice) {
+      body.cloudflareChoice = cloudflareChoice;
+    }
+    if (cloudflareHostname) {
+      body.cloudflareHostname = cloudflareHostname;
+    }
     const data = await apiFetch("/api/v1/deployments", {
       method: "POST",
       body: JSON.stringify(body),

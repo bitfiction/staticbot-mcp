@@ -28,7 +28,7 @@ registerApiTool(server,
 
 registerApiTool(server,
   "get_template",
-  "Get details of a template including its configuration variables. Each entry has `key`, `configured` (whether a value is set at all), and `value`. `value` is the real value for location-shaped keys (URLs, regions, names, branches) and \"[REDACTED]\" for credential-shaped keys — Staticbot never returns secrets, so read `configured` to tell \"withheld\" apart from \"not set\". Use this to see which configOverrides are available when creating a stack.",
+  "Get details of a template including its backend-classified configuration variables. Each entry has `key`, `configured` (whether a value is set at all), and sanitized `value`. Staticbot never returns credential values, so read `configured` to tell \"withheld\" apart from \"not set\". For migrations, follow `migrationAction`, `collectionStage`, `sensitivity`, `resolution`, `integration`, and `migrationHint`; do not infer meaning or safety from prefixes. Include a configOverride only when `migrationEditable=true`. `migrationBackendDerived=true` means Staticbot derives the value from target state and user input cannot take precedence. `SECURITY_REVIEW` means stop and explain the client-exposure finding; `REVIEW_CONFIGURATION` means the variable needs an explicit template annotation. Never request either as a configOverride. `CONFIGURE_INTEGRATION` is follow-up work, not a migration-creation input.",
   {
     id: z.string().uuid().describe("Template ID"),
   },

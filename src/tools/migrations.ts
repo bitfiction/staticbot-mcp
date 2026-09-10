@@ -199,7 +199,7 @@ registerApiTool(server,
     targetSupabaseProjectRef: z.string().optional().describe("Target Supabase project reference (the subdomain part of the URL). Required for SUPABASE_CLOUD; omit for SUPABASE_SELF_HOSTED."),
     githubIntegrationInstanceId: z.string().uuid().optional().describe("GitHub integration instance ID for repo access"),
     targetSchemaName: z.string().optional().describe("Optional target Postgres schema name"),
-    configOverrides: z.record(z.string()).optional().describe("Non-secret template configuration overrides. Do not place credentials here; connected integrations supply provider credentials."),
+    configOverrides: z.record(z.string()).optional().describe("Optional non-secret creation-time values. Call get_template and include only keys where the backend reports migrationEditable=true and migrationAction is REQUIRED_INPUT or OPTIONAL_OVERRIDE. Never send CONFIGURE_INTEGRATION, SECURITY_REVIEW, or migrationBackendDerived entries. Staticbot derives target aliases from the selected target, and connected integrations or later lifecycle steps handle credentials."),
     firebaseServiceAccountJson: z.string().optional().describe("Firebase service-account JSON. Required for FIREBASE migrations; sent directly to Staticbot and treated as a secret."),
     sourceDeployedUrl: z.string().url().optional().describe("Deployed *.base44.app URL used only for legacy BASE44_SUPABASE source discovery. Staticbot extracts source metadata server-side and never returns keys."),
     packageOptions: z.object({

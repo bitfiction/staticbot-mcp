@@ -14,13 +14,18 @@ Prefer the Staticbot MCP tools named below. The live API and tool schemas are au
 ## Create and execute
 
 1. Call `create_stack` with the template, safe config overrides, domain option, and optional Supabase picker fields. Do not pass or synthesize a provider choice.
-   - The ONE thing you may pass is `cloudflareChoice`, and only for the hosting decision above: a `value` from `list_cloudflare_hosting_targets`, after `preflight_cloudflare_hosting` returned `ok`. Never an account ID, a zone ID, or an invented value.
+   - Cloudflare alone accepts an account-placement default at stack creation: `cloudflareChoice`, using a `value` from `list_cloudflare_hosting_targets` after `preflight_cloudflare_hosting` returned `ok`. Never pass an account ID, zone ID, or invented value.
+   - AWS has no account field on `create_stack`; its concrete account is selected on `create_deployment`.
    - When `preflight_cloudflare_hosting` returns `ok: false`, show the user its `blockingMessage` and do not create anything.
 2. Report `hostingWorkload`, `deploymentTarget`, and `infrastructureOwnership` exactly as Staticbot returns them. If an older server omits these fields, report the template classification and say that the final target is stored server-side rather than asserting a provider.
-3. Call `create_deployment` with `APPLY`, `PLAN`, or `DRY_RUN` as requested. Omit `targetAccountId` for Staticbot-managed hosting; supply only an account identifier returned by Staticbot for an explicitly supported customer-owned flow.
+3. If the stack's `deploymentTarget` is `AWS_STATIC`, call `list_aws_hosting_targets` with its exact `stackId` before creating the deployment.
+   - Render `managed` only when non-null, render every `customerOptions[].label`, and surface every `notices[]` line verbatim.
+   - If one usable option exists, use it without asking. If several exist, let the user choose. If none exist, stop and show the notices.
+   - Pass only the selected option's exact `value` as `targetAccountId`. It decides ownership: the managed value means Staticbot-managed infrastructure and a customer account means customer-managed infrastructure. Never invent an account id or send `infrastructureOwnership`.
+4. Call `create_deployment` with `APPLY`, `PLAN`, or `DRY_RUN` as requested.
    - Omit `cloudflareChoice` / `cloudflareHostname` unless the user explicitly chose their own Cloudflare account for this deployment; when they did, pass the preflighted choice and the exact hostname.
-4. Inspect the created deployment, then call `start_deployment` when authorized.
-5. Poll `get_deployment` every 10–20 seconds until terminal or user action is required.
+5. Inspect the created deployment, then call `start_deployment` when authorized.
+6. Poll `get_deployment` every 10–20 seconds until terminal or user action is required.
 
 ## DNS and completion
 

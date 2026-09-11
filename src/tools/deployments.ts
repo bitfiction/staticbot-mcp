@@ -29,11 +29,15 @@ registerApiTool(server,
 registerApiTool(server,
   "create_deployment",
   "Create a new deployment for a stack. This prepares the deployment but does NOT start it — call start_deployment next. Default type is APPLY (creates real resources). Use PLAN for a dry-run preview.\n\n" +
+  "For an AWS-hosted stack, call list_aws_hosting_targets with the stackId first and pass the selected option's exact `value` as targetAccountId. That value DECIDES infrastructure ownership: the managed value means Staticbot-managed hosting and a customer account value means customer-managed hosting. Never invent an account id or send infrastructureOwnership.\n\n" +
   "Do not set cloudflareChoice or cloudflareHostname unless the user has chosen to host a Cloudflare Workers app in their OWN Cloudflare account: call list_cloudflare_hosting_targets, let the user pick, then preflight_cloudflare_hosting, and pass that choice plus the hostname. Omit both to use the stack's existing hosting, which is the normal case — Staticbot hosts it.",
   {
     stackId: z.string().uuid().describe("Stack ID to deploy"),
     deploymentType: z.enum(["APPLY", "PLAN", "DRY_RUN"]).optional().describe(
       "APPLY creates real infrastructure (default). PLAN shows what would change without creating anything. DRY_RUN validates the template."
+    ),
+    targetAccountId: z.string().optional().describe(
+      "AWS-hosted stacks only. The exact `value` selected from list_aws_hosting_targets. This value is the ownership choice: the managed value means Staticbot-managed infrastructure; a customer account value means customer-managed infrastructure. Never invent an account id or pass infrastructureOwnership."
     ),
     cloudflareChoice: z.string().optional().describe(
       "Optional, Cloudflare Workers apps deployed into the user's own account only. The `value` of a choice from list_cloudflare_hosting_targets. Omit to use the stack's existing hosting (Staticbot's account by default) — that is the normal case."
@@ -43,8 +47,13 @@ registerApiTool(server,
     ),
   },
   { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  async ({ stackId, deploymentType, cloudflareChoice, cloudflareHostname }) => {
+  async ({ stackId, deploymentType, targetAccountId, cloudflareChoice, cloudflareHostname }) => {
     const body: Record<string, unknown> = { stackId, deploymentType: deploymentType ?? "APPLY" };
+    // An AWS account value is an ownership decision, not a hint. Forward it only when the caller
+    // selected one; the API scopes and validates the value before persisting the deployment.
+    if (targetAccountId) {
+      body.targetAccountId = targetAccountId;
+    }
     // Forward only a choice the user actually made. The server re-validates it (ownership, zone,
     // capability, collisions) inside the create transaction, so a stale choice is rejected rather
     // than deployed somewhere unexpected.

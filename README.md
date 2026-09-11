@@ -91,6 +91,7 @@ The server groups its tools around user outcomes:
 - Create and monitor static-site and SSR deployments
 - Inspect deployment DNS, safely push deployment-owned records to linked Cloudflare zones, and recheck custom-hostname verification
 - Choose where a Cloudflare Workers app is hosted — Staticbot's account, or the user's own connected Cloudflare account — and check a hostname is deployable before creating anything
+- Choose whether an AWS-hosted static site is deployed into Staticbot's managed account or the user's own connected AWS account
 - Migrate Lovable, Bolt, Firebase, and Base44 projects to Supabase targets
 - Inspect migration discovery results and guide users through approval and choice gates
 - Create previews and download portable migration packages

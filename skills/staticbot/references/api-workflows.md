@@ -22,6 +22,17 @@ Templates describe a repository and its supported configuration. List before cre
 
 A stack combines one or more templates with domain and infrastructure configuration. Inspect templates and existing stacks before creating another stack.
 
+### AWS hosting
+
+- `GET /aws/hosting-targets` with optional `stackId`
+
+For an AWS-hosted static site, call this after creating the stack and supply its `stackId`. Render
+`managed` only when non-null, render `customerOptions[].label`, and surface `notices` verbatim. Pass
+the selected option's exact `value` to `POST /deployments` as `targetAccountId`; it decides ownership,
+so the managed value means Staticbot-managed infrastructure and a customer account value means
+customer-managed infrastructure. Never invent an account id or send `infrastructureOwnership`.
+AWS has no account field on `POST /stacks`.
+
 ### Cloudflare hosting
 
 - `GET /cloudflare/hosting-targets` with optional `stackId`

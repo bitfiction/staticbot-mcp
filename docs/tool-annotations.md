@@ -3,7 +3,7 @@
 Every tool declares `readOnlyHint`, `destructiveHint` and `openWorldHint`. OpenAI's plugin review
 requires all three, and a client uses them to decide how much confirmation a call needs.
 
-53 tools: **24 read-only**, **13 destructive**, **19 that can change public or external state**.
+54 tools: **25 read-only**, **13 destructive**, **19 that can change public or external state**.
 (Counts are measured from the built server, not maintained by hand — see "Keeping this honest" below.)
 
 ## How each is decided

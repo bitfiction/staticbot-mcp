@@ -40,6 +40,19 @@ registerApiTool(server,
 );
 
 registerApiTool(server,
+  "list_connected_project_previews",
+  "List every tracked branch preview for a connected project, including the preview deployment ID, raw deployment status, preview URL, and dashboard status URL. Always use deploymentStatus to distinguish builds in progress from FAILED, ABORTED, or COMPLETED previews; hasPreview only means preview resources exist.",
+  {
+    id: z.string().uuid().describe("Connected project ID"),
+  },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  async ({ id }) => {
+    const data = await apiFetch(`/api/v1/connected-projects/${id}/branches`);
+    return apiToolResult(data, toText);
+  }
+);
+
+registerApiTool(server,
   "trigger_sync",
   "Trigger a manual sync for a connected project. Detects changes since the last sync (new database migrations, edge function updates, frontend changes) and applies them to the target Supabase instance and the project's Staticbot-selected deployment target.",
   {

@@ -29,8 +29,10 @@ Deliberately **not** destructive, and worth knowing why:
   takes none — it resolves a zone and reports collisions, and never creates, deletes or takes over
   anything. Choosing an account is a decision the user makes in `create_stack` / `create_deployment`,
   which carry their own hints.
-- `list_github_repositories` only reads the public and private repositories already granted to the
-  selected Staticbot GitHub integration. It never returns an OAuth token or changes GitHub state.
+- `list_source_repositories` only reads the public and private repositories already granted to the
+  selected Staticbot source-control integration (GitHub or GitLab). It never returns an OAuth token or
+  changes provider state. `list_github_repositories` is the deprecated GitHub-only alias for it and
+  carries the same hints.
 
 ## Justifications for destructive tools
 

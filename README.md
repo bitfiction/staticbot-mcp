@@ -88,6 +88,7 @@ Keep the API key in your MCP client's secret or environment configuration. Do no
 The server groups its tools around user outcomes:
 
 - Inspect templates, stacks, deployments, and integration connections
+- Resolve the repository to work on from a connected GitHub or GitLab account, private repositories included
 - Create and monitor static-site and SSR deployments
 - Inspect deployment DNS, safely push deployment-owned records to linked Cloudflare zones, and recheck custom-hostname verification
 - Choose where a Cloudflare Workers app is hosted — Staticbot's account, or the user's own connected Cloudflare account — and check a hostname is deployable before creating anything

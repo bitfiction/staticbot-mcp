@@ -11,8 +11,8 @@ Use Staticbot MCP tools when available. If they are unavailable, read the siblin
 
 The repository is the input to Staticbot's hosting decision. Do not choose a provider from package names, framework familiarity, or the user's vague use of “cloud.”
 
-1. Resolve the repository before asking the user for its URL: call `list_integration_instances`, then `list_github_repositories` for a connected GitHub instance. Private repositories are supported. Use an unambiguous match from the current client/project context; ask only when multiple matches are plausible. If GitHub is not connected, direct the user to `https://app.staticbot.dev/integrations`, then retry.
-2. Reuse an existing template only when it represents the resolved repository and revision; otherwise call `create_template` so Staticbot scans the repo.
+1. Resolve the repository before asking the user for its URL: call `list_integration_instances`, then `list_source_repositories` for a connected `github` or `gitlab` instance. Private repositories are supported. Use an unambiguous match from the current client/project context; ask only when multiple matches are plausible. If no source-control integration is connected, direct the user to `https://app.staticbot.dev/integrations`, then retry.
+2. Reuse an existing template only when it represents the resolved repository and revision; otherwise call `create_template` so Staticbot scans the repo, passing the instance the repository was listed from as `sourceControlIntegrationInstanceId`.
 3. Inspect the template's returned `hostingWorkload` and `isSsr` classification.
 4. Create the stack without inventing a deployment target. Staticbot selects `deploymentTarget` from its repo analysis and applies the `infrastructureOwnership` available for that flow.
 5. Report the exact returned selection. Treat `deploymentTarget` (for example AWS static or Cloudflare Workers) and `infrastructureOwnership` (customer-managed or Staticbot-managed) as separate axes.

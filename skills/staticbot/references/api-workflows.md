@@ -105,14 +105,15 @@ not report a Workers custom hostname live until both returned status fields are 
 - `POST /migrations/{migrationId}/jobs/{jobId}/resolve-schema-gap`
 - `POST /migrations/jobs/{jobId}/validate-function`
 - `GET /migrations/integrations/instances`
-- `GET /migrations/integrations/instances/{id}/github-repositories`
+- `GET /integrations/instances/{id}/repositories` (GitHub and GitLab; returns `{ provider, repositories[] }`)
+- `GET /migrations/integrations/instances/{id}/github-repositories` (deprecated GitHub-only alias)
 - `GET /migrations/integrations/instances/{id}/supabase-projects`
 
 Supported source types include `LOVABLE_SUPABASE`, `BOLT_SUPABASE`, `FIREBASE`, `BASE44_SUPABASE`, and `BASE44_NATIVE`. Never assume their request fields are identical; consult the live schema.
 
 Typical migration flow:
 
-1. Inspect integration instances first. When GitHub is connected, list its repositories and resolve the current repository from client/project context before asking the user. The result includes private repositories granted to Staticbot; if GitHub is absent, direct the user to `https://app.staticbot.dev/integrations`. Then inspect the source platform, target, and template. Source and target Supabase credentials are resolved server-side from discovery and connected integrations.
+1. Inspect integration instances first. When a source-control integration is connected (`github` or `gitlab`), list its repositories and resolve the current repository from client/project context before asking the user. The result includes private repositories granted to Staticbot; if none is connected, direct the user to `https://app.staticbot.dev/integrations`. Then inspect the source platform, target, and template. Source and target Supabase credentials are resolved server-side from discovery and connected integrations.
 2. Create the migration with fields validated against the live schema.
 3. Poll until discovery reaches `PAUSED_FOR_APPROVAL`.
 4. Fetch jobs and present the discovery inventory to the user.

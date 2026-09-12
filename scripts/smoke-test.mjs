@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 56;
+const expectedToolCount = 57;
 const expectedTools = [
   "list_templates",
   "get_deployment",
@@ -16,6 +16,7 @@ const expectedTools = [
   "preflight_cloudflare_hosting",
   "recheck_dns_verification",
   "get_migration",
+  "list_source_repositories",
   "list_github_repositories",
   "clean_migration_target",
   "create_migration_preview",
@@ -101,15 +102,37 @@ try {
   );
   assert.match(
     createTemplate?.description ?? "",
-    /list_github_repositories/,
+    /list_source_repositories/,
     "template guidance must direct clients to repository discovery",
   );
+  assert(
+    createTemplate?.inputSchema?.properties?.sourceControlIntegrationInstanceId,
+    "create_template must accept the integration the repository was discovered through",
+  );
 
+  const sourceRepositories = tools.find(({ name }) => name === "list_source_repositories");
+  assert.equal(sourceRepositories?.annotations?.readOnlyHint, true, "repository discovery must be read-only");
+  assert(
+    sourceRepositories?.inputSchema?.properties?.integrationInstanceId,
+    "repository discovery must require an integration instance ID",
+  );
+  assert.match(
+    sourceRepositories?.description ?? "",
+    /gitlab/i,
+    "repository discovery must advertise that it is not GitHub-only",
+  );
+
+  // Kept registered for clients and cached skills pinned to the old name.
   const githubRepositories = tools.find(({ name }) => name === "list_github_repositories");
   assert.equal(githubRepositories?.annotations?.readOnlyHint, true, "GitHub repository discovery must be read-only");
   assert(
     githubRepositories?.inputSchema?.properties?.githubIntegrationInstanceId,
     "GitHub repository discovery must require an integration instance ID",
+  );
+  assert.match(
+    githubRepositories?.description ?? "",
+    /deprecated/i,
+    "the GitHub-only alias must point clients at list_source_repositories",
   );
 
   const cleanTarget = tools.find(({ name }) => name === "clean_migration_target");
@@ -140,16 +163,41 @@ try {
     "tools must return the API JSON through structuredContent.result",
   );
 
-  const githubIntegrationInstanceId = "79f97fb7-51c4-4a70-8453-6c1d59d1efb1";
+  const integrationInstanceId = "79f97fb7-51c4-4a70-8453-6c1d59d1efb1";
   await client.callTool({
-    name: "list_github_repositories",
-    arguments: { githubIntegrationInstanceId },
+    name: "list_source_repositories",
+    arguments: { integrationInstanceId },
   });
   assert(
     apiRequests.some(({ method, url }) =>
       method === "GET" &&
-      url === `/api/v1/migrations/integrations/instances/${githubIntegrationInstanceId}/github-repositories`),
-    "GitHub repository discovery must call the tenant-scoped public v1 endpoint",
+      url === `/api/v1/integrations/instances/${integrationInstanceId}/repositories`),
+    "repository discovery must call the provider-neutral tenant-scoped v1 endpoint",
+  );
+
+  await client.callTool({
+    name: "list_github_repositories",
+    arguments: { githubIntegrationInstanceId: integrationInstanceId },
+  });
+  assert(
+    apiRequests.some(({ method, url }) =>
+      method === "GET" &&
+      url === `/api/v1/migrations/integrations/instances/${integrationInstanceId}/github-repositories`),
+    "the GitHub-only alias must keep calling the endpoint older clients expect",
+  );
+
+  await client.callTool({
+    name: "create_template",
+    arguments: {
+      repoLink: "https://gitlab.com/group/project",
+      sourceControlIntegrationInstanceId: integrationInstanceId,
+    },
+  });
+  assert(
+    apiRequests.some(({ method, url, body }) =>
+      method === "POST" && url === "/api/v1/templates" &&
+      body.includes(`"sourceControlIntegrationInstanceId":"${integrationInstanceId}"`)),
+    "create_template must forward the integration the repository was discovered through",
   );
 
   const stackId = "4b6cc471-b50f-40d5-bfa9-72d86e32f130";

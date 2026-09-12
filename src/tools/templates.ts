@@ -17,7 +17,7 @@ registerApiTool(server,
   "List available templates (slim response: id, name, category, repoLink). " +
   "Use get_template to see full details including config variables. " +
   "When preparing a migration, reuse an exact repository match when one exists. Otherwise create a new template " +
-  "from the repository resolved through list_integration_instances and list_github_repositories. Ask the user to " +
+  "from the repository resolved through list_integration_instances and list_source_repositories. Ask the user to " +
   "choose only when multiple existing templates or repositories are plausible.",
   {},
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
@@ -42,22 +42,27 @@ registerApiTool(server,
 
 registerApiTool(server,
   "create_template",
-  "Create a new template by scanning a GitHub repository. Auto-detects platforms, env vars, and builders. " +
-  "Both public and private repositories are supported through the organization's connected Staticbot GitHub integration. " +
-  "Before asking the user for a URL, call list_integration_instances and list_github_repositories, then use an " +
-  "unambiguous repository match from the current client/project context. If GitHub is not connected, direct the user " +
+  "Create a new template by scanning a source repository (GitHub or GitLab). Auto-detects platforms, env vars, and builders. " +
+  "Both public and private repositories are supported through the organization's connected Staticbot source-control integration. " +
+  "Before asking the user for a URL, call list_integration_instances and list_source_repositories, then use an " +
+  "unambiguous repository match from the current client/project context and pass that same instance as " +
+  "sourceControlIntegrationInstanceId. If no source-control integration is connected, direct the user " +
   "to https://app.staticbot.dev/integrations and retry after they connect it. Never claim the repository must be public. " +
   "Staticbot also classifies the repository's hosting workload; inspect the returned `hostingWorkload` and `isSsr` fields instead of choosing AWS or Cloudflare from agent-side heuristics. " +
   "Use this when the user wants to migrate a repo that doesn't match any existing template from list_templates. " +
   "The name is optional — if omitted, it's derived from the repo name.",
   {
-    repoLink: z.string().describe("GitHub repository URL (public or private; e.g. https://github.com/owner/repo). Resolve it with list_github_repositories when a GitHub integration is connected."),
+    repoLink: z.string().describe("Repository URL (public or private; e.g. https://github.com/owner/repo or https://gitlab.com/group/project). Resolve it with list_source_repositories when a source-control integration is connected."),
     name: z.string().optional().describe("Template name (derived from repo name if omitted)"),
+    sourceControlIntegrationInstanceId: z.string().uuid().optional().describe("The integration instance the repository was listed from (from list_source_repositories). Pass it whenever the repo came from discovery — with several accounts connected on one provider, only that account's token can read the repo."),
   },
   { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  async ({ repoLink, name }) => {
+  async ({ repoLink, name, sourceControlIntegrationInstanceId }) => {
     const body: Record<string, string> = { repoLink };
     if (name) body.name = name;
+    if (sourceControlIntegrationInstanceId) {
+      body.sourceControlIntegrationInstanceId = sourceControlIntegrationInstanceId;
+    }
     const data = await apiFetch("/api/v1/templates", {
       method: "POST",
       body: JSON.stringify(body),

@@ -4,8 +4,8 @@ Prefer the Staticbot MCP tools named below. The live API and tool schemas are au
 
 ## Discovery and planning
 
-1. Call `list_integration_instances`; for a connected GitHub instance, call `list_github_repositories` and resolve the current repository from client/project context. Private repositories are supported. Use one unambiguous match without asking; ask only when multiple matches are plausible. If GitHub is absent, direct the user to `https://app.staticbot.dev/integrations`, then retry. Never claim a public repository is required.
-2. Call `list_templates`; use `get_template` for a plausible existing template or `create_template` for the resolved repository.
+1. Call `list_integration_instances`; for a connected `github` or `gitlab` instance, call `list_source_repositories` and resolve the current repository from client/project context. Private repositories are supported. Use one unambiguous match without asking; ask only when multiple matches are plausible. If no source-control integration is connected, direct the user to `https://app.staticbot.dev/integrations`, then retry. Never claim a public repository is required.
+2. Call `list_templates`; use `get_template` for a plausible existing template or `create_template` for the resolved repository, passing `sourceControlIntegrationInstanceId` so the scan uses the account the repository was listed from.
 3. Read repository scan output, especially `hostingWorkload`, `isSsr`, supported configuration, and warnings. Staticbot owns these classifications.
 4. Call `list_stacks` before creating a stack for the same template.
 5. For Supabase-shaped template variables, use `list_supabase_projects` when the user wants linked key refresh. Never print or persist credentials.

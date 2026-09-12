@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { ToolContext } from "../context.js";
+import { registerAccountTools } from "../tools/account.js";
 import { registerAwsHostingTools } from "../tools/aws-hosting.js";
 import { registerCloudflareHostingTools } from "../tools/cloudflare-hosting.js";
 import { registerConnectedProjectTools } from "../tools/connected-projects.js";
@@ -28,6 +29,9 @@ export const SERVER_VERSION = "1.8.0";
 export function createServer(context: ToolContext): McpServer {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
 
+  // Registered first so it reads first in the tool list: it is the call that tells an agent
+  // what is connected and what the user still has to choose.
+  registerAccountTools(server, context);
   registerTemplateTools(server, context);
   registerStackTools(server, context);
   registerDeploymentTools(server, context);

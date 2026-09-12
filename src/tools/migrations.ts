@@ -179,8 +179,8 @@ registerApiTool(server,
   "  • FIREBASE — Firebase-to-Supabase migration (different pipeline). Requires firebaseServiceAccountJson; the Git repo is optional.\n" +
   "  • BASE44_SUPABASE — Base44 apps backed by Supabase. If repository discovery cannot resolve the source, pass sourceDeployedUrl and Staticbot will inspect the deployed app server-side. Backend switchover updates Base44 platform secrets (not GitHub env vars).\n" +
   "  • BASE44_NATIVE — Base44 apps using @base44/sdk against Base44's managed backend (no source Supabase). Requires sourceIntegrationInstanceId (the Base44 integration). Discovery hits Base44's REST API, DDL is synthesised from entity schemas, and data is imported directly.\n\n" +
-  "BEFORE calling this tool, follow these steps to gather the required parameters:\n" +
-  "1. Identify the source platform from the user's request and client context. For FIREBASE, securely collect firebaseServiceAccountJson.\n" +
+  "BEFORE calling this tool, confirm the user actually wants a migration rather than hosting — get_account_status describes both — then follow these steps to gather the required parameters:\n" +
+  "1. Call get_account_status. If its pendingAction is CONNECT_SOURCE_CONTROL or CONNECT_DATABASE, stop and give the user the URL — a migration cannot be created without them. Then identify the source platform from the user's request and client context. For FIREBASE, securely collect firebaseServiceAccountJson.\n" +
   "2. Call list_source_repositories (no arguments) before asking for any repository URL, and match the current project/repository context against fullName or webUrl. It covers every connected GitHub and GitLab account, and private repositories are supported. Use one unambiguous match directly; when several are plausible, present them with their sourceLabel — the account each is hosted in — and let the user choose. Carry the chosen repository's integrationInstanceId into create_template. If the listing has no sources, direct the user to https://app.staticbot.dev/integrations to connect an account, then retry. Never claim that Staticbot requires a public repository.\n" +
   "3. Ask the user whether the target is managed Supabase (SUPABASE_CLOUD) or their own self-hosted install (SUPABASE_SELF_HOSTED).\n" +
   "4. From list_integration_instances, use type='supabase' as supabaseIntegrationInstanceId, the selected type='github' instance as githubIntegrationInstanceId, and type='base44' as sourceIntegrationInstanceId (for BASE44_NATIVE).\n" +
@@ -412,8 +412,11 @@ registerApiTool(server,
   "`fullName` or `webUrl`. If there is one unambiguous match, use its `webUrl` directly without asking the " +
   "user to repeat it. When several are plausible — including the same name in two accounts — present the " +
   "candidates WITH their `sourceLabel` and ask the user to choose, because the repositories are different. " +
-  "Always pass the chosen repository's `integrationInstanceId` back as sourceControlIntegrationInstanceId " +
-  "when calling create_template, so it is read with the account that can actually see it. A `sources[]` " +
+  "Listing repositories is not itself a decision to migrate: carry the chosen repository into whichever " +
+  "path get_account_status reported (start_hosting or start_migration), and ask the user which if they " +
+  "have not said. Whichever it is, pass the repository's `integrationInstanceId` back as " +
+  "sourceControlIntegrationInstanceId when calling create_template, so it is read with the account that " +
+  "can actually see it. A `sources[]` " +
   "entry with an `unavailableReason` means that account's repositories are missing from the list and the " +
   "user has to act — report it rather than concluding the repository does not exist. If there are no " +
   "sources at all, direct the user to https://app.staticbot.dev/integrations to connect an account and " +

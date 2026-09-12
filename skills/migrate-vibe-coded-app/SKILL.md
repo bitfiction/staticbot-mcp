@@ -9,6 +9,15 @@ Use Staticbot MCP tools when available. If they are unavailable, read the siblin
 
 Read [references/migration-workflow.md](references/migration-workflow.md) for source-specific preparation and action routing.
 
+## Confirm this is the path the user wants
+
+Call `get_account_status` first. It reports what is connected and a `pendingAction`:
+
+- `CONNECT_SOURCE_CONTROL` / `CONNECT_DATABASE` — a migration cannot be created. Give the user the `url` and stop; do not walk them through migration planning they cannot act on.
+- `CHOOSE_PATH` — confirm the user wants to move off their builder's backend, not simply to host the repository. Hosting (`start_hosting`, the deploy skill) changes nothing about the app's backend and is the right answer for "put this online". Migration is for leaving the builder's backend behind. Asking costs one sentence; guessing costs a wrong multi-phase pipeline.
+
+A request to list repositories, templates, or integrations is not a request to migrate.
+
 ## Preserve human control
 
 - Start with non-mutating discovery of integrations, repository/template metadata, source configuration, and target projects.

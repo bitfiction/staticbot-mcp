@@ -29,6 +29,8 @@ Deliberately **not** destructive, and worth knowing why:
   takes none — it resolves a zone and reports collisions, and never creates, deletes or takes over
   anything. Choosing an account is a decision the user makes in `create_stack` / `create_deployment`,
   which carry their own hints.
+- `get_account_status` only reads the caller's own account, organization, plan and connection state.
+  It returns no secrets by construction — a connection is a boolean and a dashboard link.
 - `list_source_repositories` only reads the public and private repositories already granted to the
   organization's Staticbot source-control integrations (GitHub, GitLab). It never returns an OAuth token
   or changes provider state. `list_github_repositories` is the deprecated GitHub-only alias for it and

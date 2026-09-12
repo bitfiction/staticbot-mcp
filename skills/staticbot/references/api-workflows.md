@@ -6,6 +6,15 @@ Use this as a workflow map. Fetch the live OpenAPI schema with `scripts/staticbo
 
 All authenticated endpoints are under `/api/v1`; the helper adds that prefix to short paths.
 
+### Account
+
+- `GET /me` — start here. Identity, tenancy, plan, which integrations are connected, and a
+  `pendingAction` describing the one decision that is outstanding before any work can begin:
+  `CONNECT_SOURCE_CONTROL` / `CONNECT_DATABASE` (give the user the `url` and stop) or `CHOOSE_PATH`
+  (hosting and migration are different outcomes — ask which the user wants rather than assuming).
+  `nextActions[]` carries `available`, `blockedBy`, `blockedReason` and the `endpoint` that begins
+  each path. Contains no secrets.
+
 ### Templates
 
 - `GET /templates`

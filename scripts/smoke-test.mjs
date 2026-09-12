@@ -6,8 +6,9 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 57;
+const expectedToolCount = 58;
 const expectedTools = [
+  "get_account_status",
   "list_templates",
   "get_deployment",
   "push_dns_to_cloudflare",
@@ -82,6 +83,35 @@ try {
       `tool ${tool.name} output schema must expose the structured API result`,
     );
   }
+
+  // The pre-migration counterpart to a migration's pendingAction. Without it an agent has no state
+  // to read before a migration exists, and falls back to whatever the descriptions narrate.
+  const accountStatus = tools.find(({ name }) => name === "get_account_status");
+  assert.equal(accountStatus?.annotations?.readOnlyHint, true, "account status must be read-only");
+  assert.match(
+    accountStatus?.description ?? "",
+    /pendingAction/,
+    "account status must tell agents to follow pendingAction",
+  );
+  assert.match(
+    accountStatus?.description ?? "",
+    /do not default to migration/i,
+    "account status must stop agents assuming migration is the next step",
+  );
+
+  const createMigrationPath = tools.find(({ name }) => name === "create_migration");
+  assert.match(
+    createMigrationPath?.description ?? "",
+    /call get_account_status/i,
+    "migration creation must check readiness before gathering parameters",
+  );
+
+  const sourceRepositoriesPath = tools.find(({ name }) => name === "list_source_repositories");
+  assert.match(
+    sourceRepositoriesPath?.description ?? "",
+    /not itself a decision to migrate/i,
+    "repository discovery must not narrate migration as its follow-on",
+  );
 
   const confirmMigration = tools.find(({ name }) => name === "confirm_migration");
   assert(confirmMigration?.inputSchema?.properties?.gateChoice, "confirm_migration must expose gateChoice");
@@ -165,6 +195,12 @@ try {
   assert(
     createDeployment?.inputSchema?.properties?.targetAccountId,
     "create_deployment must expose the AWS ownership choice as targetAccountId",
+  );
+
+  await client.callTool({ name: "get_account_status", arguments: {} });
+  assert(
+    apiRequests.some(({ method, url }) => method === "GET" && url === "/api/v1/me"),
+    "account status must read the public v1 account endpoint",
   );
 
   const listResult = await client.callTool({ name: "list_templates", arguments: {} });

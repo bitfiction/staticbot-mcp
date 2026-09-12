@@ -16,10 +16,10 @@ registerApiTool(server,
   "list_templates",
   "List available templates (slim response: id, name, category, repoLink). " +
   "Use get_template to see full details including config variables. " +
-  "When preparing a migration, reuse an exact repository match when one exists. Otherwise create a new template " +
-  "from the repository resolved through list_source_repositories. Ask the user to choose only when multiple " +
-  "existing templates or repositories are plausible — and when two repositories share a name, show which account " +
-  "each is hosted in (sourceLabel) so the choice is meaningful.",
+  "Templates feed both hosting and migration. Reuse an exact repository match when one exists; otherwise create " +
+  "a new template from the repository resolved through list_source_repositories. Ask the user to choose only when " +
+  "multiple existing templates or repositories are plausible — and when two repositories share a name, show which " +
+  "account each is hosted in (sourceLabel) so the choice is meaningful.",
   {},
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async () => {
@@ -51,7 +51,9 @@ registerApiTool(server,
   "and omitting it makes a private repository look missing. If no source-control integration is connected, direct " +
   "the user to https://app.staticbot.dev/integrations and retry after they connect it. Never claim the repository must be public. " +
   "Staticbot also classifies the repository's hosting workload; inspect the returned `hostingWorkload` and `isSsr` fields instead of choosing AWS or Cloudflare from agent-side heuristics. " +
-  "Use this when the user wants to migrate a repo that doesn't match any existing template from list_templates. " +
+  "A template is the shared starting point for BOTH Staticbot paths — hosting the repository and migrating " +
+  "the app off its builder — so creating one does not commit the user to a migration. Use it when no " +
+  "existing template from list_templates matches the repo. " +
   "The name is optional — if omitted, it's derived from the repo name.",
   {
     repoLink: z.string().describe("Repository URL (public or private; e.g. https://github.com/owner/repo or https://gitlab.com/group/project). Resolve it with list_source_repositories when a source-control integration is connected."),

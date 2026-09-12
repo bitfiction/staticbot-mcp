@@ -440,6 +440,18 @@
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
+    "get_account_status": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves the caller's account, organization, plan and connection state.",
+        "open_world_justification": "Does not change an integration or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
     "list_source_repositories": {
       "annotations": {
         "readOnlyHint": true,

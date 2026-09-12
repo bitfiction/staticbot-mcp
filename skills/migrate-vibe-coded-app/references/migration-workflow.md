@@ -4,12 +4,13 @@ The live Staticbot tool schemas and `pendingAction` response are authoritative.
 
 ## Prepare
 
-1. Identify the source type: `LOVABLE_SUPABASE`, `BOLT_SUPABASE`, `FIREBASE`, `BASE44_SUPABASE`, or `BASE44_NATIVE`.
-2. Call `list_integration_instances`. Use returned GitHub, Supabase, and Base44 instance IDs; do not invent identifiers.
-3. Call `list_source_repositories` with no arguments — it covers every connected GitHub and GitLab account — and match the current client/project context against `fullName` or `webUrl`. Private repositories are supported. Use one unambiguous match without asking; when several candidates are plausible, present them with their `sourceLabel` (the account each is hosted in), since the same name in two accounts is two different repositories. If there are no sources, direct the user to `https://app.staticbot.dev/integrations`, then retry. Never claim a public repository is required.
-4. Staticbot discovers Supabase source metadata internally. Never ask the user for source or target API keys. For a `BASE44_SUPABASE` repo containing placeholders, pass its `*.base44.app` URL as `sourceDeployedUrl`; the keys remain server-side.
-5. Ask whether the target is `SUPABASE_CLOUD` or `SUPABASE_SELF_HOSTED`. For cloud, call `list_supabase_projects`; Staticbot rejects a discovered source that matches the selected target before migration writes begin.
-6. Use `list_templates`/`get_template`, or `create_template` so Staticbot analyzes the resolved repository — pass the repository's `integrationInstanceId` as `sourceControlIntegrationInstanceId` when it came from `list_source_repositories`.
+1. Call `get_account_status` and follow its `pendingAction`. Stop on `CONNECT_SOURCE_CONTROL` / `CONNECT_DATABASE`; on `CHOOSE_PATH`, confirm the user wants a migration rather than hosting before continuing.
+2. Identify the source type: `LOVABLE_SUPABASE`, `BOLT_SUPABASE`, `FIREBASE`, `BASE44_SUPABASE`, or `BASE44_NATIVE`.
+3. Call `list_integration_instances`. Use returned GitHub, Supabase, and Base44 instance IDs; do not invent identifiers.
+4. Call `list_source_repositories` with no arguments — it covers every connected GitHub and GitLab account — and match the current client/project context against `fullName` or `webUrl`. Private repositories are supported. Use one unambiguous match without asking; when several candidates are plausible, present them with their `sourceLabel` (the account each is hosted in), since the same name in two accounts is two different repositories. If there are no sources, direct the user to `https://app.staticbot.dev/integrations`, then retry. Never claim a public repository is required.
+5. Staticbot discovers Supabase source metadata internally. Never ask the user for source or target API keys. For a `BASE44_SUPABASE` repo containing placeholders, pass its `*.base44.app` URL as `sourceDeployedUrl`; the keys remain server-side.
+6. Ask whether the target is `SUPABASE_CLOUD` or `SUPABASE_SELF_HOSTED`. For cloud, call `list_supabase_projects`; Staticbot rejects a discovered source that matches the selected target before migration writes begin.
+7. Use `list_templates`/`get_template`, or `create_template` so Staticbot analyzes the resolved repository — pass the repository's `integrationInstanceId` as `sourceControlIntegrationInstanceId` when it came from `list_source_repositories`.
 
 ## Run
 

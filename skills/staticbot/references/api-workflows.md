@@ -105,7 +105,8 @@ not report a Workers custom hostname live until both returned status fields are 
 - `POST /migrations/{migrationId}/jobs/{jobId}/resolve-schema-gap`
 - `POST /migrations/jobs/{jobId}/validate-function`
 - `GET /migrations/integrations/instances`
-- `GET /integrations/instances/{id}/repositories` (GitHub and GitLab; returns `{ provider, repositories[] }`)
+- `GET /integrations/repositories` — every connected GitHub/GitLab account, merged; returns `{ sources[], repositories[] }` and each repository carries `provider`, `integrationInstanceId` and `sourceLabel` ("GitHub · octocat")
+- `GET /integrations/instances/{id}/repositories` (one account only — narrows the listing, so prefer the endpoint above unless the account is already chosen)
 - `GET /migrations/integrations/instances/{id}/github-repositories` (deprecated GitHub-only alias)
 - `GET /migrations/integrations/instances/{id}/supabase-projects`
 
@@ -113,7 +114,7 @@ Supported source types include `LOVABLE_SUPABASE`, `BOLT_SUPABASE`, `FIREBASE`, 
 
 Typical migration flow:
 
-1. Inspect integration instances first. When a source-control integration is connected (`github` or `gitlab`), list its repositories and resolve the current repository from client/project context before asking the user. The result includes private repositories granted to Staticbot; if none is connected, direct the user to `https://app.staticbot.dev/integrations`. Then inspect the source platform, target, and template. Source and target Supabase credentials are resolved server-side from discovery and connected integrations.
+1. List repositories across every connected account first (`GET /integrations/repositories`) and resolve the current repository from client/project context before asking the user. The result includes private repositories granted to Staticbot; a `sources[]` entry with an `unavailableReason` means that account is missing from the list, and no sources at all means the user should connect one at `https://app.staticbot.dev/integrations`. Carry the chosen repository's `integrationInstanceId` into template creation as `sourceControlIntegrationInstanceId`. Then inspect the source platform, target, and template. Source and target Supabase credentials are resolved server-side from discovery and connected integrations.
 2. Create the migration with fields validated against the live schema.
 3. Poll until discovery reaches `PAUSED_FOR_APPROVAL`.
 4. Fetch jobs and present the discovery inventory to the user.

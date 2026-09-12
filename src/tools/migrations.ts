@@ -181,7 +181,7 @@ registerApiTool(server,
   "  • BASE44_NATIVE — Base44 apps using @base44/sdk against Base44's managed backend (no source Supabase). Requires sourceIntegrationInstanceId (the Base44 integration). Discovery hits Base44's REST API, DDL is synthesised from entity schemas, and data is imported directly.\n\n" +
   "BEFORE calling this tool, follow these steps to gather the required parameters:\n" +
   "1. Identify the source platform from the user's request and client context. For FIREBASE, securely collect firebaseServiceAccountJson.\n" +
-  "2. Call list_integration_instances before asking for any repository URL. When a source-control instance exists (github or gitlab), call list_source_repositories with it and match the current project/repository context against fullName or webUrl. Private repositories are supported. Use one unambiguous match directly; present plausible matches only when selection is ambiguous. If no source-control integration exists, direct the user to https://app.staticbot.dev/integrations to connect one, then retry. Never claim that Staticbot requires a public repository.\n" +
+  "2. Call list_source_repositories (no arguments) before asking for any repository URL, and match the current project/repository context against fullName or webUrl. It covers every connected GitHub and GitLab account, and private repositories are supported. Use one unambiguous match directly; when several are plausible, present them with their sourceLabel — the account each is hosted in — and let the user choose. Carry the chosen repository's integrationInstanceId into create_template. If the listing has no sources, direct the user to https://app.staticbot.dev/integrations to connect an account, then retry. Never claim that Staticbot requires a public repository.\n" +
   "3. Ask the user whether the target is managed Supabase (SUPABASE_CLOUD) or their own self-hosted install (SUPABASE_SELF_HOSTED).\n" +
   "4. From list_integration_instances, use type='supabase' as supabaseIntegrationInstanceId, the selected type='github' instance as githubIntegrationInstanceId, and type='base44' as sourceIntegrationInstanceId (for BASE44_NATIVE).\n" +
   "5. Source Supabase metadata is discovered by Staticbot. For a BASE44_SUPABASE app whose repository contains placeholders, provide its deployed *.base44.app URL as sourceDeployedUrl. Never ask the user for Supabase API keys.\n" +
@@ -388,10 +388,9 @@ registerApiTool(server,
   "identifying whether it is 'supabase', 'github', 'base44', etc. Use the instance with type='supabase' " +
   "as supabaseIntegrationInstanceId, type='github' as githubIntegrationInstanceId, and type='base44' " +
   "as sourceIntegrationInstanceId (for BASE44_NATIVE migrations) when calling create_migration. " +
-  "For any repository-backed workflow, call this before asking the user for a repository URL. If an " +
-  "instance with provider 'github' or 'gitlab' exists, call list_source_repositories with it next; if none " +
-  "exists, direct the user to https://app.staticbot.dev/integrations to connect one. Private repositories " +
-  "are supported.",
+  "To resolve a repository, call list_source_repositories instead — it covers every connected source-control " +
+  "account in one call and reports which account each repository is hosted in. Use this tool for the " +
+  "supabase/base44 instance IDs, and to check whether any source-control account is connected at all.",
   {},
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async () => {
@@ -402,25 +401,31 @@ registerApiTool(server,
 
 registerApiTool(server,
   "list_source_repositories",
-  "List all public and private repositories accessible through a connected Staticbot source-control " +
-  "integration — GitHub or GitLab. Use this whenever a workflow needs a repository: first call " +
-  "list_integration_instances, then pass the selected instance ID here. The response is " +
-  "{ provider, repositories[] }, where each repository has `fullName`, `webUrl`, `private`, `description` " +
-  "and `defaultBranch`. Match the current client/project context against `fullName` or `webUrl`. If there " +
-  "is one unambiguous match, use its `webUrl` directly without asking the user to repeat it. If several " +
-  "repositories are plausible, present only those candidates and ask the user to choose. Pass the same " +
-  "instance ID back as sourceControlIntegrationInstanceId when calling create_template, so the repository " +
-  "is scanned with the account it was listed from. If no source-control integration exists, direct the user " +
-  "to https://app.staticbot.dev/integrations to connect one and then retry. Never claim that Staticbot " +
-  "requires a public repository.",
+  "List all public and private repositories accessible through the organization's connected Staticbot " +
+  "source-control integrations — GitHub and GitLab. Call this whenever a workflow needs a repository, " +
+  "with NO arguments: it covers every connected account in one call. An organization can connect several " +
+  "accounts on the same provider, and passing one instance ID narrows the listing to that account, which " +
+  "hides the others' repositories — only do that when the user has already chosen an account. " +
+  "The response is { sources[], repositories[] }. Each repository has `fullName`, `webUrl`, `private`, " +
+  "`description`, `defaultBranch`, plus `provider`, `integrationInstanceId` and `sourceLabel` — the " +
+  "account it is hosted in, e.g. \"GitHub · octocat\". Match the current client/project context against " +
+  "`fullName` or `webUrl`. If there is one unambiguous match, use its `webUrl` directly without asking the " +
+  "user to repeat it. When several are plausible — including the same name in two accounts — present the " +
+  "candidates WITH their `sourceLabel` and ask the user to choose, because the repositories are different. " +
+  "Always pass the chosen repository's `integrationInstanceId` back as sourceControlIntegrationInstanceId " +
+  "when calling create_template, so it is read with the account that can actually see it. A `sources[]` " +
+  "entry with an `unavailableReason` means that account's repositories are missing from the list and the " +
+  "user has to act — report it rather than concluding the repository does not exist. If there are no " +
+  "sources at all, direct the user to https://app.staticbot.dev/integrations to connect an account and " +
+  "then retry. Never claim that Staticbot requires a public repository.",
   {
-    integrationInstanceId: z.string().uuid().describe("Source-control integration instance ID (from list_integration_instances; provider 'github' or 'gitlab')"),
+    integrationInstanceId: z.string().uuid().optional().describe("Optional: restrict the listing to ONE connected account (from list_integration_instances or a previous sources[] entry). Omit to list every connected account, which is almost always what you want."),
   },
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async ({ integrationInstanceId }) => {
-    const data = await apiFetch(
-      `/api/v1/integrations/instances/${integrationInstanceId}/repositories`
-    );
+    const data = await apiFetch(integrationInstanceId
+      ? `/api/v1/integrations/instances/${integrationInstanceId}/repositories`
+      : "/api/v1/integrations/repositories");
     return apiToolResult(data, toText);
   }
 );

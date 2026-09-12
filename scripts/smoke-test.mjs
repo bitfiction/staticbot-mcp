@@ -90,8 +90,8 @@ try {
   const createMigration = tools.find(({ name }) => name === "create_migration");
   assert.match(
     createMigration?.description ?? "",
-    /call list_integration_instances before asking for any repository URL/i,
-    "migration guidance must discover integrations before asking for a repository URL",
+    /call list_source_repositories \(no arguments\) before asking for any repository URL/i,
+    "migration guidance must discover repositories across every connected account first",
   );
 
   const createTemplate = tools.find(({ name }) => name === "create_template");
@@ -114,12 +114,23 @@ try {
   assert.equal(sourceRepositories?.annotations?.readOnlyHint, true, "repository discovery must be read-only");
   assert(
     sourceRepositories?.inputSchema?.properties?.integrationInstanceId,
-    "repository discovery must require an integration instance ID",
+    "repository discovery must accept an integration instance ID",
+  );
+  // Required would force agents to pick one account up front, which is the bug: the other
+  // connected accounts' repositories then never appear.
+  assert(
+    !(sourceRepositories?.inputSchema?.required ?? []).includes("integrationInstanceId"),
+    "repository discovery must default to every connected account",
   );
   assert.match(
     sourceRepositories?.description ?? "",
     /gitlab/i,
     "repository discovery must advertise that it is not GitHub-only",
+  );
+  assert.match(
+    sourceRepositories?.description ?? "",
+    /sourceLabel/,
+    "repository discovery must tell agents where each repository is hosted",
   );
 
   // Kept registered for clients and cached skills pinned to the old name.
@@ -164,6 +175,12 @@ try {
   );
 
   const integrationInstanceId = "79f97fb7-51c4-4a70-8453-6c1d59d1efb1";
+  await client.callTool({ name: "list_source_repositories", arguments: {} });
+  assert(
+    apiRequests.some(({ method, url }) => method === "GET" && url === "/api/v1/integrations/repositories"),
+    "repository discovery with no argument must list every connected account",
+  );
+
   await client.callTool({
     name: "list_source_repositories",
     arguments: { integrationInstanceId },
@@ -172,7 +189,7 @@ try {
     apiRequests.some(({ method, url }) =>
       method === "GET" &&
       url === `/api/v1/integrations/instances/${integrationInstanceId}/repositories`),
-    "repository discovery must call the provider-neutral tenant-scoped v1 endpoint",
+    "repository discovery with an instance must narrow to that account",
   );
 
   await client.callTool({

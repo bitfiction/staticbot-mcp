@@ -180,12 +180,13 @@ registerApiTool(server,
   "  • BASE44_SUPABASE — Base44 apps backed by Supabase. If repository discovery cannot resolve the source, pass sourceDeployedUrl and Staticbot will inspect the deployed app server-side. Backend switchover updates Base44 platform secrets (not GitHub env vars).\n" +
   "  • BASE44_NATIVE — Base44 apps using @base44/sdk against Base44's managed backend (no source Supabase). Requires sourceIntegrationInstanceId (the Base44 integration). Discovery hits Base44's REST API, DDL is synthesised from entity schemas, and data is imported directly.\n\n" +
   "BEFORE calling this tool, follow these steps to gather the required parameters:\n" +
-  "1. Ask the user for their source platform and GitHub repo URL (the repo is optional for FIREBASE). For FIREBASE, securely collect firebaseServiceAccountJson.\n" +
-  "2. Ask the user whether the target is managed Supabase (SUPABASE_CLOUD) or their own self-hosted install (SUPABASE_SELF_HOSTED).\n" +
-  "3. Call list_integration_instances — use the instance with type='supabase' as supabaseIntegrationInstanceId, type='github' as githubIntegrationInstanceId, and type='base44' as sourceIntegrationInstanceId (for BASE44_NATIVE).\n" +
-  "4. Source Supabase metadata is discovered by Staticbot. For a BASE44_SUPABASE app whose repository contains placeholders, provide its deployed *.base44.app URL as sourceDeployedUrl. Never ask the user for Supabase API keys.\n" +
-  "5. For SUPABASE_CLOUD only: call list_supabase_projects with the Supabase integration instance — ask the user which ACTIVE project to use as the target. Skip this step for SUPABASE_SELF_HOSTED.\n" +
-  "6. For templateId: either ask the user to pick from list_templates, or create a new template from their repo using create_template.\n\n" +
+  "1. Identify the source platform from the user's request and client context. For FIREBASE, securely collect firebaseServiceAccountJson.\n" +
+  "2. Call list_integration_instances before asking for any repository URL. When a GitHub instance exists, call list_github_repositories and match the current project/repository context against fullName or htmlUrl. Private repositories are supported. Use one unambiguous match directly; present plausible matches only when selection is ambiguous. If no GitHub integration exists, direct the user to https://app.staticbot.dev/integrations to connect GitHub, then retry. Never claim that Staticbot requires a public repository.\n" +
+  "3. Ask the user whether the target is managed Supabase (SUPABASE_CLOUD) or their own self-hosted install (SUPABASE_SELF_HOSTED).\n" +
+  "4. From list_integration_instances, use type='supabase' as supabaseIntegrationInstanceId, the selected type='github' instance as githubIntegrationInstanceId, and type='base44' as sourceIntegrationInstanceId (for BASE44_NATIVE).\n" +
+  "5. Source Supabase metadata is discovered by Staticbot. For a BASE44_SUPABASE app whose repository contains placeholders, provide its deployed *.base44.app URL as sourceDeployedUrl. Never ask the user for Supabase API keys.\n" +
+  "6. For SUPABASE_CLOUD only: call list_supabase_projects with the Supabase integration instance — ask the user which ACTIVE project to use as the target. Skip this step for SUPABASE_SELF_HOSTED.\n" +
+  "7. For templateId: either ask the user to pick from list_templates, or create a new template from the resolved repository using create_template.\n\n" +
   "IMPORTANT: Source and target Supabase projects must be different. Staticbot validates this after source discovery; if it reports a match, ask the user to choose another target.\n\n" +
   "After creation, the migration starts with a DISCOVERY job. Once discovery completes, it pauses (PAUSED_FOR_APPROVAL) — present the inventory to the user and call confirm_migration if they approve.",
   {
@@ -386,11 +387,35 @@ registerApiTool(server,
   "List all connected integrations for the organization. Each instance has a 'type' field " +
   "identifying whether it is 'supabase', 'github', 'base44', etc. Use the instance with type='supabase' " +
   "as supabaseIntegrationInstanceId, type='github' as githubIntegrationInstanceId, and type='base44' " +
-  "as sourceIntegrationInstanceId (for BASE44_NATIVE migrations) when calling create_migration.",
+  "as sourceIntegrationInstanceId (for BASE44_NATIVE migrations) when calling create_migration. " +
+  "For any GitHub-backed workflow, call this before asking the user for a repository URL. If a GitHub " +
+  "instance exists, call list_github_repositories next; if none exists, direct the user to " +
+  "https://app.staticbot.dev/integrations to connect GitHub. Private repositories are supported.",
   {},
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async () => {
     const data = await apiFetch("/api/v1/migrations/integrations/instances");
+    return apiToolResult(data, toText);
+  }
+);
+
+registerApiTool(server,
+  "list_github_repositories",
+  "List all public and private GitHub repositories accessible through a connected Staticbot GitHub integration. " +
+  "Use this whenever a workflow needs a repository: first call list_integration_instances, then pass the selected " +
+  "GitHub instance ID here. Match the current client/project context against `fullName` or `htmlUrl`. If there is " +
+  "one unambiguous match, use its `htmlUrl` directly without asking the user to repeat it. If several repositories " +
+  "are plausible, present only those candidates and ask the user to choose. If no GitHub integration exists, direct " +
+  "the user to https://app.staticbot.dev/integrations to connect GitHub and then retry. Never claim that Staticbot " +
+  "requires a public repository.",
+  {
+    githubIntegrationInstanceId: z.string().uuid().describe("GitHub integration instance ID (from list_integration_instances)"),
+  },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  async ({ githubIntegrationInstanceId }) => {
+    const data = await apiFetch(
+      `/api/v1/migrations/integrations/instances/${githubIntegrationInstanceId}/github-repositories`
+    );
     return apiToolResult(data, toText);
   }
 );

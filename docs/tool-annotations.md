@@ -3,7 +3,7 @@
 Every tool declares `readOnlyHint`, `destructiveHint` and `openWorldHint`. OpenAI's plugin review
 requires all three, and a client uses them to decide how much confirmation a call needs.
 
-55 tools: **26 read-only**, **13 destructive**, **19 that can change public or external state**.
+56 tools: **27 read-only**, **13 destructive**, **19 that can change public or external state**.
 (Counts are measured from the built server, not maintained by hand — see "Keeping this honest" below.)
 
 ## How each is decided
@@ -29,6 +29,8 @@ Deliberately **not** destructive, and worth knowing why:
   takes none — it resolves a zone and reports collisions, and never creates, deletes or takes over
   anything. Choosing an account is a decision the user makes in `create_stack` / `create_deployment`,
   which carry their own hints.
+- `list_github_repositories` only reads the public and private repositories already granted to the
+  selected Staticbot GitHub integration. It never returns an OAuth token or changes GitHub state.
 
 ## Justifications for destructive tools
 

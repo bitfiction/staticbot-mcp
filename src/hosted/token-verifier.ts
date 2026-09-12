@@ -7,6 +7,8 @@ export interface Actor {
   subject: string;
   username: string;
   email: string;
+  /** OAuth client from the signed Keycloak `azp` claim (for example Lovable's DCR client id). */
+  oauthClientId: string;
   scopes: string[];
   identityProvider?: string;
 }
@@ -39,12 +41,13 @@ export function createTokenVerifier(config: HostedConfig) {
     const subject = payload.sub;
     const username = (payload.preferred_username ?? payload.email) as string | undefined;
     const email = payload.email as string | undefined;
+    const oauthClientId = typeof payload.azp === "string" ? payload.azp : undefined;
 
-    if (!subject || !username || !email) {
+    if (!subject || !username || !email || !oauthClientId) {
       // Staticbot needs all three to resolve or create the account; a token without them is
       // well-formed but unusable, and failing here beats failing deeper with a vaguer message.
       throw new TokenVerificationError(
-        "Token is missing sub, preferred_username or email. Check the client's scopes include profile and email.",
+        "Token is missing sub, preferred_username, email or azp. Check the client's scopes include profile and email.",
       );
     }
 
@@ -52,6 +55,7 @@ export function createTokenVerifier(config: HostedConfig) {
       subject,
       username,
       email,
+      oauthClientId,
       scopes: typeof payload.scope === "string" ? payload.scope.split(/\s+/).filter(Boolean) : [],
       identityProvider: payload.identity_provider as string | undefined,
     };

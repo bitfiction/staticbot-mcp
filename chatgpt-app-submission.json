@@ -440,6 +440,18 @@
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
+    "list_github_repositories": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves repositories available through the selected GitHub integration.",
+        "open_world_justification": "Does not modify any GitHub repository or another external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
     "list_supabase_projects": {
       "annotations": {
         "readOnlyHint": true,

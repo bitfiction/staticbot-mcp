@@ -16,8 +16,9 @@ registerApiTool(server,
   "list_templates",
   "List available templates (slim response: id, name, category, repoLink). " +
   "Use get_template to see full details including config variables. " +
-  "When preparing a migration, ask the user: do they want to pick an existing template from this list, " +
-  "or create a new one from their GitHub repo using create_template?",
+  "When preparing a migration, reuse an exact repository match when one exists. Otherwise create a new template " +
+  "from the repository resolved through list_integration_instances and list_github_repositories. Ask the user to " +
+  "choose only when multiple existing templates or repositories are plausible.",
   {},
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   async () => {
@@ -42,11 +43,15 @@ registerApiTool(server,
 registerApiTool(server,
   "create_template",
   "Create a new template by scanning a GitHub repository. Auto-detects platforms, env vars, and builders. " +
+  "Both public and private repositories are supported through the organization's connected Staticbot GitHub integration. " +
+  "Before asking the user for a URL, call list_integration_instances and list_github_repositories, then use an " +
+  "unambiguous repository match from the current client/project context. If GitHub is not connected, direct the user " +
+  "to https://app.staticbot.dev/integrations and retry after they connect it. Never claim the repository must be public. " +
   "Staticbot also classifies the repository's hosting workload; inspect the returned `hostingWorkload` and `isSsr` fields instead of choosing AWS or Cloudflare from agent-side heuristics. " +
   "Use this when the user wants to migrate a repo that doesn't match any existing template from list_templates. " +
   "The name is optional — if omitted, it's derived from the repo name.",
   {
-    repoLink: z.string().describe("GitHub repository URL (e.g. https://github.com/owner/repo)"),
+    repoLink: z.string().describe("GitHub repository URL (public or private; e.g. https://github.com/owner/repo). Resolve it with list_github_repositories when a GitHub integration is connected."),
     name: z.string().optional().describe("Template name (derived from repo name if omitted)"),
   },
   { readOnlyHint: false, destructiveHint: false, openWorldHint: false },

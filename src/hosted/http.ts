@@ -4,7 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 
 import { createServer } from "../server/create-server.js";
 import type { HostedConfig } from "./config.js";
-import { createDelegatedContext } from "./context.js";
+import { createDelegatedContext, recordClientConnection } from "./context.js";
 import { createServiceTokenProvider } from "./service-token.js";
 import { createTokenVerifier, TokenVerificationError } from "./token-verifier.js";
 
@@ -61,6 +61,19 @@ export function createHostedServer(config: HostedConfig) {
 
     await server.connect(transport);
     await transport.handleRequest(req, res);
+
+    // Only an initialize request populates this value. Recording here gives us one durable row per
+    // successful MCP handshake while keeping the transport itself stateless between HTTP requests.
+    const clientInfo = server.server.getClientVersion();
+    if (clientInfo) {
+      try {
+        await recordClientConnection(config, actor, serviceToken, clientInfo);
+      } catch (error) {
+        // Provenance is operational data, not authorization. A temporary database/API failure must
+        // not turn a successful MCP connection into an outage; a later initialize will retry it.
+        process.stderr.write(`Could not persist MCP client connection: ${(error as Error).message}\n`);
+      }
+    }
   }
 
   return createHttpServer((req, res) => {

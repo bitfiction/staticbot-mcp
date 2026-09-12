@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 55;
+const expectedToolCount = 56;
 const expectedTools = [
   "list_templates",
   "get_deployment",
@@ -16,6 +16,7 @@ const expectedTools = [
   "preflight_cloudflare_hosting",
   "recheck_dns_verification",
   "get_migration",
+  "list_github_repositories",
   "clean_migration_target",
   "create_migration_preview",
   "set_connected_project_sync_mode",
@@ -85,6 +86,32 @@ try {
   assert(confirmMigration?.inputSchema?.properties?.gateChoice, "confirm_migration must expose gateChoice");
   assert(confirmMigration?.inputSchema?.properties?.gateSelection, "confirm_migration must expose gateSelection");
 
+  const createMigration = tools.find(({ name }) => name === "create_migration");
+  assert.match(
+    createMigration?.description ?? "",
+    /call list_integration_instances before asking for any repository URL/i,
+    "migration guidance must discover integrations before asking for a repository URL",
+  );
+
+  const createTemplate = tools.find(({ name }) => name === "create_template");
+  assert.match(
+    createTemplate?.description ?? "",
+    /private repositories are supported/i,
+    "template guidance must state that connected private repositories are supported",
+  );
+  assert.match(
+    createTemplate?.description ?? "",
+    /list_github_repositories/,
+    "template guidance must direct clients to repository discovery",
+  );
+
+  const githubRepositories = tools.find(({ name }) => name === "list_github_repositories");
+  assert.equal(githubRepositories?.annotations?.readOnlyHint, true, "GitHub repository discovery must be read-only");
+  assert(
+    githubRepositories?.inputSchema?.properties?.githubIntegrationInstanceId,
+    "GitHub repository discovery must require an integration instance ID",
+  );
+
   const cleanTarget = tools.find(({ name }) => name === "clean_migration_target");
   assert.equal(cleanTarget?.annotations?.readOnlyHint, false, "target cleanup changes state");
   assert.equal(cleanTarget?.annotations?.destructiveHint, true, "target cleanup must be marked destructive");
@@ -111,6 +138,18 @@ try {
     listResult.structuredContent,
     { result: [] },
     "tools must return the API JSON through structuredContent.result",
+  );
+
+  const githubIntegrationInstanceId = "79f97fb7-51c4-4a70-8453-6c1d59d1efb1";
+  await client.callTool({
+    name: "list_github_repositories",
+    arguments: { githubIntegrationInstanceId },
+  });
+  assert(
+    apiRequests.some(({ method, url }) =>
+      method === "GET" &&
+      url === `/api/v1/migrations/integrations/instances/${githubIntegrationInstanceId}/github-repositories`),
+    "GitHub repository discovery must call the tenant-scoped public v1 endpoint",
   );
 
   const stackId = "4b6cc471-b50f-40d5-bfa9-72d86e32f130";

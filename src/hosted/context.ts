@@ -8,6 +8,23 @@ const ACTOR_USERNAME = "X-Staticbot-Actor-Username";
 const ACTOR_EMAIL = "X-Staticbot-Actor-Email";
 const ACTOR_SCOPES = "X-Staticbot-Actor-Scopes";
 const ACTOR_IDP = "X-Staticbot-Actor-Idp";
+const MCP_OAUTH_CLIENT_ID = "X-Staticbot-Mcp-OAuth-Client-Id";
+
+export interface McpClientInfo {
+  name: string;
+  version: string;
+}
+
+function delegatedHeaders(actor: Actor): Record<string, string> {
+  return {
+    [ACTOR_SUBJECT]: actor.subject,
+    [ACTOR_USERNAME]: actor.username,
+    [ACTOR_EMAIL]: actor.email,
+    [ACTOR_SCOPES]: actor.scopes.join(" "),
+    [MCP_OAUTH_CLIENT_ID]: actor.oauthClientId,
+    ...(actor.identityProvider ? { [ACTOR_IDP]: actor.identityProvider } : {}),
+  };
+}
 
 /**
  * A `ToolContext` scoped to one request and one user.
@@ -29,11 +46,7 @@ export function createDelegatedContext(
         headers: {
           "Authorization": `Bearer ${await serviceToken()}`,
           "Content-Type": "application/json",
-          [ACTOR_SUBJECT]: actor.subject,
-          [ACTOR_USERNAME]: actor.username,
-          [ACTOR_EMAIL]: actor.email,
-          [ACTOR_SCOPES]: actor.scopes.join(" "),
-          ...(actor.identityProvider ? { [ACTOR_IDP]: actor.identityProvider } : {}),
+          ...delegatedHeaders(actor),
           ...(options.headers ?? {}),
         },
       });
@@ -50,4 +63,31 @@ export function createDelegatedContext(
       return text ? JSON.parse(text) : null;
     },
   };
+}
+
+/**
+ * Persists one successful MCP initialization in Staticbot's own database.
+ *
+ * `oauthClientId` is authenticated provenance from the access token. `clientInfo` is deliberately
+ * stored as a human-readable claim: MCP requires it during initialize, but does not authenticate it.
+ */
+export async function recordClientConnection(
+  config: HostedConfig,
+  actor: Actor,
+  serviceToken: () => Promise<string>,
+  clientInfo: McpClientInfo,
+): Promise<void> {
+  const res = await fetch(`${config.apiUrl}/api/v1/mcp/client-connections`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${await serviceToken()}`,
+      "Content-Type": "application/json",
+      ...delegatedHeaders(actor),
+    },
+    body: JSON.stringify({ clientName: clientInfo.name, clientVersion: clientInfo.version }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} ${res.statusText}: ${await res.text()}`);
+  }
 }

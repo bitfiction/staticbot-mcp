@@ -4,12 +4,13 @@ Prefer the Staticbot MCP tools named below. The live API and tool schemas are au
 
 ## Discovery and planning
 
-1. Call `list_templates`; use `get_template` for a plausible existing template or `create_template` for a new repository.
-2. Read repository scan output, especially `hostingWorkload`, `isSsr`, supported configuration, and warnings. Staticbot owns these classifications.
-3. Call `list_stacks` before creating a stack for the same template.
-4. For Supabase-shaped template variables, use `list_integration_instances` and `list_supabase_projects` when the user wants linked key refresh. Never print or persist credentials.
-5. Ask the user to choose `AUTO_GENERATED`, `CUSTOM_DOMAIN`, or an available `EXISTING_DOMAIN` when the choice is not already clear.
-6. For a Cloudflare Workers / SSR app, call `list_cloudflare_hosting_targets`. If it reports a customer option AND the user might want the app in their own Cloudflare account, present the choices — Staticbot's managed account is the default. Do not choose for them, and do not ask at all when only the managed choice exists.
+1. Call `list_integration_instances`; for a connected GitHub instance, call `list_github_repositories` and resolve the current repository from client/project context. Private repositories are supported. Use one unambiguous match without asking; ask only when multiple matches are plausible. If GitHub is absent, direct the user to `https://app.staticbot.dev/integrations`, then retry. Never claim a public repository is required.
+2. Call `list_templates`; use `get_template` for a plausible existing template or `create_template` for the resolved repository.
+3. Read repository scan output, especially `hostingWorkload`, `isSsr`, supported configuration, and warnings. Staticbot owns these classifications.
+4. Call `list_stacks` before creating a stack for the same template.
+5. For Supabase-shaped template variables, use `list_supabase_projects` when the user wants linked key refresh. Never print or persist credentials.
+6. Ask the user to choose `AUTO_GENERATED`, `CUSTOM_DOMAIN`, or an available `EXISTING_DOMAIN` when the choice is not already clear.
+7. For a Cloudflare Workers / SSR app, call `list_cloudflare_hosting_targets`. If it reports a customer option AND the user might want the app in their own Cloudflare account, present the choices — Staticbot's managed account is the default. Do not choose for them, and do not ask at all when only the managed choice exists.
 
 ## Create and execute
 

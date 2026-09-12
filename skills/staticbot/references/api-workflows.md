@@ -101,6 +101,9 @@ not report a Workers custom hostname live until both returned status fields are 
 - `GET|POST /migrations`
 - `GET /migrations/{id}`
 - `POST /migrations/{id}/confirm|resume|pause`
+- `GET /migrations/{id}/clean-target-plan` — live cleanup availability, `confirmationProjectRef` and
+  per-scope counts; read immediately before authorizing a destructive cleanup, not the discovery-time
+  `targetConflictReport`
 - `POST /migrations/{id}/clean-target`
 - `GET /migrations/{id}/jobs`
 - `POST /migrations/jobs/{jobId}/retry|skip|complete`

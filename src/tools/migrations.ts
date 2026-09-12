@@ -64,8 +64,31 @@ registerApiTool(server,
 );
 
 registerApiTool(server,
+  "get_clean_target_plan",
+  "Inspect a destructive target cleanup BEFORE asking the user to authorize it. Always call this " +
+  "immediately before presenting cleanup, and never rely on the targetConflictReport from an earlier " +
+  "get_migration: that is a snapshot taken at discovery, while this is the current state of the target. " +
+  "Returns `available` (cleanup is only possible before execution starts, and only for Supabase Cloud " +
+  "targets) with `unavailableReason` when it is not, the exact `confirmationProjectRef` the user must " +
+  "approve, `countsAvailable` plus live per-scope `rows` describing what each of DATABASE, STORAGE and " +
+  "PROJECT would remove, and the `cleanupEndpoint`. Present the rows and the project ref verbatim, get " +
+  "explicit approval for one exact scope, then pass that ref to clean_migration_target unchanged. If " +
+  "`available` is false, tell the user the reason — do not call clean_migration_target to find out.",
+  {
+    id: z.string().uuid().describe("Migration ID"),
+  },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  async ({ id }) => {
+    const data = await apiFetch(`/api/v1/migrations/${id}/clean-target-plan`);
+    return apiToolResult(data, toText);
+  }
+);
+
+registerApiTool(server,
   "clean_migration_target",
-  "Destructively clean conflicting objects from a Supabase Cloud migration target before execution starts. DATABASE deletes user-created database objects, Supabase migration history, and existing authentication users/sessions while preserving Storage. STORAGE empties and deletes every Storage bucket and file while preserving database/auth data. PROJECT performs both cleanups. This cannot be undone. Before calling, get the migration, present the exact scope consequences and targetConflictReport.confirmationProjectRef, and obtain explicit user confirmation for that exact project and scope. Copy the returned confirmationProjectRef into confirmProjectRef; never guess it. The migration remains paused after cleanup.",
+  "Destructively clean conflicting objects from a Supabase Cloud migration target before execution starts. " +
+  "Call get_clean_target_plan first and take confirmProjectRef from its response — it reports the live " +
+  "state and whether cleanup is even available. DATABASE deletes user-created database objects, Supabase migration history, and existing authentication users/sessions while preserving Storage. STORAGE empties and deletes every Storage bucket and file while preserving database/auth data. PROJECT performs both cleanups. This cannot be undone. Before calling, get the migration, present the exact scope consequences and targetConflictReport.confirmationProjectRef, and obtain explicit user confirmation for that exact project and scope. Copy the returned confirmationProjectRef into confirmProjectRef; never guess it. The migration remains paused after cleanup.",
   {
     id: z.string().uuid().describe("Migration ID"),
     scope: z.enum(["DATABASE", "STORAGE", "PROJECT"]).describe("Exact destructive scope explicitly approved by the user"),

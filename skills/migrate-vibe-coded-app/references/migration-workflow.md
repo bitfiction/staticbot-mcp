@@ -17,7 +17,7 @@ The live Staticbot tool schemas and `pendingAction` response are authoritative.
 1. Call `create_migration` only after the required source, target, integrations, and template are known.
 2. Poll `get_migration` until discovery pauses. Fetch `get_migration_jobs`, present the inventory, and wait for explicit approval before `confirm_migration`.
 3. Route every non-null `pendingAction` to the matching tool and use the IDs/options it returns:
-   - `REVIEW_TARGET_CONFLICTS` → present `targetConflictReport`; call `clean_migration_target` only after exact-scope/project confirmation, or call `confirm_migration` only after the user explicitly declines cleanup
+   - `REVIEW_TARGET_CONFLICTS` → call `get_clean_target_plan` and present its live rows and `confirmationProjectRef` (the migration's own `targetConflictReport` is a discovery-time snapshot); call `clean_migration_target` only after exact-scope/project confirmation, or call `confirm_migration` only after the user explicitly declines cleanup
    - `WAIT_FOR_TARGET_CLEANUP` → poll `get_migration`; do not resolve another gate yet
    - `RETRY_TARGET_CLEANUP` → explain the failure and use `retry_migration_job`; never skip a cleanup prerequisite
    - `CHOOSE_MIGRATION_STRATEGY` → present `preFlightGate.actions` and consequences, then call `confirm_migration` with the user's exact `gateChoice`

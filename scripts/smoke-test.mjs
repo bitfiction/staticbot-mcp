@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 58;
+const expectedToolCount = 59;
 const expectedTools = [
   "get_account_status",
   "list_templates",
@@ -19,6 +19,7 @@ const expectedTools = [
   "get_migration",
   "list_source_repositories",
   "list_github_repositories",
+  "get_clean_target_plan",
   "clean_migration_target",
   "create_migration_preview",
   "set_connected_project_sync_mode",
@@ -176,7 +177,19 @@ try {
     "the GitHub-only alias must point clients at list_source_repositories",
   );
 
+  // The guidance told agents to inspect the plan before authorizing an irreversible action, but no
+  // tool exposed the endpoint — so the instruction could not be followed.
+  const cleanTargetPlan = tools.find(({ name }) => name === "get_clean_target_plan");
+  assert.equal(cleanTargetPlan?.annotations?.readOnlyHint, true, "inspecting a cleanup plan must be read-only");
+  assert.equal(cleanTargetPlan?.annotations?.destructiveHint, false, "inspecting a plan removes nothing");
+  assert(cleanTargetPlan?.inputSchema?.properties?.id, "the cleanup plan must be looked up by migration");
+
   const cleanTarget = tools.find(({ name }) => name === "clean_migration_target");
+  assert.match(
+    cleanTarget?.description ?? "",
+    /get_clean_target_plan/,
+    "destructive cleanup must point at the plan it should be authorized from",
+  );
   assert.equal(cleanTarget?.annotations?.readOnlyHint, false, "target cleanup changes state");
   assert.equal(cleanTarget?.annotations?.destructiveHint, true, "target cleanup must be marked destructive");
   assert.deepEqual(
@@ -251,6 +264,14 @@ try {
       method === "POST" && url === "/api/v1/templates" &&
       body.includes(`"sourceControlIntegrationInstanceId":"${integrationInstanceId}"`)),
     "create_template must forward the integration the repository was discovered through",
+  );
+
+  const migrationId = "0b4f2a27-6d19-4a3b-9a1e-2c7d5f8e9b03";
+  await client.callTool({ name: "get_clean_target_plan", arguments: { id: migrationId } });
+  assert(
+    apiRequests.some(({ method, url }) =>
+      method === "GET" && url === `/api/v1/migrations/${migrationId}/clean-target-plan`),
+    "the cleanup plan must read the live v1 endpoint rather than reusing discovery state",
   );
 
   const stackId = "4b6cc471-b50f-40d5-bfa9-72d86e32f130";

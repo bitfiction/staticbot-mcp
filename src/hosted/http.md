@@ -60,12 +60,34 @@ against that Keycloak.
   dependency is down converts their outage into a restart loop and makes recovery slower.
 - **Service tokens are cached with a 30s margin and concurrent refreshes are collapsed.** Without
   that, every in-flight request mints its own token on expiry and Keycloak sees a burst of grants.
-- **Staticbot's 403 bodies are surfaced verbatim.** They name the cause — "Delegated scope
-  'staticbot:write' required", "Unknown Staticbot account for the asserted actor" — which a model can
-  act on, where a bare status code just produces a retry loop.
+- **Staticbot's 403 bodies are surfaced verbatim** — after scrubbing. They name the cause — "Delegated
+  scope 'staticbot:write' required", "Unknown Staticbot account for the asserted actor" — which a
+  model can act on, where a bare status code just produces a retry loop. Scrubbed first because
+  "verbatim" includes any secret the API quoted back: a rejected `provide_base44_secrets` call echoes
+  the offending value into the reason string. See `src/log.md`.
 - **`consentRequired: true` on `staticbot-openai` blocks the password grant**, so end-to-end testing
   needs the browser flow or a temporary change to that client. Verified by doing exactly that, then
   restoring both `consentRequired` and `directAccessGrantsEnabled`.
+
+## Logging
+
+Request-level events (`mcp.request`, `mcp.unauthorized`, `mcp.request_failed`) are emitted from
+`res.on("finish")`/`"close"` rather than wrapped around handlers, so **every** exit path is
+accounted for — including the 401 written before a handler is entered, and the 404. A `logged` guard
+keeps a request that both finishes and closes from producing two lines.
+
+Two decisions worth knowing:
+
+- **`/healthz` and `/readyz` are never logged.** The probes run every 5s and 20s per replica — about
+  43,000 requests a day — which would both bury the traffic worth reading and spend the whole
+  retention budget on the word "ok". The check happens before any logging is wired up.
+- **The actor is published onto the per-request context by `handleMcp`**, after token verification
+  and before any tool runs. That is what lets a request line name a person, and it means a request
+  that dies mid-flight still says who it was for. Lines for unauthenticated requests have no actor,
+  which is correct rather than missing data.
+
+Tool-call logging lives one layer down, in `createDelegatedContext`'s `apiFetch` — see `src/log.md`
+for why that is the only place it needs to go, and for the redaction rules.
 
 ## Verified end to end (2026-08-31, local dev)
 

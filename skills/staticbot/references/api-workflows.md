@@ -121,12 +121,16 @@ not report a Workers custom hostname live until both returned status fields are 
 - `GET /integrations/instances/{id}/repositories` (one account only — narrows the listing, so prefer the endpoint above unless the account is already chosen)
 - `GET /migrations/integrations/instances/{id}/github-repositories` (deprecated GitHub-only alias)
 - `GET /migrations/integrations/instances/{id}/supabase-projects`
+- `GET /migrations/integrations/instances/{id}/supabase-organizations`
+- `GET /migrations/integrations/instances/{id}/supabase-regions`
+- `POST /migrations/integrations/instances/{id}/supabase-projects` — creates a project after the user confirms its exact name, organization, and region; the generated database password is not returned
+- `GET /migrations/integrations/instances/{id}/supabase-projects/{projectRef}/status` — poll until `healthy=true`; never create a duplicate because provisioning is slow
 
 Supported source types include `LOVABLE_SUPABASE`, `BOLT_SUPABASE`, `FIREBASE`, `BASE44_SUPABASE`, and `BASE44_NATIVE`. Never assume their request fields are identical; consult the live schema.
 
 Typical migration flow:
 
-1. List repositories across every connected account first (`GET /integrations/repositories`) and resolve the current repository from client/project context before asking the user. The result includes private repositories granted to Staticbot; a `sources[]` entry with an `unavailableReason` means that account is missing from the list, and no sources at all means the user should connect one at `https://app.staticbot.dev/integrations`. Carry the chosen repository's `integrationInstanceId` into template creation as `sourceControlIntegrationInstanceId`. Then inspect the source platform, target, and template. Source and target Supabase credentials are resolved server-side from discovery and connected integrations.
+1. List repositories across every connected account first (`GET /integrations/repositories`) and resolve the current repository from client/project context before asking the user. The result includes private repositories granted to Staticbot; a `sources[]` entry with an `unavailableReason` means that account is missing from the list, and no sources at all means the user should connect one at `https://app.staticbot.dev/integrations`. Carry the chosen repository's `integrationInstanceId` into template creation as `sourceControlIntegrationInstanceId`. Then inspect the source platform, target, and template. The target may be an existing healthy Supabase project or a newly provisioned customer-owned project. Project creation consumes an external project slot and may affect billing, so confirm the exact name, organization, and region first, then poll the returned project rather than creating duplicates. Source and target Supabase credentials are resolved server-side from discovery and connected integrations.
 2. Create the migration with fields validated against the live schema.
 3. Poll until discovery reaches `PAUSED_FOR_APPROVAL`.
 4. Fetch jobs and present the discovery inventory to the user.

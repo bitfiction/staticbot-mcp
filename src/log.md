@@ -16,7 +16,7 @@ The proximate cause for adding it: the node's own log rotation is ~25MB per cont
 override them. Anything written only to stderr is gone within hours of a busy day. The file sink
 lives on a PersistentVolumeClaim for that reason.
 
-## One choke point, covering all 59 tools
+## One choke point, covering all 63 tools
 
 Every tool in `src/tools/*.ts` registers through `registerApiTool`, and every handler makes **exactly
 one** `apiFetch` call — the two counts match 1:1 across all eleven files. That makes `apiFetch` in

@@ -63,7 +63,7 @@ export function createDelegatedContext(
       const startedAt = Date.now();
 
       // The argument object is the only record of what the customer's agent asked for, and every
-      // tool reaches the API through here — 59 of them, one call each — so this single line covers
+      // tool reaches the API through here — 63 of them, one call each — so this single line covers
       // the whole surface without touching a single tool definition.
       const requestArgs = parseJsonBody(options.body);
       const secrets = collectSecretValues(requestArgs);

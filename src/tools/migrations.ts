@@ -208,7 +208,7 @@ registerApiTool(server,
   "3. Ask the user whether the target is managed Supabase (SUPABASE_CLOUD) or their own self-hosted install (SUPABASE_SELF_HOSTED).\n" +
   "4. From list_integration_instances, use type='supabase' as supabaseIntegrationInstanceId, the selected type='github' instance as githubIntegrationInstanceId, and type='base44' as sourceIntegrationInstanceId (for BASE44_NATIVE).\n" +
   "5. Source Supabase metadata is discovered by Staticbot. For a BASE44_SUPABASE app whose repository contains placeholders, provide its deployed *.base44.app URL as sourceDeployedUrl. Never ask the user for Supabase API keys.\n" +
-  "6. For SUPABASE_CLOUD only: call list_supabase_projects with the Supabase integration instance — ask the user which ACTIVE project to use as the target. Skip this step for SUPABASE_SELF_HOSTED.\n" +
+  "6. For SUPABASE_CLOUD only: call list_supabase_projects with the Supabase integration instance. If the user wants an existing target, ask them to choose an ACTIVE project. If they want a new target, call list_supabase_organizations and list_supabase_regions, obtain explicit confirmation of the exact project name, organization, and region, then call create_supabase_project. Poll get_supabase_project_status until healthy=true before using its id as targetSupabaseProjectRef. Never create a second project merely because provisioning is slow or a status poll fails. Skip this step for SUPABASE_SELF_HOSTED.\n" +
   "7. For templateId: either ask the user to pick from list_templates, or create a new template from the resolved repository using create_template.\n\n" +
   "IMPORTANT: Source and target Supabase projects must be different. Staticbot validates this after source discovery; if it reports a match, ask the user to choose another target.\n\n" +
   "After creation, the migration starts with a DISCOVERY job. Once discovery completes, it pauses (PAUSED_FOR_APPROVAL) — present the inventory to the user and call confirm_migration if they approve.",
@@ -482,8 +482,8 @@ registerApiTool(server,
   "List all Supabase projects accessible through a connected Supabase integration instance. " +
   "Returns project name, reference ID, region, and status. Use the project's id field as " +
   "targetSupabaseProjectRef when creating a migration. Only ACTIVE_HEALTHY projects can be " +
-  "used as targets. IMPORTANT: Present the list to the user and ask them to choose which " +
-  "project to use as the migration target.",
+  "used as targets. Present the list and let the user choose an existing target, or offer to " +
+  "create a customer-owned project with create_supabase_project.",
   {
     supabaseIntegrationInstanceId: z.string().uuid().describe("Supabase integration instance ID (from list_integration_instances)"),
   },
@@ -491,6 +491,88 @@ registerApiTool(server,
   async ({ supabaseIntegrationInstanceId }) => {
     const data = await apiFetch(
       `/api/v1/migrations/integrations/instances/${supabaseIntegrationInstanceId}/supabase-projects`
+    );
+    return apiToolResult(data, toText);
+  }
+);
+
+registerApiTool(server,
+  "list_supabase_organizations",
+  "List the Supabase organizations accessible through a connected Supabase integration instance. " +
+  "Call this before create_supabase_project and present the organization names to the user. Use the " +
+  "selected organization's id unchanged as organizationId. Do not guess an organization when more " +
+  "than one is available.",
+  {
+    supabaseIntegrationInstanceId: z.string().uuid().describe("Supabase integration instance ID (from list_integration_instances)"),
+  },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  async ({ supabaseIntegrationInstanceId }) => {
+    const data = await apiFetch(
+      `/api/v1/migrations/integrations/instances/${supabaseIntegrationInstanceId}/supabase-organizations`
+    );
+    return apiToolResult(data, toText);
+  }
+);
+
+registerApiTool(server,
+  "list_supabase_regions",
+  "List the regions Staticbot supports when creating a customer-owned Supabase project. Call this " +
+  "before create_supabase_project and use the user's selected region id unchanged. When the user has " +
+  "not expressed a location preference, explain the available choices rather than silently choosing one.",
+  {
+    supabaseIntegrationInstanceId: z.string().uuid().describe("Supabase integration instance ID (from list_integration_instances)"),
+  },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  async ({ supabaseIntegrationInstanceId }) => {
+    const data = await apiFetch(
+      `/api/v1/migrations/integrations/instances/${supabaseIntegrationInstanceId}/supabase-regions`
+    );
+    return apiToolResult(data, toText);
+  }
+);
+
+registerApiTool(server,
+  "create_supabase_project",
+  "Create a new project directly inside the customer's selected Supabase organization. This changes " +
+  "an external account, consumes a project slot, and may affect the customer's Supabase billing. Before " +
+  "calling, use list_supabase_organizations and list_supabase_regions, present the exact project name, " +
+  "organization, and region, and obtain the user's explicit confirmation. Staticbot generates and " +
+  "encrypts the database password; it is intentionally never returned through MCP. Provisioning is " +
+  "asynchronous: after creation, call get_supabase_project_status with the returned id until healthy=true. " +
+  "Do not call create_supabase_project again because provisioning is slow or a poll fails.",
+  {
+    supabaseIntegrationInstanceId: z.string().uuid().describe("Supabase integration instance ID (from list_integration_instances)"),
+    name: z.string().min(1).max(80).describe("Exact project name explicitly confirmed by the user"),
+    organizationId: z.string().min(1).describe("Exact Supabase organization id selected from list_supabase_organizations"),
+    region: z.string().min(1).describe("Exact region id selected from list_supabase_regions"),
+  },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  async ({ supabaseIntegrationInstanceId, name, organizationId, region }) => {
+    const data = await apiFetch(
+      `/api/v1/migrations/integrations/instances/${supabaseIntegrationInstanceId}/supabase-projects`,
+      {
+        method: "POST",
+        body: JSON.stringify({ name, organizationId, region }),
+      }
+    );
+    return apiToolResult(data, toText);
+  }
+);
+
+registerApiTool(server,
+  "get_supabase_project_status",
+  "Read the lifecycle state of a Supabase project created or selected through Staticbot. After " +
+  "create_supabase_project, poll this tool until healthy=true before using the project as a migration " +
+  "target. A transitioning state means wait; it is not permission to create another project. Stop and " +
+  "report the returned state if unavailable=true.",
+  {
+    supabaseIntegrationInstanceId: z.string().uuid().describe("Supabase integration instance ID (from list_integration_instances)"),
+    projectRef: z.string().min(1).describe("Supabase project reference returned as create_supabase_project.id"),
+  },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  async ({ supabaseIntegrationInstanceId, projectRef }) => {
+    const data = await apiFetch(
+      `/api/v1/migrations/integrations/instances/${supabaseIntegrationInstanceId}/supabase-projects/${encodeURIComponent(projectRef)}/status`
     );
     return apiToolResult(data, toText);
   }

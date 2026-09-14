@@ -488,6 +488,54 @@
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
+    "list_supabase_organizations": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves organizations available through the selected Supabase integration.",
+        "open_world_justification": "Does not modify a Supabase organization or another external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "list_supabase_regions": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves the supported region catalog for Supabase project creation.",
+        "open_world_justification": "Does not modify a Supabase project or another external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "create_supabase_project": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Creates a project in the user's explicitly selected Supabase organization and region after confirmation.",
+        "open_world_justification": "Creates an external Supabase resource that can consume account quota or affect billing.",
+        "destructive_justification": "Adds a new project without deleting or overwriting existing resources."
+      }
+    },
+    "get_supabase_project_status": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves the lifecycle state of the selected Supabase project.",
+        "open_world_justification": "Does not modify the Supabase project or another external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
     "list_connected_projects": {
       "annotations": {
         "readOnlyHint": true,

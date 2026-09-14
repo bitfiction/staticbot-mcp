@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 59;
+const expectedToolCount = 63;
 const expectedTools = [
   "get_account_status",
   "list_templates",
@@ -19,6 +19,10 @@ const expectedTools = [
   "get_migration",
   "list_source_repositories",
   "list_github_repositories",
+  "list_supabase_organizations",
+  "list_supabase_regions",
+  "create_supabase_project",
+  "get_supabase_project_status",
   "get_clean_target_plan",
   "clean_migration_target",
   "create_migration_preview",
@@ -123,6 +127,26 @@ try {
     createMigration?.description ?? "",
     /call list_source_repositories \(no arguments\) before asking for any repository URL/i,
     "migration guidance must discover repositories across every connected account first",
+  );
+  assert.match(
+    createMigration?.description ?? "",
+    /call create_supabase_project/,
+    "migration guidance must offer customer-owned Supabase project provisioning",
+  );
+
+  const createSupabaseProject = tools.find(({ name }) => name === "create_supabase_project");
+  assert.equal(createSupabaseProject?.annotations?.readOnlyHint, false, "project creation mutates Supabase");
+  assert.equal(createSupabaseProject?.annotations?.destructiveHint, false, "project creation is additive");
+  assert.equal(createSupabaseProject?.annotations?.openWorldHint, true, "project creation changes an external account");
+  assert.match(
+    createSupabaseProject?.description ?? "",
+    /explicit confirmation/i,
+    "project creation must require confirmation of the external resource",
+  );
+  assert.match(
+    createSupabaseProject?.description ?? "",
+    /never returned through MCP/i,
+    "project creation must keep the generated database password out of MCP",
   );
 
   const createTemplate = tools.find(({ name }) => name === "create_template");
@@ -250,6 +274,63 @@ try {
       method === "GET" &&
       url === `/api/v1/migrations/integrations/instances/${integrationInstanceId}/github-repositories`),
     "the GitHub-only alias must keep calling the endpoint older clients expect",
+  );
+
+  await client.callTool({
+    name: "list_supabase_organizations",
+    arguments: { supabaseIntegrationInstanceId: integrationInstanceId },
+  });
+  assert(
+    apiRequests.some(({ method, url }) =>
+      method === "GET" &&
+      url === `/api/v1/migrations/integrations/instances/${integrationInstanceId}/supabase-organizations`),
+    "Supabase organization discovery must call the public v1 endpoint",
+  );
+
+  await client.callTool({
+    name: "list_supabase_regions",
+    arguments: { supabaseIntegrationInstanceId: integrationInstanceId },
+  });
+  assert(
+    apiRequests.some(({ method, url }) =>
+      method === "GET" &&
+      url === `/api/v1/migrations/integrations/instances/${integrationInstanceId}/supabase-regions`),
+    "Supabase region discovery must call the public v1 endpoint",
+  );
+
+  await client.callTool({
+    name: "create_supabase_project",
+    arguments: {
+      supabaseIntegrationInstanceId: integrationInstanceId,
+      name: "Migrated app",
+      organizationId: "supabase-org",
+      region: "eu-central-1",
+    },
+  });
+  assert(
+    apiRequests.some(({ method, url, body }) =>
+      method === "POST" &&
+      url === `/api/v1/migrations/integrations/instances/${integrationInstanceId}/supabase-projects` &&
+      JSON.stringify(JSON.parse(body)) === JSON.stringify({
+        name: "Migrated app",
+        organizationId: "supabase-org",
+        region: "eu-central-1",
+      })),
+    "create_supabase_project must forward the confirmed project fields unchanged",
+  );
+
+  await client.callTool({
+    name: "get_supabase_project_status",
+    arguments: {
+      supabaseIntegrationInstanceId: integrationInstanceId,
+      projectRef: "new-project-ref",
+    },
+  });
+  assert(
+    apiRequests.some(({ method, url }) =>
+      method === "GET" &&
+      url === `/api/v1/migrations/integrations/instances/${integrationInstanceId}/supabase-projects/new-project-ref/status`),
+    "Supabase project polling must call the public v1 lifecycle endpoint",
   );
 
   await client.callTool({

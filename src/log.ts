@@ -123,6 +123,68 @@ export function scrubSecrets(text: string, secrets: string[]): string {
   return truncate(scrubbed);
 }
 
+let cachedInstance: string | null = null;
+
+/**
+ * The pod name to stamp on every line, resolved once.
+ *
+ * Memoized partly for cost — `os.hostname()` is a syscall and this is on every request — and partly
+ * so it sits inside a try. An exception here must never escape into a caller's request path.
+ */
+function instanceName(): string {
+  if (cachedInstance === null) {
+    try {
+      cachedInstance = hostname();
+    } catch {
+      cachedInstance = "unknown";
+    }
+  }
+  return cachedInstance;
+}
+
+/**
+ * Writes to stderr without ever throwing.
+ *
+ * A destroyed or closed stderr raises synchronously (EPIPE on a pipe whose reader is gone), and
+ * logging failing a request is the exact outcome this module exists to prevent.
+ */
+function writeToStderr(text: string): void {
+  try {
+    process.stderr.write(text);
+  } catch {
+    // Nothing useful is left to do. Swallowing is the point.
+  }
+}
+
+/**
+ * Renders one event as a JSON line, degrading rather than throwing.
+ *
+ * `JSON.stringify` throws on a BigInt, a circular reference, or a getter that throws — and the
+ * fields here come from call sites that pass through arbitrary runtime values. Losing the fields is
+ * a far better outcome than losing the event, and losing the event is better than failing the
+ * request that was being logged.
+ */
+function serializeLine(
+  event: string,
+  level: LogLevel,
+  ts: string,
+  instance: string,
+  fields: Record<string, unknown>,
+): string {
+  try {
+    return JSON.stringify({ ts, level, event, instance, ...fields });
+  } catch (error) {
+    const detail = (error as Error)?.message ?? String(error);
+    try {
+      return JSON.stringify({ ts, level, event, instance, serializationError: detail });
+    } catch {
+      // Only reachable if `detail` itself were unserializable, which it cannot be — but this is the
+      // load-bearing guarantee, so it does not rest on an argument.
+      return `{"ts":"${ts}","level":"error","event":"log.serialization_failed"}`;
+    }
+  }
+}
+
 /**
  * The file a log line belongs in, or null when file logging is off.
  *
@@ -138,7 +200,7 @@ function logFileFor(date: Date): string | null {
   }
   const day = date.toISOString().slice(0, 10);
   const directory = dirname(configured);
-  const name = `${day}-${hostname()}.log`;
+  const name = `${day}-${instanceName()}.log`;
   return join(directory, name);
 }
 
@@ -185,33 +247,40 @@ export function logEvent(
   level: LogLevel = "info",
 ): void {
   const now = new Date();
-  const line = JSON.stringify({
-    ts: now.toISOString(),
-    level,
-    event,
-    instance: hostname(),
-    ...fields,
-  });
+  const ts = now.toISOString();
+  const line = serializeLine(event, level, ts, instanceName(), fields);
 
-  process.stderr.write(`${line}\n`);
+  // stderr first and unconditionally: it is the sink that always exists, and it has to survive a
+  // failure of the file sink below.
+  writeToStderr(`${line}\n`);
 
-  const file = logFileFor(now);
-  if (!file || fileLoggingBroken) {
+  if (fileLoggingBroken) {
     return;
   }
+
   try {
+    const file = logFileFor(now);
+    if (!file) {
+      return;
+    }
     mkdirSync(dirname(file), { recursive: true });
-    pruneExpiredFiles(dirname(file));
+
+    // Best-effort housekeeping, contained separately: failing to delete an expired file must not
+    // cost us this line, and must not disable file logging for the process.
+    try {
+      pruneExpiredFiles(dirname(file));
+    } catch {
+      // Deliberately ignored. Retention catches up on a later call.
+    }
+
     appendFileSync(file, `${line}\n`);
   } catch (error) {
+    // The mount is gone or read-only. Report once and stop trying, so the failure cannot itself
+    // become the flood it would be reported into.
     fileLoggingBroken = true;
-    process.stderr.write(
-      `${JSON.stringify({
-        ts: now.toISOString(),
-        level: "error",
-        event: "log.file_failed",
-        instance: hostname(),
-        error: (error as Error).message,
+    writeToStderr(
+      `${serializeLine("log.file_failed", "error", ts, instanceName(), {
+        error: (error as Error)?.message ?? String(error),
         note: "file logging disabled for this process; stderr continues",
       })}\n`,
     );
@@ -223,13 +292,19 @@ export function logEvent(
  * someone later expects to read. Cheap enough to call at startup.
  */
 export function describeLogTarget(): Record<string, unknown> {
-  const file = logFileFor(new Date());
-  if (!file) {
-    return { fileLogging: "disabled" };
-  }
   try {
-    return { fileLogging: "enabled", logFile: file, logFileBytes: statSync(file).size };
+    const file = logFileFor(new Date());
+    if (!file) {
+      return { fileLogging: "disabled" };
+    }
+    try {
+      return { fileLogging: "enabled", logFile: file, logFileBytes: statSync(file).size };
+    } catch {
+      // The file does not exist yet, which is the normal state at startup.
+      return { fileLogging: "enabled", logFile: file, logFileBytes: 0 };
+    }
   } catch {
-    return { fileLogging: "enabled", logFile: file, logFileBytes: 0 };
+    // Called from the startup path, which must not fail over a diagnostic.
+    return { fileLogging: "unknown" };
   }
 }

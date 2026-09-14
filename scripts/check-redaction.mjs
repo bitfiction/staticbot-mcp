@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-import { collectSecretValues, redact, scrubSecrets } from "../dist/log.js";
+import { collectSecretValues, logEvent, redact, scrubSecrets } from "../dist/log.js";
 
 /**
  * Guards the one property of the logging change that fails silently.
@@ -62,4 +62,28 @@ const cyclic = { name: "root" };
 cyclic.self = cyclic;
 assert.doesNotThrow(() => JSON.stringify(redact(cyclic)), "cyclic structures must not hang redaction");
 
-console.log("MCP redaction check passed");
+// ---------------------------------------------------------------------------
+// logEvent's "never throws" contract
+//
+// Every call site is on a request path, so an exception escaping here converts a logging problem
+// into a failed customer request. Three concrete ways that could happen, all of which did before
+// serialization and the stderr write were brought inside the guard.
+// ---------------------------------------------------------------------------
+
+assert.doesNotThrow(() => logEvent("probe.bigint", { value: 1n }), "a BigInt field must not escape logEvent");
+assert.doesNotThrow(() => logEvent("probe.circular", { cyclic }), "a circular field must not escape logEvent");
+assert.doesNotThrow(
+  () => logEvent("probe.getter", { get boom() { throw new Error("getter threw"); } }),
+  "a throwing getter must not escape logEvent",
+);
+
+// stderr is a stream, and streams fail: EPIPE on a reader that has gone away raises synchronously.
+const realWrite = process.stderr.write;
+process.stderr.write = () => { throw new Error("EPIPE"); };
+try {
+  assert.doesNotThrow(() => logEvent("probe.stderr", { ok: true }), "a throwing stderr must not escape logEvent");
+} finally {
+  process.stderr.write = realWrite;
+}
+
+console.log("MCP redaction check passed (redaction + logEvent non-throwing contract)");

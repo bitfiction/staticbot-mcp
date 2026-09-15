@@ -419,13 +419,13 @@
     "validate_function_url": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
+        "openWorldHint": true,
+        "destructiveHint": true
       },
       "justifications": {
-        "read_only_justification": "Checks the Supabase function and updates the migration job's stored verification state.",
-        "open_world_justification": "Reads the external function without modifying it or another external system.",
-        "destructive_justification": "Does not delete, overwrite, or irreversibly alter external data."
+        "read_only_justification": "Checks the Supabase export function and, when it is reachable, completes the migration's READY sync step.",
+        "open_world_justification": "Completing the sync step lets dependent migration jobs read source data and write it to the target Supabase.",
+        "destructive_justification": "The step completion cannot be withdrawn through this tool once the migration pipeline advances; it only happens after the deployed function answers an authenticated ping."
       }
     },
     "list_integration_instances": {

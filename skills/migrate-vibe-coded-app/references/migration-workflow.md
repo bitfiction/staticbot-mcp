@@ -28,7 +28,8 @@ The live Staticbot tool schemas and `pendingAction` response are authoritative.
    - `CHOOSE_DATA_IMPORT_METHOD` → `choose_data_import_method`
    - `CHOOSE_BACKEND_SWITCHOVER` → `choose_backend_switchover`
    - `CHOOSE_FRONTEND_DEPLOY` → `choose_frontend_deploy`
-   - `COMPLETE_MANUAL_JOB` → `complete_migration_job`
+   - `COMPLETE_MANUAL_JOB` → for `MANUAL_SYNC_LOVABLE` / `MANUAL_SYNC_BASE44`, give the user the deploy instruction from the job, then poll `get_migration`: Staticbot completes the step by itself once the export function answers. `validate_function_url` checks immediately and completes the step when reachable (`completed: true` means done — do not also call `complete_migration_job`). For other manual jobs → `complete_migration_job`
+   - A step or gate that turns out to be already completed (the call returns ok or "already chosen") is success: re-fetch the migration and follow the new `pendingAction`
 4. Use `create_migration_preview` when the user wants verification before switchover. A completed migration can still have an in-progress preview deployment; monitor both when preview readiness is part of the requested outcome.
 
 Target cleanup is available only before execution starts and only for Supabase Cloud targets. `DATABASE` deletes target database objects, migration history, and authentication data; `STORAGE` deletes every bucket and stored file; `PROJECT` performs both. Copy `targetConflictReport.confirmationProjectRef` exactly into the destructive call.

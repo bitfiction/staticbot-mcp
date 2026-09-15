@@ -143,6 +143,11 @@ Typical migration flow:
 
 `pendingAction.type` can include `REVIEW_TARGET_CONFLICTS`, `WAIT_FOR_TARGET_CLEANUP`, `RETRY_TARGET_CLEANUP`, `CHOOSE_MIGRATION_STRATEGY`, `CONFIRM`, `RETRY_OR_SKIP`, `PROVIDE_BASE44_SECRETS`, `RESOLVE_SCHEMA_GAP`, `CHOOSE_BACKEND_SWITCHOVER`, `CHOOSE_DATA_IMPORT_METHOD`, `CHOOSE_FRONTEND_DEPLOY`, and `COMPLETE_MANUAL_JOB`. Use its returned IDs and endpoint rather than reconstructing them from phase assumptions.
 
+Some steps advance by themselves, so treat an "already done" answer as success rather than an error:
+
+- `COMPLETE_MANUAL_JOB` for `MANUAL_SYNC_LOVABLE` / `MANUAL_SYNC_BASE44`: have the user deploy the export function, then poll. Staticbot completes the step once the function answers. `validate-function` checks immediately and completes the step in the same call (`completed: true` — do not follow it with `complete`). `complete` on an already-completed sync step returns 200.
+- `CHOOSE_DATA_IMPORT_METHOD` is not offered while Staticbot is about to choose `automated` itself (the source check already verified the export function). `choose-method` on a closed gate returns 200 when the method matches and 409 when it differs; re-fetch the migration instead of retrying.
+
 ### Connected Projects and Continuous Sync
 
 - `GET /connected-projects` with optional `syncMode`

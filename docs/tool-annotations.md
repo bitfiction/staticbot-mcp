@@ -3,14 +3,15 @@
 Every tool declares `readOnlyHint`, `destructiveHint` and `openWorldHint`. OpenAI's plugin review
 requires all three, and a client uses them to decide how much confirmation a call needs.
 
-56 tools: **27 read-only**, **13 destructive**, **19 that can change public or external state**.
+63 tools: **33 read-only**, **14 destructive**, **21 that can change public or external state**.
 (Counts are measured from the built server, not maintained by hand — see "Keeping this honest" below.)
 
 ## How each is decided
 
 - **`readOnlyHint: true`** — the tool strictly fetches, lists or retrieves and changes nothing.
   `recheck_dns_verification` and `validate_function_url` look read-only but are not: rechecking
-  updates stored verification state, so it is marked `false`.
+  updates stored verification state, and validating a reachable export function completes the
+  migration's sync step (since 2026-09-15), so both are marked `false`.
 - **`destructiveHint: true`** — the outcome cannot be undone by calling another tool. Creating things
   is not destructive; replacing or discarding is.
 - **`openWorldHint: true`** — the call changes state the public can see: what a website serves, or
@@ -48,7 +49,8 @@ The submission form requires a justification naming what is irreversible and wha
 | `confirm_migration` | Starts the migration proper — applies schema and imports data into the customer's target database. | Discovery results are presented for review first; this is the gate that turns a plan into writes. |
 | `clean_migration_target` | Permanently deletes target database/authentication data, Storage buckets and files, or both. | Requires an exact scope and the target project ref returned by `get_migration`; the tool description requires presenting consequences and obtaining explicit confirmation. |
 | `skip_migration_job` | Marks a pipeline job completed without running it. A skipped job cannot be un-skipped and its work is never performed. | Staticbot explains the failure before an agent may skip; retry is the non-destructive alternative. |
-| `complete_migration_job` | Irreversibly records a manual job as completed and lets dependent migration work proceed. | The caller must use the exact READY job and, for Lovable sync, validate the function URL first. |
+| `complete_migration_job` | Irreversibly records a manual job as completed and lets dependent migration work proceed. | The caller must use the exact READY job. Sync steps normally complete themselves once the export function answers, so the tool is rarely needed for them; an already-completed sync step returns ok. |
+| `validate_function_url` | Completes the migration's sync step when the export function is reachable, letting the data import proceed. | Completion happens only after the deployed function answers an authenticated ping — the same condition under which Staticbot completes the step by itself. |
 | `choose_data_import_method` | Commits the migration to an automated or manual import path that may write target data. | The tool description requires presenting both paths and obtaining the user's choice. |
 | `choose_backend_switchover` | Commits a switchover strategy that can replace repository environment configuration or skip the change permanently. | The tool description requires presenting every strategy and obtaining the user's choice. |
 | `choose_frontend_deploy` | Commits the migration to continuous sync, a Staticbot deployment, or a permanent skip. | The tool description requires presenting all deployment choices and obtaining the user's choice. |

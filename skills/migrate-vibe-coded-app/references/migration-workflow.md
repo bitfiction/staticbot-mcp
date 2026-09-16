@@ -22,6 +22,7 @@ The live Staticbot tool schemas and `pendingAction` response are authoritative.
    - `RETRY_TARGET_CLEANUP` → explain the failure and use `retry_migration_job`; never skip a cleanup prerequisite
    - `CHOOSE_MIGRATION_STRATEGY` → present `preFlightGate.actions` and consequences, then call `confirm_migration` with the user's exact `gateChoice`
    - `CONFIRM` → `confirm_migration`
+   - `RESUME` → the migration is paused and waiting on a person; say what it is waiting for and call `resume_migration` only after the user agrees
    - `RETRY_OR_SKIP` → inspect jobs, then `retry_migration_job` or confirmed `skip_migration_job`
    - `PROVIDE_BASE44_SECRETS` → `provide_base44_secrets`
    - `RESOLVE_SCHEMA_GAP` → `resolve_schema_gap`

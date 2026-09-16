@@ -201,12 +201,12 @@ registerApiTool(server,
   "  • BOLT_SUPABASE — Bolt.new apps on Supabase (Phase 3 Lovable-specific steps are adjusted).\n" +
   "  • FIREBASE — Firebase-to-Supabase migration (different pipeline). Requires firebaseServiceAccountJson; the Git repo is optional.\n" +
   "  • BASE44_SUPABASE — Base44 apps backed by Supabase. If repository discovery cannot resolve the source, pass sourceDeployedUrl and Staticbot will inspect the deployed app server-side. Backend switchover updates Base44 platform secrets (not GitHub env vars).\n" +
-  "  • BASE44_NATIVE — Base44 apps using @base44/sdk against Base44's managed backend (no source Supabase). Requires sourceIntegrationInstanceId (the Base44 integration). Discovery hits Base44's REST API, DDL is synthesised from entity schemas, and data is imported directly.\n\n" +
+  "  • BASE44_NATIVE — Base44 apps using @base44/sdk against Base44's managed backend (no source Supabase). Requires sourceIntegrationInstanceId (the Base44 integration) AND base44AppId (which app in it to migrate). Discovery hits Base44's REST API, DDL is synthesised from entity schemas, and data is imported directly.\n\n" +
   "BEFORE calling this tool, confirm the user actually wants a migration rather than hosting — get_account_status describes both — then follow these steps to gather the required parameters:\n" +
   "1. Call get_account_status. If its pendingAction is CONNECT_SOURCE_CONTROL or CONNECT_DATABASE, stop and give the user the URL — a migration cannot be created without them. Then identify the source platform from the user's request and client context. For FIREBASE, securely collect firebaseServiceAccountJson.\n" +
   "2. Call list_source_repositories (no arguments) before asking for any repository URL, and match the current project/repository context against fullName or webUrl. It covers every connected GitHub and GitLab account, and private repositories are supported. Use one unambiguous match directly; when several are plausible, present them with their sourceLabel — the account each is hosted in — and let the user choose. Carry the chosen repository's integrationInstanceId into create_template. If the listing has no sources, direct the user to https://app.staticbot.dev/integrations to connect an account, then retry. Never claim that Staticbot requires a public repository.\n" +
   "3. Ask the user whether the target is managed Supabase (SUPABASE_CLOUD) or their own self-hosted install (SUPABASE_SELF_HOSTED).\n" +
-  "4. From list_integration_instances, use type='supabase' as supabaseIntegrationInstanceId, the selected type='github' instance as githubIntegrationInstanceId, and type='base44' as sourceIntegrationInstanceId (for BASE44_NATIVE).\n" +
+  "4. From list_integration_instances, use type='supabase' as supabaseIntegrationInstanceId, the selected type='github' instance as githubIntegrationInstanceId, and type='base44' as sourceIntegrationInstanceId (for BASE44_NATIVE). For BASE44_NATIVE also call list_base44_apps with that Base44 instance and pass the chosen app's id as base44AppId — one Base44 token covers every app in the workspace, so the integration alone does not say which app to migrate. Ask the user which app when more than one comes back; never guess.\n" +
   "5. Source Supabase metadata is discovered by Staticbot. For a BASE44_SUPABASE app whose repository contains placeholders, provide its deployed *.base44.app URL as sourceDeployedUrl. Never ask the user for Supabase API keys.\n" +
   "6. For SUPABASE_CLOUD only: call list_supabase_projects with the Supabase integration instance. If the user wants an existing target, ask them to choose an ACTIVE project. If they want a new target, call list_supabase_organizations and list_supabase_regions, obtain explicit confirmation of the exact project name, organization, and region, then call create_supabase_project. Poll get_supabase_project_status until healthy=true before using its id as targetSupabaseProjectRef. Never create a second project merely because provisioning is slow or a status poll fails. Skip this step for SUPABASE_SELF_HOSTED.\n" +
   "7. For templateId: either ask the user to pick from list_templates, or create a new template from the resolved repository using create_template.\n\n" +
@@ -218,6 +218,7 @@ registerApiTool(server,
     sourceType: z.enum(["LOVABLE_SUPABASE", "BOLT_SUPABASE", "FIREBASE", "BASE44_SUPABASE", "BASE44_NATIVE"]).optional().describe("Source platform. Defaults to LOVABLE_SUPABASE."),
     targetType: z.enum(["SUPABASE_CLOUD", "SUPABASE_SELF_HOSTED"]).optional().describe("Target delivery mode. SUPABASE_CLOUD (default) for managed Supabase; SUPABASE_SELF_HOSTED produces a downloadable package instead of applying to a target project."),
     sourceIntegrationInstanceId: z.string().uuid().optional().describe("Source integration instance ID. Required for BASE44_NATIVE (the Base44 integration from list_integration_instances). Omit for other source types."),
+    base44AppId: z.string().optional().describe("Base44 app id (24-char hex) to migrate, from list_base44_apps. Required for BASE44_NATIVE: a Base44 personal access token is scoped to a workspace and reaches every app in it, so the integration does not identify the app. Omit for other source types."),
     supabaseIntegrationInstanceId: z.string().uuid().optional().describe("Supabase integration instance ID (from list_integration_instances). Required for SUPABASE_CLOUD; omit for SUPABASE_SELF_HOSTED."),
     templateId: z.string().uuid().optional().describe("Template ID for the target infrastructure (from list_templates). Required for every source type except FIREBASE, where the Git repo is optional."),
     targetSupabaseProjectRef: z.string().optional().describe("Target Supabase project reference (the subdomain part of the URL). Required for SUPABASE_CLOUD; omit for SUPABASE_SELF_HOSTED."),
@@ -245,7 +246,23 @@ registerApiTool(server,
     if (sourceType === "BASE44_NATIVE" && !params.sourceIntegrationInstanceId) {
       return apiToolResult({
         error: "sourceIntegrationInstanceId is required for BASE44_NATIVE migrations. " +
-          "Call list_integration_instances to find the Base44 integration instance ID."
+          "Call list_integration_instances to find the Base44 integration instance ID. If it lists no " +
+          "base44 instance, the user has not connected Base44 yet: call get_account_status and give them " +
+          "the integrations URL from it so they can paste their Base44 personal access token IN THE " +
+          "BROWSER. Never ask for that token in the conversation and never accept it if offered — no tool " +
+          "takes it, and it is a workspace-wide credential that must not enter the transcript."
+      }, toText);
+    }
+
+    // The app is a separate input from the credential. Caught here rather than server-side because
+    // the backend only rejects it at discovery-job creation — by which point the migration row
+    // exists and the user has to delete it.
+    if (sourceType === "BASE44_NATIVE" && !params.base44AppId) {
+      return apiToolResult({
+        error: "base44AppId is required for BASE44_NATIVE migrations. One Base44 personal access " +
+          "token covers every app in its workspace, so the integration does not say which app to " +
+          "migrate. Call list_base44_apps with the Base44 integration instance ID and ask the user " +
+          "which app they mean."
       }, toText);
     }
 
@@ -581,6 +598,35 @@ registerApiTool(server,
     const data = await apiFetch(
       `/api/v1/migrations/integrations/instances/${supabaseIntegrationInstanceId}/supabase-projects/${encodeURIComponent(projectRef)}/status`
     );
+    return apiToolResult(data, toText);
+  }
+);
+
+registerApiTool(server,
+  "list_base44_apps",
+  "List the Base44 apps a connected Base44 integration can migrate. Call this before create_migration " +
+  "for any BASE44_NATIVE migration: a Base44 personal access token is scoped to a WORKSPACE and reaches " +
+  "every app in it, so the integration alone does not identify which app to migrate. Pass the chosen " +
+  "app's `id` as create_migration's `base44AppId`.\n" +
+  "Ask the user which app when more than one is returned — never guess, and never assume the first or " +
+  "the most recently edited one is meant. Migrating the wrong app is not cheaply reversible.\n" +
+  "An empty list means the token cannot see any apps: usually a token scoped to a single app that has " +
+  "since been deleted, or one created with Access limited to one app. A 400 means the integration still " +
+  "holds a legacy Base44 account API key, which cannot enumerate apps and stops working entirely on " +
+  "2026-10-15 — tell the user to reconnect Base44 with a personal access token. Contains no secrets.\n" +
+  "NEVER ask the user to paste their Base44 personal access token into the conversation, and never " +
+  "accept one if they offer it — no Staticbot tool takes it, and there is nowhere for it to go. It is " +
+  "a long-lived, workspace-wide, full-access credential that can read and change every app in the " +
+  "workspace. A token pasted into chat is sent to the model, kept in the conversation transcript, and " +
+  "may be retained in client logs. The only correct handling is the browser: send the user to the " +
+  "integrations page and have them enter it there. If no Base44 integration exists yet, this tool and " +
+  "create_migration both return the exact connect URL in their error — give the user that URL verbatim.",
+  {
+    base44IntegrationInstanceId: z.string().uuid().describe("Base44 integration instance ID (from list_integration_instances, type='base44')"),
+  },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  async ({ base44IntegrationInstanceId }) => {
+    const data = await apiFetch(`/api/v1/base44/instances/${base44IntegrationInstanceId}/apps`);
     return apiToolResult(data, toText);
   }
 );

@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 63;
+const expectedToolCount = 64;
 const expectedTools = [
   "get_account_status",
   "list_templates",

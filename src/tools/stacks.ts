@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { ToolContext } from "../context.js";
 import { apiToolResult, registerApiTool } from "../server/api-tool.js";
+import { findSecretLikeKeys, secretLikeKeysError } from "../secret-policy.js";
 
 /**
  * Registered on every transport. Bodies are unchanged from the original single-file server; the only
@@ -45,7 +46,7 @@ registerApiTool(server,
     name: z.string().describe("Human-readable name for the stack (e.g. 'My Portfolio Site')"),
     templateId: z.string().uuid().describe("Template ID — get this from list_templates"),
     configOverrides: z.record(z.string()).optional().describe(
-      "Non-secret key/value overrides for template config variables. See get_template for available keys. Never put passwords, tokens, private keys, or provider credentials here."
+      "Non-secret key/value overrides for template config variables. See get_template for available keys. Never put passwords, tokens, private keys, or provider credentials here — secret-looking keys are REJECTED, not ignored, because this connection cannot carry credential values."
     ),
     domainOption: z.discriminatedUnion("type", [
       z.object({
@@ -72,6 +73,14 @@ registerApiTool(server,
   },
   { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ name, templateId, configOverrides, domainOption, supabaseIntegrationInstanceId, supabaseProjectRef, cloudflareChoice }) => {
+    // The only free-form map on this tool, and so the only place a credential could be smuggled
+    // in past a schema that otherwise names every field. Checked rather than merely documented.
+    const secretLikeKeys = findSecretLikeKeys(configOverrides);
+    if (secretLikeKeys.length > 0) {
+      return apiToolResult(
+        secretLikeKeysError(secretLikeKeys, "https://app.staticbot.dev/integrations"), toText);
+    }
+
     const body: Record<string, unknown> = {
       name,
       templateId,

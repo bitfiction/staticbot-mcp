@@ -17,7 +17,9 @@ const BASE44_KEY = "b44_live_9f3c1a7e5d2b8046a1c9e7f3";
 const FIREBASE_SA = '{"private_key":"-----BEGIN PRIVATE KEY-----MIIEvQIBADANBgkq"}';
 const PACKAGE_PASSWORD = "Zx7Kq2mNp4Rt8Vw1";
 
-// A representative create_migration argument set: one plain field, one secret-bearing field.
+// A representative argument set: one plain field, one secret-bearing field. No tool accepts
+// `firebaseServiceAccountJson` any more — it is kept here because redaction must stay correct for
+// whatever a future schema, or a relayed API payload, happens to contain.
 const args = {
   sourceType: "BASE44_SUPABASE",
   firebaseServiceAccountJson: FIREBASE_SA,
@@ -29,8 +31,8 @@ assert.equal(redacted.firebaseServiceAccountJson, "[redacted]", "service-account
 assert.equal(redacted.sourceType, "BASE44_SUPABASE", "non-sensitive values must survive");
 assert.deepEqual(redacted.configOverrides, { SITE_NAME: "customer-app" });
 
-// provide_base44_secrets takes `secrets` as a free-form map whose keys are arbitrary secret names,
-// so nothing about the key names inside can be matched — the whole subtree has to go.
+// A free-form map's keys are arbitrary secret names, so nothing about the key names inside can be
+// matched — the whole subtree has to go. (This was `provide_base44_secrets`, now removed.)
 const secretsArgs = { migrationId: "2f8a...", secrets: { STRIPE_KEY: BASE44_KEY, OTHER: "another-value" } };
 const redactedSecrets = redact(secretsArgs);
 assert.equal(redactedSecrets.secrets, "[redacted]", "the entire secrets map must be dropped, not just matched keys");

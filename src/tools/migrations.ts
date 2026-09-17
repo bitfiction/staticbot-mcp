@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { ToolContext } from "../context.js";
 import { apiToolResult, registerApiTool } from "../server/api-tool.js";
+import { findSecretLikeKeys, secretLikeKeysError } from "../secret-policy.js";
 
 /**
  * Registered on every transport. Bodies are unchanged from the original single-file server; the only
@@ -29,7 +30,7 @@ registerApiTool(server,
 registerApiTool(server,
   "get_migration",
   "Get the current status and phase breakdown of a migration. The response includes all migration phases (Discovery, DB Migration, Data Import, Edge Functions, Storage Buckets, Auth Config, Backend Switchover, Preview & Verify, Continuous Sync, Download, Follow-ups) with their individual statuses, plus sourceType (LOVABLE_SUPABASE / BOLT_SUPABASE / FIREBASE / BASE44_SUPABASE / BASE44_NATIVE), targetType (SUPABASE_CLOUD / SUPABASE_SELF_HOSTED), and packageAvailable (true once the downloadable zip is ready — fetch via download_package).\n\n" +
-  "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. New pre-flight states are explicit: REVIEW_TARGET_CONFLICTS → present `targetConflictReport`, then either call clean_migration_target after destructive confirmation or call confirm_migration only after the user explicitly declines cleanup; WAIT_FOR_TARGET_CLEANUP → poll; RETRY_TARGET_CLEANUP → call retry_migration_job (never skip cleanup); CHOOSE_MIGRATION_STRATEGY → present `preFlightGate.actions` and consequences, then call confirm_migration with the selected gateChoice. RESUME → the migration is paused and waiting on a person: tell the user what it is waiting for and call resume_migration once they agree (never resume a migration they paused without asking). Other types: CONFIRM, RETRY_OR_SKIP, PROVIDE_BASE44_SECRETS, RESOLVE_SCHEMA_GAP, CHOOSE_BACKEND_SWITCHOVER, CHOOSE_DATA_IMPORT_METHOD, CHOOSE_FRONTEND_DEPLOY, COMPLETE_MANUAL_JOB. When `pendingAction` is null, poll only while the status is flowing.\n\n" +
+  "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. New pre-flight states are explicit: REVIEW_TARGET_CONFLICTS → present `targetConflictReport`, then either call clean_migration_target after destructive confirmation or call confirm_migration only after the user explicitly declines cleanup; WAIT_FOR_TARGET_CLEANUP → poll; RETRY_TARGET_CLEANUP → call retry_migration_job (never skip cleanup); CHOOSE_MIGRATION_STRATEGY → present `preFlightGate.actions` and consequences, then call confirm_migration with the selected gateChoice. RESUME → the migration is paused and waiting on a person: tell the user what it is waiting for and call resume_migration once they agree (never resume a migration they paused without asking). PROVIDE_BASE44_SECRETS → this gate takes the values of the customer's own third-party credentials, so it is resolved in a browser and NOT by a tool: `endpoint` is null, `url` is the migration page, and `detail` is written to be shown to the user verbatim. Give them the URL, keep polling, and do not ask for the secret values in the conversation — no tool accepts them and the API refuses them over this connection. Other types: CONFIRM, RETRY_OR_SKIP, RESOLVE_SCHEMA_GAP, CHOOSE_BACKEND_SWITCHOVER, CHOOSE_DATA_IMPORT_METHOD, CHOOSE_FRONTEND_DEPLOY, COMPLETE_MANUAL_JOB. When `pendingAction` is null, poll only while the status is flowing.\n\n" +
   "The response exposes `preFlightGate` with backend-authored labels, consequences, export files, and the accepted choice IDs. It also exposes `targetConflictReport` with conflicting objects, cleanup scopes, `confirmationProjectRef`, and endpoint paths. Present these fields instead of inventing or defaulting a choice.\n\n" +
   "The response also includes `failureBanner` with categorised error info (category, title, body, severity, actionable, followupNote, retryable) when a job has a categorised failure. Use this to present richer error feedback. When `retryable=false`, prefer skip_migration_job or an AI-assisted fix over repeating deterministic SQL that will fail again — but check the job's `skipGuard` first, because a guarded job breaks the migration if skipped and needs the user's explicit approval; `retryable=null` means the cause may be environmental.\n\n" +
   "The `support` field reports whether this migration is SELF_SERVICE, SUPPORTED, or SUPPORT_WINDOW_ENDED, together with available human-support contact details. `consultationUrl` is returned only for SUPPORTED migrations and books the optional consultation already included in that migration's existing support entitlement; it is never a purchase, checkout, or upgrade route. When support is active, use those routes for human escalation instead of implying the MCP itself provides human support. Purchase and operator-grant actions are intentionally unavailable through MCP.\n\n" +
@@ -199,11 +200,11 @@ registerApiTool(server,
   "Source platforms via sourceType:\n" +
   "  • LOVABLE_SUPABASE (default) — Lovable-built apps on Supabase.\n" +
   "  • BOLT_SUPABASE — Bolt.new apps on Supabase (Phase 3 Lovable-specific steps are adjusted).\n" +
-  "  • FIREBASE — Firebase-to-Supabase migration (different pipeline). Requires firebaseServiceAccountJson; the Git repo is optional.\n" +
+  "  • FIREBASE — supported by Staticbot, but NOT creatable through this connection: it needs a Google service-account private key, which no tool here accepts. Give the user https://app.staticbot.dev/migrations/new/firebase and stop. Never ask them for the key in the conversation and never accept it if offered.\n" +
   "  • BASE44_SUPABASE — Base44 apps backed by Supabase. If repository discovery cannot resolve the source, pass sourceDeployedUrl and Staticbot will inspect the deployed app server-side. Backend switchover updates Base44 platform secrets (not GitHub env vars).\n" +
   "  • BASE44_NATIVE — Base44 apps using @base44/sdk against Base44's managed backend (no source Supabase). Requires sourceIntegrationInstanceId (the Base44 integration) AND base44AppId (which app in it to migrate). Discovery hits Base44's REST API, DDL is synthesised from entity schemas, and data is imported directly.\n\n" +
   "BEFORE calling this tool, confirm the user actually wants a migration rather than hosting — get_account_status describes both — then follow these steps to gather the required parameters:\n" +
-  "1. Call get_account_status. If its pendingAction is CONNECT_SOURCE_CONTROL or CONNECT_DATABASE, stop and give the user the URL — a migration cannot be created without them. Then identify the source platform from the user's request and client context. For FIREBASE, securely collect firebaseServiceAccountJson.\n" +
+  "1. Call get_account_status. If its pendingAction is CONNECT_SOURCE_CONTROL or CONNECT_DATABASE, stop and give the user the URL — a migration cannot be created without them. Then identify the source platform from the user's request and client context.\n" +
   "2. Call list_source_repositories (no arguments) before asking for any repository URL, and match the current project/repository context against fullName or webUrl. It covers every connected GitHub and GitLab account, and private repositories are supported. Use one unambiguous match directly; when several are plausible, present them with their sourceLabel — the account each is hosted in — and let the user choose. Carry the chosen repository's integrationInstanceId into create_template. If the listing has no sources, direct the user to https://app.staticbot.dev/integrations to connect an account, then retry. Never claim that Staticbot requires a public repository.\n" +
   "3. Ask the user whether the target is managed Supabase (SUPABASE_CLOUD) or their own self-hosted install (SUPABASE_SELF_HOSTED).\n" +
   "4. From list_integration_instances, use type='supabase' as supabaseIntegrationInstanceId, the selected type='github' instance as githubIntegrationInstanceId, and type='base44' as sourceIntegrationInstanceId (for BASE44_NATIVE). For BASE44_NATIVE also call list_base44_apps with that Base44 instance and pass the chosen app's id as base44AppId — one Base44 token covers every app in the workspace, so the integration alone does not say which app to migrate. Ask the user which app when more than one comes back; never guess.\n" +
@@ -220,12 +221,11 @@ registerApiTool(server,
     sourceIntegrationInstanceId: z.string().uuid().optional().describe("Source integration instance ID. Required for BASE44_NATIVE (the Base44 integration from list_integration_instances). Omit for other source types."),
     base44AppId: z.string().optional().describe("Base44 app id (24-char hex) to migrate, from list_base44_apps. Required for BASE44_NATIVE: a Base44 personal access token is scoped to a workspace and reaches every app in it, so the integration does not identify the app. Omit for other source types."),
     supabaseIntegrationInstanceId: z.string().uuid().optional().describe("Supabase integration instance ID (from list_integration_instances). Required for SUPABASE_CLOUD; omit for SUPABASE_SELF_HOSTED."),
-    templateId: z.string().uuid().optional().describe("Template ID for the target infrastructure (from list_templates). Required for every source type except FIREBASE, where the Git repo is optional."),
+    templateId: z.string().uuid().optional().describe("Template ID for the target infrastructure (from list_templates). Required for every source type reachable from here."),
     targetSupabaseProjectRef: z.string().optional().describe("Target Supabase project reference (the subdomain part of the URL). Required for SUPABASE_CLOUD; omit for SUPABASE_SELF_HOSTED."),
     githubIntegrationInstanceId: z.string().uuid().optional().describe("GitHub integration instance ID for repo access"),
     targetSchemaName: z.string().optional().describe("Optional target Postgres schema name"),
-    configOverrides: z.record(z.string()).optional().describe("Optional non-secret creation-time values. Call get_template and include only keys where the backend reports migrationEditable=true and migrationAction is REQUIRED_INPUT or OPTIONAL_OVERRIDE. Never send CONFIGURE_INTEGRATION, SECURITY_REVIEW, or migrationBackendDerived entries. Staticbot derives target aliases from the selected target, and connected integrations or later lifecycle steps handle credentials."),
-    firebaseServiceAccountJson: z.string().optional().describe("Firebase service-account JSON. Required for FIREBASE migrations; sent directly to Staticbot and treated as a secret."),
+    configOverrides: z.record(z.string()).optional().describe("Optional non-secret creation-time values. Call get_template and include only keys where the backend reports migrationEditable=true and migrationAction is REQUIRED_INPUT or OPTIONAL_OVERRIDE. Never send CONFIGURE_INTEGRATION, SECURITY_REVIEW, or migrationBackendDerived entries. Staticbot derives target aliases from the selected target, and connected integrations or later lifecycle steps handle credentials. Secret-looking keys are REJECTED, not ignored — this connection cannot carry credential values."),
     sourceDeployedUrl: z.string().url().optional().describe("Deployed *.base44.app URL used only for legacy BASE44_SUPABASE source discovery. Staticbot extracts source metadata server-side and never returns keys."),
     packageOptions: z.object({
       includeEntityData: z.boolean().optional().describe("Include Base44 entity data. Defaults to true."),
@@ -235,9 +235,31 @@ registerApiTool(server,
   { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async (params) => {
     const sourceType = params.sourceType ?? "LOVABLE_SUPABASE";
-    if (sourceType !== "FIREBASE" && !params.templateId) {
+
+    // Firebase needs a GCP service-account private key. Staticbot still supports the migration; this
+    // transport just cannot carry the credential, so the whole source type is handed to the browser
+    // rather than started here and stalled halfway. Caught client-side so the agent never gets as
+    // far as wondering which argument the key goes in.
+    if (sourceType === "FIREBASE") {
       return apiToolResult({
-        error: "templateId is required for non-Firebase migrations. " +
+        error: "FIREBASE migrations cannot be created through this connection. They require a Google " +
+          "service-account private key, and no tool here accepts credential values — tool arguments " +
+          "pass through the model's context and the transcript. Give the user " +
+          "https://app.staticbot.dev/migrations/new/firebase, where the same migration is created in " +
+          "the browser. Do NOT ask them for the service-account JSON, and do not accept it if they " +
+          "offer it. Every other source type (Lovable, Bolt, Base44) is unaffected."
+      }, toText);
+    }
+
+    const secretLikeKeys = findSecretLikeKeys(params.configOverrides);
+    if (secretLikeKeys.length > 0) {
+      return apiToolResult(
+        secretLikeKeysError(secretLikeKeys, "https://app.staticbot.dev/integrations"), toText);
+    }
+
+    if (!params.templateId) {
+      return apiToolResult({
+        error: "templateId is required. " +
           "Call list_templates to pick one, or create_template to build one from the user's repo."
       }, toText);
     }

@@ -668,18 +668,6 @@
         "destructive_justification": "Creates a preview without deleting or overwriting the production deployment."
       }
     },
-    "provide_base44_secrets": {
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Stores the supplied Base44 secret values for a READY migration job.",
-        "open_world_justification": "Transmits secrets only to the private Staticbot migration workflow and does not publish them.",
-        "destructive_justification": "Does not delete, overwrite, or irreversibly alter external resources."
-      }
-    },
     "resolve_schema_gap": {
       "annotations": {
         "readOnlyHint": false,
@@ -739,11 +727,11 @@
       "expected_output_url": null
     },
     {
-      "description": "Complete an explicitly approved Firebase schema-review job.",
-      "user_prompt": "I reviewed and approved the proposed DDL for the selected Firebase migration job. Complete that manual schema-review job using the approved DDL.",
+      "description": "Resolve an explicitly chosen data-import method for a migration.",
+      "user_prompt": "The user picked the automated data import option for our selected Staticbot migration. Record that choice on the open gate.",
       "file_attachment_urls": null,
-      "tools_triggered": "complete_migration_job",
-      "expected_output": "Records the approved DDL for the selected READY manual job and reports that dependent migration work may proceed.",
+      "tools_triggered": "choose_data_import_method",
+      "expected_output": "Records the user's chosen method on the READY gate job and reports the migration's next pending action.",
       "expected_output_url": null
     },
     {

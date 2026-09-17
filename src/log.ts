@@ -3,6 +3,19 @@ import { hostname } from "node:os";
 import { dirname, join } from "node:path";
 
 /**
+ * Keys whose *value* is never loggable.
+ *
+ * Shared with the tool-argument guard rather than redeclared: the set of names that means "this is a
+ * credential" is one policy, and two copies of it drift. See `secret-policy.ts` for why it matches
+ * as a case-insensitive substring.
+ *
+ * Since no tool accepts a secret any more, this is defence in depth rather than the load-bearing
+ * control — it still matters, because Staticbot's own API responses and error messages pass through
+ * here on their way to the log.
+ */
+import { SECRET_KEY_PATTERN } from "./secret-policy.js";
+
+/**
  * Structured logging for the MCP server.
  *
  * One JSON object per line, because the alternative — prose — is unqueryable the moment you need it.
@@ -25,17 +38,6 @@ export type LogLevel = "info" | "warn" | "error";
 /** Substituted for any value whose key looks like it carries a credential. */
 const REDACTED = "[redacted]";
 
-/**
- * Keys whose *value* is never loggable, matched case-insensitively as a substring.
- *
- * Substring rather than exact match because the names are not uniform across the tool schemas:
- * `apiKey`, `api_key`, `firebaseServiceAccountJson` and `secrets` all have to be caught, and new
- * tools will invent new spellings. Over-redacting costs a little debuggability; under-redacting
- * writes a customer's Base44 API key into a log file that then gets shipped somewhere.
- */
-const SECRET_KEY_PATTERN =
-  /secret|password|passwd|token|api[-_]?key|credential|private[-_]?key|service[-_]?account/i;
-
 /** Strings are capped so one oversized argument cannot dominate the log or the volume. */
 const MAX_STRING_LENGTH = 500;
 
@@ -49,10 +51,11 @@ function truncate(value: string): string {
 /**
  * Replaces sensitive values with a marker, recursively.
  *
- * Recursion is the point. A top-level-only pass would still log the contents of
- * `provide_base44_secrets`'s `secrets` argument, whose keys are arbitrary secret names that no
- * name-pattern could enumerate — so the whole subtree under a matched key is dropped, not just the
- * matched name.
+ * Recursion is the point. A top-level-only pass would still log the contents of a nested map whose
+ * keys are arbitrary secret names that no name-pattern could enumerate — so the whole subtree under a
+ * matched key is dropped, not just the matched name. Written for the `secrets` argument of the old
+ * `provide_base44_secrets` tool, which no longer exists; the property still has to hold, because
+ * Staticbot's own responses reach this function and are not written here.
  */
 export function redact(value: unknown, depth = 0): unknown {
   if (typeof value === "string") {
@@ -79,9 +82,9 @@ export function redact(value: unknown, depth = 0): unknown {
  * Collects the leaf values that sit under a sensitive key.
  *
  * Used to scrub free text — an error message is prose, so key-based redaction cannot reach into it,
- * and Staticbot's validation errors quote the offending value back. A rejected
- * `provide_base44_secrets` call would otherwise put the API key into the log through the error
- * message even though the argument itself was redacted.
+ * and Staticbot's validation errors quote the offending value back. Without this, a rejected call
+ * would put the value into the log through the error message even though the argument itself was
+ * redacted.
  */
 export function collectSecretValues(value: unknown, depth = 0): string[] {
   if (value === null || typeof value !== "object" || depth >= MAX_DEPTH) {

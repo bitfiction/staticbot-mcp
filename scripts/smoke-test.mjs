@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 64;
+const expectedToolCount = 63;
 const expectedTools = [
   "get_account_status",
   "list_templates",
@@ -86,6 +86,29 @@ try {
     assert(
       tool.outputSchema.properties?.result,
       `tool ${tool.name} output schema must expose the structured API result`,
+    );
+  }
+
+  // No tool may take credential material. A tool call's arguments are model output, so anything
+  // accepted here is in the client provider's transcript before Staticbot sees it — and unlike a
+  // broken description, a re-added secret argument breaks no build and fails no request. Staticbot's
+  // API enforces the same rule for hosted-MCP credentials (SecretIntakeGuard), but this is the check
+  // that fires in CI rather than in production.
+  const SECRET_ARGUMENT_PATTERN =
+    /secret|password|passwd|token|api[-_]?key|credential|private[-_]?key|service[-_]?account/i;
+  for (const tool of tools) {
+    for (const property of Object.keys(tool.inputSchema?.properties ?? {})) {
+      assert(
+        !SECRET_ARGUMENT_PATTERN.test(property),
+        `tool ${tool.name} accepts a secret-shaped argument \`${property}\`. Secrets must not travel ` +
+          `as tool arguments — route the user to the dashboard, or to the REST API from a shell.`,
+      );
+    }
+  }
+  for (const forbidden of ["provide_base44_secrets"]) {
+    assert(
+      !names.includes(forbidden),
+      `tool ${forbidden} takes customer credential values and must not be registered`,
     );
   }
 

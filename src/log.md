@@ -29,30 +29,40 @@ mysteriously produces no `mcp.tool` line.
 
 ## Redaction — the rules
 
-Three real leaks drove the design, all in the current tool schemas:
+Three real leaks drove the design. Two of those tool arguments have since been removed outright —
+secrets no longer travel as tool arguments at all — but the reasoning is why the redaction is shaped
+the way it is, and the third leak is still live:
 
-| Where | What |
-|---|---|
-| `src/tools/gates.ts` | `secrets: z.record(z.string())` — secret name → Base44 API key value |
-| `src/tools/migrations.ts` | `firebaseServiceAccountJson` — a full service-account key |
-| `src/tools/migrations.ts` `download_package` | returns the zip password, and its tool description promises customers it is "shown only here, **never logged**" |
+| Where | What | Status |
+|---|---|---|
+| `src/tools/gates.ts` | `secrets: z.record(z.string())` — secret name → customer API key value | removed; the gate is resolved in the dashboard |
+| `src/tools/migrations.ts` | `firebaseServiceAccountJson` — a full service-account key | removed; Firebase migrations are created in the dashboard |
+| `src/tools/migrations.ts` `download_package` | returns the zip password, and its tool description promises customers it is "shown only here, **never logged**" | **live** |
 
 From those:
 
-1. **Arguments are redacted by key name, recursively.** `SECRET_KEY_PATTERN` matches substrings, not
-   exact names, because the schemas are not uniform (`apiKey`, `api_key`, `firebaseServiceAccountJson`,
-   `secrets`). Over-redacting costs a little debuggability; under-redacting writes a customer's API key
-   into a file that may get shipped off the cluster.
-2. **A matched key drops its whole subtree.** `provide_base44_secrets` takes a free-form map whose keys
-   are arbitrary secret names — no name pattern can enumerate them — so matching the *parent* is the
-   only thing that works. `redact` returns the marker for the entire value, not for matched leaves.
+1. **Arguments are redacted by key name, recursively.** `SECRET_KEY_PATTERN` lives in
+   `secret-policy.ts` and is shared with the tool-argument guard — one definition, because two copies
+   of "which names mean credential" drift. It matches substrings, not exact names, since the schemas
+   are not uniform (`apiKey`, `api_key`, `SERVICE_ACCOUNT_JSON`). Over-redacting costs a little
+   debuggability; under-redacting writes a customer's API key into a file that may get shipped off the
+   cluster.
+2. **A matched key drops its whole subtree.** `redact` returns the marker for the entire value, not
+   for matched leaves, because a free-form map's keys are arbitrary secret names that no pattern can
+   enumerate — matching the *parent* is the only thing that works.
+
+   **This is now defence in depth, not the primary control.** No tool accepts credential material any
+   more: `provide_base44_secrets` is gone, `firebaseServiceAccountJson` is gone, and the two
+   `configOverrides` maps reject secret-looking keys outright (`secret-policy.ts`). Keep the redaction
+   regardless — Staticbot's own API responses and error messages still pass through here, and they are
+   not written by this server.
 3. **Success response bodies are never logged.** This is what keeps the `download_package` promise:
    the password only ever arrives with a 200. `responseBytes` is logged instead, which is enough to
    tell a large payload from a small one.
 4. **Error bodies *are* logged**, because they are what makes a failure diagnosable, and they only
    arrive on a non-2xx. They are string-scrubbed first: a validation error quotes the offending value
-   back, so a rejected secret submission would otherwise leak through the reason string even though
-   the argument itself was redacted. `collectSecretValues` pulls the sensitive leaves out of the
+   back, so an API error about a value this server merely relayed would otherwise leak through the
+   reason string even though the argument itself was redacted. `collectSecretValues` pulls the sensitive leaves out of the
    request and `scrubSecrets` removes them from the text. Values under 6 characters are skipped, since
    shorter strings match ordinary prose.
 

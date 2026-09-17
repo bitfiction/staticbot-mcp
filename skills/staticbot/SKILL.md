@@ -11,10 +11,11 @@ Use Staticbot's REST API through `scripts/staticbot-api.sh`. Resolve all referen
 
 1. Require `curl`; use `jq` when available for inspecting JSON.
 2. Check whether `STATICBOT_API_KEY` is set without printing its value. If it is absent, tell the user to open **API** in the Staticbot menu (or visit `https://app.staticbot.dev/developer`), create a key in the **API Keys** section, export it in their shell, and retry. Never ask the user to paste a key into chat, write it into repository files, or place it in a command argument.
-3. Default to hosted Staticbot at `https://app.staticbot.dev`. Honor `STATICBOT_API_URL` for self-hosted or local instances.
-4. Fetch the current OpenAPI document before constructing an unfamiliar mutation. The public schema is available through `scripts/staticbot-api.sh spec`; inspect the relevant path and request schema instead of guessing field names.
-5. Call `GET /me` before proposing work. It reports what is connected and a `pendingAction`: stop and hand over the `url` when a required integration is missing, and when it reports `CHOOSE_PATH`, ask whether the user wants hosting or a migration rather than assuming.
-6. Read [references/api-workflows.md](references/api-workflows.md) for the endpoint family and workflow involved in the request.
+3. The same rule covers secrets inside a request *body*, not just the API key. A few endpoints legitimately take credential material — `firebaseServiceAccountJson` on `POST /migrations`, and the `secrets` map on `POST /migrations/{id}/jobs/{jobId}/provide-base44-secrets`. You may submit these, because a shell can read a value without it becoming part of this conversation, and that is exactly why the MCP tools cannot. Keep it that way: have the user place the value in a file or an environment variable, build the body with `jq --arg` or a heredoc reading from that source, and pass it via a body file or `-`. Never interpolate a secret into a command argument, never `cat` or echo it, and never ask the user to paste it into chat. If you cannot meet those conditions, send them to the dashboard instead — `https://app.staticbot.dev/migrations/new/firebase` for Firebase, or the migration page for a Base44 secrets gate.
+4. Default to hosted Staticbot at `https://app.staticbot.dev`. Honor `STATICBOT_API_URL` for self-hosted or local instances.
+5. Fetch the current OpenAPI document before constructing an unfamiliar mutation. The public schema is available through `scripts/staticbot-api.sh spec`; inspect the relevant path and request schema instead of guessing field names.
+6. Call `GET /me` before proposing work. It reports what is connected and a `pendingAction`: stop and hand over the `url` when a required integration is missing, and when it reports `CHOOSE_PATH`, ask whether the user wants hosting or a migration rather than assuming.
+7. Read [references/api-workflows.md](references/api-workflows.md) for the endpoint family and workflow involved in the request.
 
 ## Call the API
 

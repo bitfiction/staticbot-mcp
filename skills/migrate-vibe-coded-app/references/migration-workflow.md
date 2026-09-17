@@ -5,7 +5,7 @@ The live Staticbot tool schemas and `pendingAction` response are authoritative.
 ## Prepare
 
 1. Call `get_account_status` and follow its `pendingAction`. Stop on `CONNECT_SOURCE_CONTROL` / `CONNECT_DATABASE`; on `CHOOSE_PATH`, confirm the user wants a migration rather than hosting before continuing.
-2. Identify the source type: `LOVABLE_SUPABASE`, `BOLT_SUPABASE`, `FIREBASE`, `BASE44_SUPABASE`, or `BASE44_NATIVE`.
+2. Identify the source type: `LOVABLE_SUPABASE`, `BOLT_SUPABASE`, `FIREBASE`, `BASE44_SUPABASE`, or `BASE44_NATIVE`. `FIREBASE` cannot be created through MCP tools — it needs a Google service-account private key, which no tool accepts. Hand the user `https://app.staticbot.dev/migrations/new/firebase` and stop; never ask for the key in the conversation. Every other source type proceeds normally.
 3. Call `list_integration_instances`. Use returned GitHub, Supabase, and Base44 instance IDs; do not invent identifiers.
 4. Call `list_source_repositories` with no arguments — it covers every connected GitHub and GitLab account — and match the current client/project context against `fullName` or `webUrl`. Private repositories are supported. Use one unambiguous match without asking; when several candidates are plausible, present them with their `sourceLabel` (the account each is hosted in), since the same name in two accounts is two different repositories. If there are no sources, direct the user to `https://app.staticbot.dev/integrations`, then retry. Never claim a public repository is required.
 5. Staticbot discovers Supabase source metadata internally. Never ask the user for source or target API keys. For a `BASE44_SUPABASE` repo containing placeholders, pass its `*.base44.app` URL as `sourceDeployedUrl`; the keys remain server-side.
@@ -24,7 +24,7 @@ The live Staticbot tool schemas and `pendingAction` response are authoritative.
    - `CONFIRM` → `confirm_migration`
    - `RESUME` → the migration is paused and waiting on a person; say what it is waiting for and call `resume_migration` only after the user agrees
    - `RETRY_OR_SKIP` → inspect jobs, then `retry_migration_job` or confirmed `skip_migration_job`
-   - `PROVIDE_BASE44_SECRETS` → `provide_base44_secrets`
+   - `PROVIDE_BASE44_SECRETS` → **no tool; the user resolves this in a browser.** The gate takes the values of the customer's own third-party credentials, which cannot travel as tool arguments. `pendingAction.endpoint` is null; give the user `pendingAction.url` and show `pendingAction.detail` verbatim, then keep polling `get_migration` until the gate clears. Never ask for the secret values in the conversation, and do not accept them if the user offers them anyway — no tool takes them and the API refuses them over an MCP connection
    - `RESOLVE_SCHEMA_GAP` → `resolve_schema_gap`
    - `CHOOSE_DATA_IMPORT_METHOD` → `choose_data_import_method`
    - `CHOOSE_BACKEND_SWITCHOVER` → `choose_backend_switchover`

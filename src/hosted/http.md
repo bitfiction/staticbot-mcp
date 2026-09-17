@@ -63,8 +63,12 @@ against that Keycloak.
 - **Staticbot's 403 bodies are surfaced verbatim** — after scrubbing. They name the cause — "Delegated
   scope 'staticbot:write' required", "Unknown Staticbot account for the asserted actor" — which a
   model can act on, where a bare status code just produces a retry loop. Scrubbed first because
-  "verbatim" includes any secret the API quoted back: a rejected `provide_base44_secrets` call echoes
-  the offending value into the reason string. See `src/log.md`.
+  "verbatim" includes any secret the API quoted back: Staticbot's validation errors echo the offending
+  value into the reason string, and this server does not write those bodies. See `src/log.md`.
+- **403 `SECRET_INTAKE_REFUSED` is one of those bodies, and is meant to be shown.** Staticbot refuses
+  credential material from a delegated MCP identity and answers with `browserUrl` and
+  `apiAlternative`; surfacing only the status would leave the model to improvise, which in practice
+  means asking the user to paste the secret into the chat.
 - **`consentRequired: true` on `staticbot-openai` blocks the password grant**, so end-to-end testing
   needs the browser flow or a temporary change to that client. Verified by doing exactly that, then
   restoring both `consentRequired` and `directAccessGrantsEnabled`.

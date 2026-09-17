@@ -30,25 +30,18 @@ registerApiTool(server,
   }
 );
 
-registerApiTool(server,
-  "provide_base44_secrets",
-  "Provide Base44 API key secrets required to complete a Base44-native migration. " +
-  "Call when MANUAL_PROVIDE_BASE44_SECRETS is READY. " +
-  "IMPORTANT: You MUST ask the user for the required secret values before calling.",
-  {
-    migrationId: z.string().uuid().describe("Migration ID"),
-    jobId: z.string().uuid().describe("The MANUAL_PROVIDE_BASE44_SECRETS job ID"),
-    secrets: z.record(z.string()).describe("Map of secret name to value"),
-  },
-  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  async ({ migrationId, jobId, secrets }) => {
-    const data = await apiFetch(`/api/v1/migrations/${migrationId}/jobs/${jobId}/provide-base44-secrets`, {
-      method: "POST",
-      body: JSON.stringify({ secrets }),
-    });
-    return apiToolResult(data, toText);
-  }
-);
+// There is deliberately no `provide_base44_secrets` tool.
+//
+// The MANUAL_PROVIDE_BASE44_SECRETS gate takes the values of the customer's own third-party
+// credentials — Stripe keys and the like — which this transport cannot carry: a tool call's
+// arguments are model output, so anything passed here is in the provider's transcript before
+// Staticbot sees it. The gate is completed by the user in the dashboard instead, and
+// `get_migration`'s pendingAction returns the URL plus a `detail` string to show them (Staticbot
+// branches that field on the calling credential). Staticbot's API also refuses the underlying
+// endpoint for MCP callers with 403 SECRET_INTAKE_REFUSED, so re-adding a tool here would not work
+// even if someone tried.
+//
+// Shell-capable clients keep the capability through the API directly — see skills/staticbot.
 
 registerApiTool(server,
   "resolve_schema_gap",

@@ -115,8 +115,9 @@ export function createDelegatedContext(
         // "Unknown Staticbot account for the asserted actor"). Surface it verbatim: the model can act
         // on that, where a bare status code just produces a retry loop.
         //
-        // Scrubbed first, because "verbatim" includes any secret the API quoted back — a rejected
-        // provide_base44_secrets call echoes the offending value into the reason string.
+        // Scrubbed first, because "verbatim" includes any secret the API quoted back: Staticbot's
+        // validation errors echo the offending value into the reason string, and this server does
+        // not write those bodies.
         const message = scrubSecrets(`HTTP ${res.status} ${res.statusText}: ${text}`, secrets);
         logCall("error", res.status, { error: message });
         throw new Error(message);

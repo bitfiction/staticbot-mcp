@@ -1,0 +1,36 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.bitfiction/staticbot",
+  "title": "Staticbot",
+  "description": "Deploy websites, migrate app backends, and run continuous sync with explicit approval gates.",
+  "repository": {
+    "url": "https://github.com/bitfiction/staticbot-mcp",
+    "source": "github"
+  },
+  "version": "1.8.1",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.staticbot.dev/mcp"
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@staticbot/mcp",
+      "version": "1.8.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "STATICBOT_API_KEY",
+          "description": "Staticbot API key from https://app.staticbot.dev/developer",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

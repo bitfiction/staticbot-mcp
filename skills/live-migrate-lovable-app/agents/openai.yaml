@@ -1,0 +1,4 @@
+interface:
+  display_name: "Live-Migrate Lovable App"
+  short_description: "Lovable write freeze and cutover steps for a live move"
+  default_prompt: "Use $live-migrate-ai-built-app with $live-migrate-lovable-app to plan the live cutover of this Lovable app."

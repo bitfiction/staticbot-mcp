@@ -1,0 +1,4 @@
+interface:
+  display_name: "Live-Migrate AI-Built App"
+  short_description: "Cut a live Lovable or Base44 app over to infrastructure you own"
+  default_prompt: "Use $live-migrate-ai-built-app to plan the live cutover of this app, starting with a test migration and stopping for my approval at every phase."

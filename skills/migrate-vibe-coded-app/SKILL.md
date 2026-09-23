@@ -18,6 +18,8 @@ Call `get_account_status` first. It reports what is connected and a `pendingActi
 
 A request to list repositories, templates, or integrations is not a request to migrate.
 
+When the app already has live users and the request is to switch production, move the domain, or plan a maintenance window, use [live-migrate-ai-built-app](../live-migrate-ai-built-app/SKILL.md). It runs this skill for the test and final migrations and adds the cutover around them.
+
 ## Preserve human control
 
 - Start with non-mutating discovery of integrations, repository/template metadata, source configuration, and target projects.

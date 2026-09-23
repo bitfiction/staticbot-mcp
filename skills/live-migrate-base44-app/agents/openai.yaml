@@ -1,0 +1,4 @@
+interface:
+  display_name: "Live-Migrate Base44 App"
+  short_description: "Base44 write freeze and cutover steps for a live move"
+  default_prompt: "Use $live-migrate-ai-built-app with $live-migrate-base44-app to plan the live cutover of this Base44 app."

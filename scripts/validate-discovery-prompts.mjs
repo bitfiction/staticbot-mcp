@@ -7,6 +7,7 @@ const validSkills = new Set([
   "deploy-web-app-with-staticbot",
   "migrate-vibe-coded-app",
   "sync-vibe-coded-app",
+  "live-migrate-ai-built-app",
 ]);
 const validKinds = new Set(["direct", "indirect", "negative"]);
 

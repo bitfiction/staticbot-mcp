@@ -23,11 +23,12 @@ API key; the local server uses the API key you give it.
 
 ## Install as a Codex plugin
 
-This repository is also a Codex plugin. Its manifest bundles the Staticbot MCP server with three intent-focused skills:
+This repository is also a Codex plugin. Its manifest bundles the Staticbot MCP server with four intent-focused skills:
 
 - `deploy-web-app-with-staticbot` deploys a repository without making the agent choose a cloud provider. Staticbot analyzes the repo, classifies the workload, and selects the supported AWS or Cloudflare target plus its customer-owned or Staticbot-managed ownership model.
 - `migrate-vibe-coded-app` moves Base44, Lovable, Bolt, or Firebase backends to customer-owned Supabase infrastructure with discovery and approval gates.
 - `sync-vibe-coded-app` keeps migrated projects synchronized while preserving destructive-change review.
+- `live-migrate-ai-built-app` cuts a live Lovable or Base44 app over to the migrated stack during a planned maintenance window: test migration, cutover plan, maintenance page, source write freeze, fresh final copy, verification, and domain switch. The builder-specific freeze steps are in `live-migrate-lovable-app` and `live-migrate-base44-app`.
 
 The general `staticbot` skill remains available as a direct REST API fallback.
 
@@ -51,7 +52,7 @@ Claude Code does not require Staticbot to be accepted into a central plugin regi
 
 Set `STATICBOT_API_KEY` in the environment that launches Claude Code. The plugin starts the published `@staticbot/mcp` package with `npx` and inherits that environment; `STATICBOT_API_URL` remains optional for self-hosted or local Staticbot APIs.
 
-The installed skills are namespaced by the plugin. For example, use `/staticbot:deploy-web-app-with-staticbot`, `/staticbot:migrate-vibe-coded-app`, or `/staticbot:sync-vibe-coded-app`. Restart Claude Code or run `/reload-plugins` after installation if the plugin is not immediately available.
+The installed skills are namespaced by the plugin. For example, use `/staticbot:deploy-web-app-with-staticbot`, `/staticbot:migrate-vibe-coded-app`, `/staticbot:sync-vibe-coded-app`, or `/staticbot:live-migrate-ai-built-app`. Restart Claude Code or run `/reload-plugins` after installation if the plugin is not immediately available.
 
 ## Configure your MCP client directly
 

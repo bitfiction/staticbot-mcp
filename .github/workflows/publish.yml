@@ -1,0 +1,89 @@
+# Publishes @staticbot/mcp to npm and io.github.bitfiction/staticbot to the MCP Registry.
+#
+# Trigger: push a tag v<version> matching package.json (e.g. v1.8.2), or run manually.
+# Unrelated to the release/mcp/*-prod tags, which are the hosted server's Docker image scheme.
+#
+# No stored credentials:
+#  - npm uses trusted publishing (OIDC). One-time setup on npmjs.com → @staticbot/mcp → Settings →
+#    Trusted Publisher → GitHub Actions: org bitfiction, repo staticbot-mcp, workflow publish.yml.
+#  - The registry uses `login github-oidc`, which derives the io.github.bitfiction/* namespace from
+#    this repo's owner. Interactive device-flow login cannot: the registry's login app is a private
+#    GitHub App that can't be installed on bitfiction, so it never sees the org role.
+#
+# Both steps skip a version that is already published, so a re-run after a partial failure is safe.
+name: Publish
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+env:
+  MCP_PUBLISHER_VERSION: v1.8.1
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # npm trusted publishing needs npm >= 11.5.1, which ships with Node 24.
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - name: Read version
+        id: version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          name=$(node -p "require('./server.json').name")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+
+      - run: npm ci
+
+      # Builds and runs every validator, including the version/mcpName consistency check.
+      - run: npm test
+
+      - name: Publish to npm
+        run: |
+          if npm view "@staticbot/mcp@${{ steps.version.outputs.version }}" version >/dev/null 2>&1; then
+            echo "@staticbot/mcp@${{ steps.version.outputs.version }} is already on npm; skipping"
+          else
+            npm publish --access public --provenance
+          fi
+
+      - name: Install mcp-publisher
+        run: |
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz" \
+            | tar xz mcp-publisher
+          ./mcp-publisher --version
+
+      - name: Publish to MCP Registry
+        env:
+          NAME: ${{ steps.version.outputs.name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          existing=$(curl -fsSL "https://registry.modelcontextprotocol.io/v0/servers?search=${NAME}&version=latest" \
+            | jq -r --arg n "$NAME" '[.servers[] | (.server // .) | select(.name == $n) | .version] | first // empty')
+          if [[ "$existing" == "$VERSION" ]]; then
+            echo "$NAME $VERSION is already in the registry; skipping"
+            exit 0
+          fi
+          ./mcp-publisher validate server.json
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish

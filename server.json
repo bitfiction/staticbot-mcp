@@ -8,12 +8,6 @@
     "source": "github"
   },
   "version": "1.8.1",
-  "remotes": [
-    {
-      "type": "streamable-http",
-      "url": "https://mcp.staticbot.dev/mcp"
-    }
-  ],
   "packages": [
     {
       "registryType": "npm",

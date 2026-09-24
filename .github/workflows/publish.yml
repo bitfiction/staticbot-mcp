@@ -78,7 +78,7 @@ jobs:
           NAME: ${{ steps.version.outputs.name }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          existing=$(curl -fsSL "https://registry.modelcontextprotocol.io/v0/servers?search=${NAME}&version=latest" \
+          existing=$(curl -fsSL "https://registry.modelcontextprotocol.io/v0.1/servers?search=${NAME}&version=latest" \
             | jq -r --arg n "$NAME" '[.servers[] | (.server // .) | select(.name == $n) | .version] | first // empty')
           if [[ "$existing" == "$VERSION" ]]; then
             echo "$NAME $VERSION is already in the registry; skipping"

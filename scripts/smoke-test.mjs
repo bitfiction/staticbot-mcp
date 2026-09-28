@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 63;
+const expectedToolCount = 64;
 const expectedTools = [
   "get_account_status",
   "list_templates",
@@ -25,6 +25,7 @@ const expectedTools = [
   "get_supabase_project_status",
   "get_clean_target_plan",
   "clean_migration_target",
+  "recheck_migration_gate",
   "create_migration_preview",
   "set_connected_project_sync_mode",
   "list_connected_project_previews",
@@ -286,6 +287,17 @@ try {
       method === "GET" &&
       url === `/api/v1/integrations/instances/${integrationInstanceId}/repositories`),
     "repository discovery with an instance must narrow to that account",
+  );
+
+  const recheckMigrationId = "00000000-0000-4000-8000-000000000042";
+  await client.callTool({
+    name: "recheck_migration_gate",
+    arguments: { id: recheckMigrationId, action: "RECHECK_EXPORT" },
+  });
+  assert(
+    apiRequests.some(({ method, url }) =>
+      method === "POST" && url === `/api/v1/migrations/${recheckMigrationId}/recheck-export`),
+    "RECHECK_EXPORT must go to the recheck-export endpoint, never to /confirm",
   );
 
   await client.callTool({

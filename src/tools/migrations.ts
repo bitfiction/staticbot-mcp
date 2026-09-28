@@ -30,7 +30,7 @@ registerApiTool(server,
 registerApiTool(server,
   "get_migration",
   "Get the current status and phase breakdown of a migration. The response includes all migration phases (Discovery, DB Migration, Data Import, Edge Functions, Storage Buckets, Auth Config, Backend Switchover, Preview & Verify, Continuous Sync, Download, Follow-ups) with their individual statuses, plus sourceType (LOVABLE_SUPABASE / BOLT_SUPABASE / FIREBASE / BASE44_SUPABASE / BASE44_NATIVE), targetType (SUPABASE_CLOUD / SUPABASE_SELF_HOSTED), and packageAvailable (true once the downloadable zip is ready — fetch via download_package).\n\n" +
-  "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. New pre-flight states are explicit: REVIEW_TARGET_CONFLICTS → present `targetConflictReport`, then either call clean_migration_target after destructive confirmation or call confirm_migration only after the user explicitly declines cleanup; WAIT_FOR_TARGET_CLEANUP → poll; RETRY_TARGET_CLEANUP → call retry_migration_job (never skip cleanup); CHOOSE_MIGRATION_STRATEGY → present `preFlightGate.actions` and consequences, then call confirm_migration with the selected gateChoice. RESUME → the migration is paused and waiting on a person: tell the user what it is waiting for and call resume_migration once they agree (never resume a migration they paused without asking). PROVIDE_BASE44_SECRETS → this gate takes the values of the customer's own third-party credentials, so it is resolved in a browser and NOT by a tool: `endpoint` is null, `url` is the migration page, and `detail` is written to be shown to the user verbatim. Give them the URL, keep polling, and do not ask for the secret values in the conversation — no tool accepts them and the API refuses them over this connection. Other types: CONFIRM, RETRY_OR_SKIP, RESOLVE_SCHEMA_GAP, CHOOSE_BACKEND_SWITCHOVER, CHOOSE_DATA_IMPORT_METHOD, CHOOSE_FRONTEND_DEPLOY, COMPLETE_MANUAL_JOB. When `pendingAction` is null, poll only while the status is flowing.\n\n" +
+  "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. New pre-flight states are explicit: REVIEW_TARGET_CONFLICTS → present `targetConflictReport`, then either call clean_migration_target after destructive confirmation or call confirm_migration only after the user explicitly declines cleanup; WAIT_FOR_TARGET_CLEANUP → poll; RETRY_TARGET_CLEANUP → call retry_migration_job (never skip cleanup); CHOOSE_MIGRATION_STRATEGY → present `preFlightGate.actions` and consequences, then call confirm_migration with the selected gateChoice, except a RECHECK_* action, which goes to recheck_migration_gate. RESUME → the migration is paused and waiting on a person: tell the user what it is waiting for and call resume_migration once they agree (never resume a migration they paused without asking). PROVIDE_BASE44_SECRETS → this gate takes the values of the customer's own third-party credentials, so it is resolved in a browser and NOT by a tool: `endpoint` is null, `url` is the migration page, and `detail` is written to be shown to the user verbatim. Give them the URL, keep polling, and do not ask for the secret values in the conversation — no tool accepts them and the API refuses them over this connection. Other types: CONFIRM, RETRY_OR_SKIP, RESOLVE_SCHEMA_GAP, CHOOSE_BACKEND_SWITCHOVER, CHOOSE_DATA_IMPORT_METHOD, CHOOSE_FRONTEND_DEPLOY, COMPLETE_MANUAL_JOB. When `pendingAction` is null, poll only while the status is flowing.\n\n" +
   "The response exposes `preFlightGate` with backend-authored labels, consequences, export files, and the accepted choice IDs. It also exposes `targetConflictReport` with conflicting objects, cleanup scopes, `confirmationProjectRef`, and endpoint paths. Present these fields instead of inventing or defaulting a choice.\n\n" +
   "The response also includes `failureBanner` with categorised error info (category, title, body, severity, actionable, followupNote, retryable) when a job has a categorised failure. Use this to present richer error feedback. When `retryable=false`, prefer skip_migration_job or an AI-assisted fix over repeating deterministic SQL that will fail again — but check the job's `skipGuard` first, because a guarded job breaks the migration if skipped and needs the user's explicit approval; `retryable=null` means the cause may be environmental.\n\n" +
   "The `support` field reports whether this migration is SELF_SERVICE, SUPPORTED, or SUPPORT_WINDOW_ENDED, together with available human-support contact details. `consultationUrl` is returned only for SUPPORTED migrations and books the optional consultation already included in that migration's existing support entitlement; it is never a purchase, checkout, or upgrade route. When support is active, use those routes for human escalation instead of implying the MCP itself provides human support. Purchase and operator-grant actions are intentionally unavailable through MCP.\n\n" +
@@ -47,7 +47,7 @@ registerApiTool(server,
 
 registerApiTool(server,
   "confirm_migration",
-  "Approve a migration after discovery, or resolve a pre-flight migration-strategy gate. Before calling, get the migration and present the discovery inventory. If `preFlightGate` is non-null, present every enabled action and its consequence verbatim, obtain the user's explicit choice, and pass that exact action ID as gateChoice. For USE_OFFICIAL_EXPORT, gateSelection may select an offered export file path; omit it to use the newest. Never infer a gate choice or bypass REVIEW_TARGET_CONFLICTS without discussing the detected target objects.",
+  "Approve a migration after discovery, or resolve a pre-flight migration-strategy gate. Before calling, get the migration and present the discovery inventory. If `preFlightGate` is non-null, present every enabled action and its consequence verbatim, obtain the user's explicit choice, and pass that exact action ID as gateChoice. RECHECK_* actions are not gate choices: use recheck_migration_gate for them. For USE_OFFICIAL_EXPORT, gateSelection may select an offered export file path; omit it to use the newest. Never infer a gate choice or bypass REVIEW_TARGET_CONFLICTS without discussing the detected target objects.",
   {
     id: z.string().uuid().describe("Migration ID"),
     gateChoice: z.string().min(1).optional().describe("Exact enabled action ID from get_migration.preFlightGate.actions. Required when pendingAction.type is CHOOSE_MIGRATION_STRATEGY; do not invent or default a value."),
@@ -61,6 +61,40 @@ registerApiTool(server,
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
     return apiToolResult(data, toText);
+  }
+);
+
+// Gate actions that re-measure something instead of choosing a plan. /confirm refuses them, so each
+// has its own endpoint; routing them here keeps an agent from ever sending one as a gateChoice.
+const GATE_RECHECK_ENDPOINTS = {
+  RECHECK_EXPORT: "recheck-export",
+  RECHECK_OFFICIAL_EXPORT: "recheck-export",
+  RECHECK_CAPACITY: "recheck-capacity",
+  RECHECK_TARGET_EMPTY: "recheck-target-emptiness",
+} as const;
+
+registerApiTool(server,
+  "recheck_migration_gate",
+  "Run a pre-flight gate's re-check action: the enabled action in get_migration.preFlightGate.actions " +
+  "whose ID is RECHECK_EXPORT, RECHECK_OFFICIAL_EXPORT, RECHECK_CAPACITY or RECHECK_TARGET_EMPTY. " +
+  "These never go to confirm_migration, which refuses them. A re-check only queues a fresh measurement: " +
+  "it does not confirm or start the migration, and the migration stays paused. Each assumes the user " +
+  "fixed something outside Staticbot first, so ask them to do that and confirm it is done before calling: " +
+  "RECHECK_EXPORT / RECHECK_OFFICIAL_EXPORT — they created a Cloud Data export in their Lovable project " +
+  "(Staticbot cannot create it); RECHECK_TARGET_EMPTY — they emptied the target's `public` schema in " +
+  "Supabase; RECHECK_CAPACITY — they upgraded or freed space on the target. Then poll get_migration: " +
+  "preFlightGate changes when the re-check finds something (an export found turns it into the " +
+  "LOVABLE_OFFICIAL_EXPORT choice), and stays as it was when it does not.",
+  {
+    id: z.string().uuid().describe("Migration ID"),
+    action: z.enum(["RECHECK_EXPORT", "RECHECK_OFFICIAL_EXPORT", "RECHECK_CAPACITY", "RECHECK_TARGET_EMPTY"])
+      .describe("Exact enabled re-check action ID from get_migration.preFlightGate.actions"),
+  },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  async ({ id, action }) => {
+    await apiFetch(`/api/v1/migrations/${id}/${GATE_RECHECK_ENDPOINTS[action]}`, { method: "POST" });
+    return apiToolResult({ queued: true, action,
+      next: "Poll get_migration; preFlightGate changes when the re-check finds something." }, toText);
   }
 );
 
@@ -147,7 +181,7 @@ registerApiTool(server,
 
 registerApiTool(server,
   "retry_migration_job",
-  "Retry a failed migration job. The job must be in FAILED status. It will be reset to READY and picked up by the worker again. Use get_migration_jobs first to find the failed job's ID and error message.",
+  "Retry a failed migration job, or a skipped one whose `retryableAfterSkip` is true. It will be reset to READY and picked up by the worker again. A skipped SQL file can be retried while the migration is paused: it runs first, and whatever step is failing then runs again after it; retry one skipped file at a time. Use get_migration_jobs first to find the job's ID, error message and retryableAfterSkip.",
   {
     jobId: z.string().uuid().describe("Migration job ID (from get_migration_jobs)"),
   },
@@ -163,6 +197,7 @@ registerApiTool(server,
   "Skip a migration job that is blocking progress. The job will be marked as SKIPPED and dependent jobs will proceed. Use this when a job is non-critical (e.g. an edge function that can be deployed manually later) or when retry won't help. " +
   "FIRST check the job's `skipGuard` from get_migration_jobs. When it is non-null, skipping breaks the rest of the migration — present `skipGuard.consequence` and `skipGuard.alternative` to the user verbatim, get explicit approval, then call again with acknowledged=true. " +
   "The jobs that deploy the Staticbot export function to the source project (MANUAL_SYNC_LOVABLE, MANUAL_SYNC_BASE44, LOVABLE_MCP_SYNC, AUTO_DEPLOY_EXPORT_FUNCTION) are the main case: that function is the only way to read the customer's data, so skipping it makes the data import fail with \"function not found\". The API re-checks whether the function is live and returns 400 if it is not. " +
+  "A failed APPLY_SQL whose file creates tables is the other case: skipping leaves those tables missing and every later file that uses them fails, so prefer fixing and retrying it. A skipped SQL file can still be retried later while the migration is paused (retryableAfterSkip on get_migration_jobs). " +
   "Never set acknowledged just to clear that 400.",
   {
     jobId: z.string().uuid().describe("Migration job ID (from get_migration_jobs)"),

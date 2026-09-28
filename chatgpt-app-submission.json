@@ -248,6 +248,18 @@
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
+    "recheck_migration_gate": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Queues a fresh check (Cloud Data export, target capacity, or target emptiness) and records the result on the migration.",
+        "open_world_justification": "Reads the source project through its deployed export function, or the connected target Supabase project.",
+        "destructive_justification": "Only measures; does not confirm or start the migration, and never writes to the source or target."
+      }
+    },
     "confirm_migration": {
       "annotations": {
         "readOnlyHint": false,

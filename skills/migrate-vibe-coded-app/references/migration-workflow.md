@@ -20,7 +20,7 @@ The live Staticbot tool schemas and `pendingAction` response are authoritative.
    - `REVIEW_TARGET_CONFLICTS` → call `get_clean_target_plan` and present its live rows and `confirmationProjectRef` (the migration's own `targetConflictReport` is a discovery-time snapshot); call `clean_migration_target` only after exact-scope/project confirmation, or call `confirm_migration` only after the user explicitly declines cleanup
    - `WAIT_FOR_TARGET_CLEANUP` → poll `get_migration`; do not resolve another gate yet
    - `RETRY_TARGET_CLEANUP` → explain the failure and use `retry_migration_job`; never skip a cleanup prerequisite
-   - `CHOOSE_MIGRATION_STRATEGY` → present `preFlightGate.actions` and consequences, then call `confirm_migration` with the user's exact `gateChoice`
+   - `CHOOSE_MIGRATION_STRATEGY` → present `preFlightGate.actions` and consequences, then call `confirm_migration` with the user's exact `gateChoice`. A `RECHECK_*` action (e.g. `RECHECK_EXPORT` on `REPLAY_DATA_DEPENDENCY`, after the user has created a Lovable Cloud Data export) is not a gate choice: call `recheck_migration_gate`, then poll
    - `CONFIRM` → `confirm_migration`
    - `RESUME` → the migration is paused and waiting on a person; say what it is waiting for and call `resume_migration` only after the user agrees
    - `RETRY_OR_SKIP` → inspect jobs, then `retry_migration_job` or confirmed `skip_migration_job`

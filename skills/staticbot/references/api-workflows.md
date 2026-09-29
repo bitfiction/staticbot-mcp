@@ -101,6 +101,7 @@ not report a Workers custom hostname live until both returned status fields are 
 - `GET|POST /migrations`
 - `GET /migrations/{id}`
 - `POST /migrations/{id}/confirm|resume|pause`
+- `PUT /migrations/{id}/gating-level` — `{"gatingLevel": "STREAMLINED" | "GUARDED"}`; only on the user's request; refused while IN_PROGRESS
 - `GET /migrations/{id}/clean-target-plan` — live cleanup availability, `confirmationProjectRef` and
   per-scope counts; read immediately before authorizing a destructive cleanup, not the discovery-time
   `targetConflictReport`
@@ -141,7 +142,7 @@ Typical migration flow:
 9. On failure, inspect `failureBanner`, job details, and `retryable`; ask before retrying or skipping when consequences are material. A failed target cleanup is retry-only.
 10. Finish with status, preview/live URLs, partial failures, skipped jobs, and manual follow-ups.
 
-`pendingAction.type` can include `REVIEW_TARGET_CONFLICTS`, `WAIT_FOR_TARGET_CLEANUP`, `RETRY_TARGET_CLEANUP`, `CHOOSE_MIGRATION_STRATEGY`, `CONFIRM`, `RESUME` (paused, waiting on a person — ask before resuming), `RETRY_OR_SKIP`, `PROVIDE_BASE44_SECRETS`, `RESOLVE_SCHEMA_GAP`, `CHOOSE_BACKEND_SWITCHOVER`, `CHOOSE_DATA_IMPORT_METHOD`, `CHOOSE_FRONTEND_DEPLOY`, and `COMPLETE_MANUAL_JOB`. Use its returned IDs and endpoint rather than reconstructing them from phase assumptions.
+`pendingAction.type` can include `REVIEW_TARGET_CONFLICTS`, `WAIT_FOR_TARGET_CLEANUP`, `RETRY_TARGET_CLEANUP`, `CHOOSE_MIGRATION_STRATEGY`, `CONFIRM` (starts writes to the target — needs the user's own approval, never chained onto a strategy answer), `REVIEW_PHASE` / `REVIEW_DATA_ACCESS` (GUARDED stops — relay to the user, complete via `/migrations/jobs/{jobId}/complete` with their answer), `RESUME` (paused, waiting on a person — ask before resuming), `RETRY_OR_SKIP`, `PROVIDE_BASE44_SECRETS`, `RESOLVE_SCHEMA_GAP`, `CHOOSE_BACKEND_SWITCHOVER`, `CHOOSE_DATA_IMPORT_METHOD`, `CHOOSE_FRONTEND_DEPLOY`, and `COMPLETE_MANUAL_JOB`. Use its returned IDs and endpoint rather than reconstructing them from phase assumptions.
 
 Some steps advance by themselves, so treat an "already done" answer as success rather than an error:
 

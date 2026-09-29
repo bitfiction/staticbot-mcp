@@ -15,13 +15,15 @@ The live Staticbot tool schemas and `pendingAction` response are authoritative.
 ## Run
 
 1. Call `create_migration` only after the required source, target, integrations, and template are known.
-2. Poll `get_migration` until discovery pauses. Fetch `get_migration_jobs`, present the inventory, and wait for explicit approval before `confirm_migration`.
+2. Migrations created here default to `gatingLevel: GUARDED` (stop at every choice and before every phase). Pass `STREAMLINED` to `create_migration`, or call `set_migration_gating_level`, only when the user explicitly asks for fewer stops. Poll `get_migration` until discovery pauses. Fetch `get_migration_jobs`, present the inventory, and wait for explicit approval before `confirm_migration`.
 3. Route every non-null `pendingAction` to the matching tool and use the IDs/options it returns:
    - `REVIEW_TARGET_CONFLICTS` → call `get_clean_target_plan` and present its live rows and `confirmationProjectRef` (the migration's own `targetConflictReport` is a discovery-time snapshot); call `clean_migration_target` only after exact-scope/project confirmation, or call `confirm_migration` only after the user explicitly declines cleanup
    - `WAIT_FOR_TARGET_CLEANUP` → poll `get_migration`; do not resolve another gate yet
    - `RETRY_TARGET_CLEANUP` → explain the failure and use `retry_migration_job`; never skip a cleanup prerequisite
    - `CHOOSE_MIGRATION_STRATEGY` → present `preFlightGate.actions` and consequences, then call `confirm_migration` with the user's exact `gateChoice`. A `RECHECK_*` action (e.g. `RECHECK_EXPORT` on `REPLAY_DATA_DEPENDENCY`, after the user has created a Lovable Cloud Data export) is not a gate choice: call `recheck_migration_gate`, then poll
-   - `CONFIRM` → `confirm_migration`
+   - `CONFIRM` → confirming **starts** the migration (tables and data are written to the target). Present the plan and call `confirm_migration` only after the user approves starting — even right after they answered `CHOOSE_MIGRATION_STRATEGY`. On a GUARDED migration that answer only builds the plan; it is not approval to start, so never chain the two calls
+   - `REVIEW_PHASE` → the migration stopped before a phase (GUARDED). Show the job's `title`, `body` and `job_summary`, and call `complete_migration_job` only when the user says to continue
+   - `REVIEW_DATA_ACCESS` → some Base44 entities have no access rules (GUARDED). Show the job's `entities` (flag `looks_sensitive`) and `options`, ask who may read and change them, and pass the answer as `accessDefault` / `accessOverrides` to `complete_migration_job`. Never choose for the user
    - `RESUME` → the migration is paused and waiting on a person; say what it is waiting for and call `resume_migration` only after the user agrees
    - `RETRY_OR_SKIP` → inspect jobs, then `retry_migration_job` or confirmed `skip_migration_job`
    - `PROVIDE_BASE44_SECRETS` → **no tool; the user resolves this in a browser.** The gate takes the values of the customer's own third-party credentials, which cannot travel as tool arguments. `pendingAction.endpoint` is null; give the user `pendingAction.url` and show `pendingAction.detail` verbatim, then keep polling `get_migration` until the gate clears. Never ask for the secret values in the conversation, and do not accept them if the user offers them anyway — no tool takes them and the API refuses them over an MCP connection

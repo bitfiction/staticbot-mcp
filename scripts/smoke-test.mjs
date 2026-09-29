@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 64;
+const expectedToolCount = 65;
 const expectedTools = [
   "get_account_status",
   "list_templates",
@@ -145,6 +145,26 @@ try {
   const confirmMigration = tools.find(({ name }) => name === "confirm_migration");
   assert(confirmMigration?.inputSchema?.properties?.gateChoice, "confirm_migration must expose gateChoice");
   assert(confirmMigration?.inputSchema?.properties?.gateSelection, "confirm_migration must expose gateSelection");
+  // Incident c5e7eb7b: one strategy answer silently started writes. Under GUARDED the answer only
+  // builds the plan, and the follow-up CONFIRM must be its own approval — never chained.
+  assert.match(
+    confirmMigration?.description ?? "",
+    /never chain the two calls/i,
+    "confirm_migration must forbid chaining a strategy choice into a start",
+  );
+  const getMigration = tools.find(({ name }) => name === "get_migration");
+  for (const type of ["REVIEW_PHASE", "REVIEW_DATA_ACCESS", "gatingLevel"]) {
+    assert.match(getMigration?.description ?? "", new RegExp(type), `get_migration must explain ${type}`);
+  }
+  const completeJob = tools.find(({ name }) => name === "complete_migration_job");
+  assert(completeJob?.inputSchema?.properties?.accessDefault, "complete_migration_job must expose accessDefault");
+  assert(completeJob?.inputSchema?.properties?.accessOverrides, "complete_migration_job must expose accessOverrides");
+  const setLevel = tools.find(({ name }) => name === "set_migration_gating_level");
+  assert(setLevel, "set_migration_gating_level must be registered");
+  assert.match(setLevel.description, /only when the user explicitly asks/i,
+    "changing the gating level must be the user's call, never a way past a stop");
+  assert(tools.find(({ name }) => name === "create_migration")?.inputSchema?.properties?.gatingLevel,
+    "create_migration must expose gatingLevel");
 
   const createMigration = tools.find(({ name }) => name === "create_migration");
   assert.match(

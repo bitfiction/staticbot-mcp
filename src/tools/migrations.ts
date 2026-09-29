@@ -30,7 +30,8 @@ registerApiTool(server,
 registerApiTool(server,
   "get_migration",
   "Get the current status and phase breakdown of a migration. The response includes all migration phases (Discovery, DB Migration, Data Import, Edge Functions, Storage Buckets, Auth Config, Backend Switchover, Preview & Verify, Continuous Sync, Download, Follow-ups) with their individual statuses, plus sourceType (LOVABLE_SUPABASE / BOLT_SUPABASE / FIREBASE / BASE44_SUPABASE / BASE44_NATIVE), targetType (SUPABASE_CLOUD / SUPABASE_SELF_HOSTED), and packageAvailable (true once the downloadable zip is ready — fetch via download_package).\n\n" +
-  "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. New pre-flight states are explicit: REVIEW_TARGET_CONFLICTS → present `targetConflictReport`, then either call clean_migration_target after destructive confirmation or call confirm_migration only after the user explicitly declines cleanup; WAIT_FOR_TARGET_CLEANUP → poll; RETRY_TARGET_CLEANUP → call retry_migration_job (never skip cleanup); CHOOSE_MIGRATION_STRATEGY → present `preFlightGate.actions` and consequences, then call confirm_migration with the selected gateChoice, except a RECHECK_* action, which goes to recheck_migration_gate. RESUME → the migration is paused and waiting on a person: tell the user what it is waiting for and call resume_migration once they agree (never resume a migration they paused without asking). PROVIDE_BASE44_SECRETS → this gate takes the values of the customer's own third-party credentials, so it is resolved in a browser and NOT by a tool: `endpoint` is null, `url` is the migration page, and `detail` is written to be shown to the user verbatim. Give them the URL, keep polling, and do not ask for the secret values in the conversation — no tool accepts them and the API refuses them over this connection. Other types: CONFIRM, RETRY_OR_SKIP, RESOLVE_SCHEMA_GAP, CHOOSE_BACKEND_SWITCHOVER, CHOOSE_DATA_IMPORT_METHOD, CHOOSE_FRONTEND_DEPLOY, COMPLETE_MANUAL_JOB. When `pendingAction` is null, poll only while the status is flowing.\n\n" +
+  "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. New pre-flight states are explicit: REVIEW_TARGET_CONFLICTS → present `targetConflictReport`, then either call clean_migration_target after destructive confirmation or call confirm_migration only after the user explicitly declines cleanup; WAIT_FOR_TARGET_CLEANUP → poll; RETRY_TARGET_CLEANUP → call retry_migration_job (never skip cleanup); CHOOSE_MIGRATION_STRATEGY → present `preFlightGate.actions` and consequences, then call confirm_migration with the selected gateChoice, except a RECHECK_* action, which goes to recheck_migration_gate. RESUME → the migration is paused and waiting on a person: tell the user what it is waiting for and call resume_migration once they agree (never resume a migration they paused without asking). PROVIDE_BASE44_SECRETS → this gate takes the values of the customer's own third-party credentials, so it is resolved in a browser and NOT by a tool: `endpoint` is null, `url` is the migration page, and `detail` is written to be shown to the user verbatim. Give them the URL, keep polling, and do not ask for the secret values in the conversation — no tool accepts them and the API refuses them over this connection. CONFIRM → confirming STARTS the migration (it creates tables and imports data into the target): present the plan and get the user's explicit approval for that, even if they just answered a CHOOSE_MIGRATION_STRATEGY question — an answered strategy is not approval to start. REVIEW_PHASE (GUARDED migrations) → the migration stopped before a phase: show the job's `title`, `body` and `job_summary` (get_migration_jobs → inputData) and call complete_migration_job only when the user says to continue. REVIEW_DATA_ACCESS (GUARDED Base44 migrations) → show the job's `entities` and `options` and pass the user's choice to complete_migration_job as accessDefault/accessOverrides; never pick for them. When `pendingAction.detail` is present, show it to the user. Other types: RETRY_OR_SKIP, RESOLVE_SCHEMA_GAP, CHOOSE_BACKEND_SWITCHOVER, CHOOSE_DATA_IMPORT_METHOD, CHOOSE_FRONTEND_DEPLOY, COMPLETE_MANUAL_JOB. When `pendingAction` is null, poll only while the status is flowing.\n\n" +
+  "`gatingLevel` says how often the migration stops for the user: GUARDED (the default for migrations created through this connection) stops at every choice, before every phase, and asks who can see data that has no access rules; STREAMLINED takes the recommended option and stops only when it cannot continue safely. Every stop is the user's decision — relay it; do not complete it on their behalf. Change the level only when the user asks, with set_migration_gating_level.\n\n" +
   "The response exposes `preFlightGate` with backend-authored labels, consequences, export files, and the accepted choice IDs. It also exposes `targetConflictReport` with conflicting objects, cleanup scopes, `confirmationProjectRef`, and endpoint paths. Present these fields instead of inventing or defaulting a choice.\n\n" +
   "The response also includes `failureBanner` with categorised error info (category, title, body, severity, actionable, followupNote, retryable) when a job has a categorised failure. Use this to present richer error feedback. When `retryable=false`, prefer skip_migration_job or an AI-assisted fix over repeating deterministic SQL that will fail again — but check the job's `skipGuard` first, because a guarded job breaks the migration if skipped and needs the user's explicit approval; `retryable=null` means the cause may be environmental.\n\n" +
   "The `support` field reports whether this migration is SELF_SERVICE, SUPPORTED, or SUPPORT_WINDOW_ENDED, together with available human-support contact details. `consultationUrl` is returned only for SUPPORTED migrations and books the optional consultation already included in that migration's existing support entitlement; it is never a purchase, checkout, or upgrade route. When support is active, use those routes for human escalation instead of implying the MCP itself provides human support. Purchase and operator-grant actions are intentionally unavailable through MCP.\n\n" +
@@ -47,7 +48,7 @@ registerApiTool(server,
 
 registerApiTool(server,
   "confirm_migration",
-  "Approve a migration after discovery, or resolve a pre-flight migration-strategy gate. Before calling, get the migration and present the discovery inventory. If `preFlightGate` is non-null, present every enabled action and its consequence verbatim, obtain the user's explicit choice, and pass that exact action ID as gateChoice. RECHECK_* actions are not gate choices: use recheck_migration_gate for them. For USE_OFFICIAL_EXPORT, gateSelection may select an offered export file path; omit it to use the newest. Never infer a gate choice or bypass REVIEW_TARGET_CONFLICTS without discussing the detected target objects.",
+  "Approve a migration after discovery, or resolve a pre-flight migration-strategy gate. Without a gateChoice this STARTS the migration: it creates tables and imports data into the target project, so call it only after the user explicitly approves starting. With a gateChoice on a GUARDED migration it only records the choice and builds the plan — the migration then waits at PAUSED_FOR_APPROVAL (pendingAction CONFIRM) and needs a second, separate approval from the user before you call this again; never chain the two calls. Before calling, get the migration and present the discovery inventory. If `preFlightGate` is non-null, present every enabled action and its consequence verbatim, obtain the user's explicit choice, and pass that exact action ID as gateChoice. RECHECK_* actions are not gate choices: use recheck_migration_gate for them. For USE_OFFICIAL_EXPORT, gateSelection may select an offered export file path; omit it to use the newest. Never infer a gate choice or bypass REVIEW_TARGET_CONFLICTS without discussing the detected target objects.",
   {
     id: z.string().uuid().describe("Migration ID"),
     gateChoice: z.string().min(1).optional().describe("Exact enabled action ID from get_migration.preFlightGate.actions. Required when pendingAction.type is CHOOSE_MIGRATION_STRATEGY; do not invent or default a value."),
@@ -166,6 +167,27 @@ registerApiTool(server,
 );
 
 registerApiTool(server,
+  "set_migration_gating_level",
+  "Change how often a migration stops for the user. GUARDED stops at every choice, before every phase, and " +
+  "asks who can see data that has no access rules. STREAMLINED takes the recommended option and stops only when " +
+  "it cannot continue safely; lowering to STREAMLINED also lets Staticbot answer any review that is currently " +
+  "open with its suggestion. Call only when the user explicitly asks — never to get past a stop yourself. " +
+  "Refused while the migration is IN_PROGRESS: pause it first (with the user's agreement).",
+  {
+    id: z.string().uuid().describe("Migration ID"),
+    gatingLevel: z.enum(["STREAMLINED", "GUARDED"]).describe("The level the user asked for"),
+  },
+  { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  async ({ id, gatingLevel }) => {
+    const data = await apiFetch(`/api/v1/migrations/${id}/gating-level`, {
+      method: "PUT",
+      body: JSON.stringify({ gatingLevel }),
+    });
+    return apiToolResult(data, toText);
+  }
+);
+
+registerApiTool(server,
   "get_migration_jobs",
   "Get all jobs for a migration. Jobs are the individual work units within each phase (e.g. 'migrate_schema', 'import_data', 'deploy_edge_function_X'). Use this to understand what's happening at a granular level, diagnose failures, or find a jobId for retry/skip. For IN_PROGRESS long-running jobs (e.g. CALL_EXPORT_TO_TARGET on multi-table sources), each job's `progressMessage` field carries a human-readable subtitle like \"Exporting table 'startups' (8/10)\" so you can report concrete progress without waiting for completion. " +
   "Each job also carries `skipGuard`: null means it is freely skippable, non-null means skipping it breaks the migration. Read it before offering a skip and relay `consequence` and `alternative` to the user rather than discovering the gate by triggering a 400.",
@@ -247,7 +269,8 @@ registerApiTool(server,
   "6. For SUPABASE_CLOUD only: call list_supabase_projects with the Supabase integration instance. If the user wants an existing target, ask them to choose an ACTIVE project. If they want a new target, call list_supabase_organizations and list_supabase_regions, obtain explicit confirmation of the exact project name, organization, and region, then call create_supabase_project. Poll get_supabase_project_status until healthy=true before using its id as targetSupabaseProjectRef. Never create a second project merely because provisioning is slow or a status poll fails. Skip this step for SUPABASE_SELF_HOSTED.\n" +
   "7. For templateId: either ask the user to pick from list_templates, or create a new template from the resolved repository using create_template.\n\n" +
   "IMPORTANT: Source and target Supabase projects must be different. Staticbot validates this after source discovery; if it reports a match, ask the user to choose another target.\n\n" +
-  "After creation, the migration starts with a DISCOVERY job. Once discovery completes, it pauses (PAUSED_FOR_APPROVAL) — present the inventory to the user and call confirm_migration if they approve.",
+  "After creation, the migration starts with a DISCOVERY job. Once discovery completes, it pauses (PAUSED_FOR_APPROVAL, or PAUSED_FOR_USER_ACTION with a preFlightGate) — present the inventory to the user and call confirm_migration only if they approve.\n\n" +
+  "gatingLevel: omit it unless the user asked. Migrations created here default to GUARDED — they stop at every choice and before every phase. Pass STREAMLINED only when the user explicitly wants fewer stops (for example a throwaway test run); safety checks still stop both levels.",
   {
     name: z.string().describe("Human-readable name for this migration"),
     description: z.string().optional().describe("Optional human-readable migration description"),
@@ -262,6 +285,7 @@ registerApiTool(server,
     targetSchemaName: z.string().optional().describe("Optional target Postgres schema name"),
     configOverrides: z.record(z.string()).optional().describe("Optional non-secret creation-time values. Call get_template and include only keys where the backend reports migrationEditable=true and migrationAction is REQUIRED_INPUT or OPTIONAL_OVERRIDE. Never send CONFIGURE_INTEGRATION, SECURITY_REVIEW, or migrationBackendDerived entries. Staticbot derives target aliases from the selected target, and connected integrations or later lifecycle steps handle credentials. Secret-looking keys are REJECTED, not ignored — this connection cannot carry credential values."),
     sourceDeployedUrl: z.string().url().optional().describe("Deployed *.base44.app URL used only for legacy BASE44_SUPABASE source discovery. Staticbot extracts source metadata server-side and never returns keys."),
+    gatingLevel: z.enum(["STREAMLINED", "GUARDED"]).optional().describe("How often the migration stops for the user. Omit to use the default for this connection (GUARDED). STREAMLINED only when the user explicitly asks for fewer stops."),
     packageOptions: z.object({
       includeEntityData: z.boolean().optional().describe("Include Base44 entity data. Defaults to true."),
       includeStorageFiles: z.boolean().optional().describe("Include Base44 storage files. Defaults to false."),
@@ -361,17 +385,27 @@ registerApiTool(server,
   "Format: https://{projectRef}.supabase.co/functions/v1/{functionName}. " +
   "For MANUAL_REVIEW_SCHEMA (Firebase migrations): show the proposed DDL from the job's inputData, " +
   "have the user review it, then pass their approved DDL as approvedSql — it is injected into the " +
-  "dependent APPLY_SQL job. Completing without approvedSql leaves APPLY_SQL with no schema to apply.",
+  "dependent APPLY_SQL job. Completing without approvedSql leaves APPLY_SQL with no schema to apply. " +
+  "For MANUAL_REVIEW_PHASE (GUARDED migrations): show the job's inputData title, body and job_summary, and " +
+  "complete it only when the user says to continue — it is their go-ahead for the next phase, not a formality. " +
+  "For MANUAL_REVIEW_DATA_ACCESS (GUARDED Base44 migrations): show inputData.body, the options (label + " +
+  "description) and the entities (flag the ones with looks_sensitive), ask the user who may read and change " +
+  "them, then pass accessDefault and, for entities they want different, accessOverrides. Omitting both accepts " +
+  "the suggested default — do that only when the user says so.",
   {
     jobId: z.string().uuid().describe("Migration job ID (from get_migration_jobs)"),
     functionUrl: z.string().optional().describe("Edge function URL (required for MANUAL_SYNC_LOVABLE; omit for MANUAL_SYNC_BASE44)"),
     approvedSql: z.string().optional().describe("User-reviewed DDL (MANUAL_REVIEW_SCHEMA only). Omit for every other manual job type."),
+    accessDefault: z.enum(["PUBLIC_READ", "SIGNED_IN", "OWNER_ONLY", "LOCKED"]).optional().describe("MANUAL_REVIEW_DATA_ACCESS only: the user's choice for every listed entity."),
+    accessOverrides: z.record(z.enum(["PUBLIC_READ", "SIGNED_IN", "OWNER_ONLY", "LOCKED"])).optional().describe("MANUAL_REVIEW_DATA_ACCESS only: {EntityName: option} for entities the user wants different from accessDefault. Only entities listed in the job's inputData.entities are accepted."),
   },
   { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
-  async ({ jobId, functionUrl, approvedSql }) => {
-    const body: Record<string, string> = {};
+  async ({ jobId, functionUrl, approvedSql, accessDefault, accessOverrides }) => {
+    const body: Record<string, unknown> = {};
     if (functionUrl) body.functionUrl = functionUrl;
     if (approvedSql) body.approvedSql = approvedSql;
+    if (accessDefault) body.accessDefault = accessDefault;
+    if (accessOverrides && Object.keys(accessOverrides).length > 0) body.accessOverrides = accessOverrides;
     const data = await apiFetch(`/api/v1/migrations/jobs/${jobId}/complete`, {
       method: "POST",
       body: JSON.stringify(body),

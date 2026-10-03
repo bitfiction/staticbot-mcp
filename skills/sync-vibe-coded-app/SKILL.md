@@ -16,5 +16,6 @@ Read [references/sync-workflow.md](references/sync-workflow.md) for the tool seq
 - Inspect failures before retrying. Explain exactly what would be skipped and obtain explicit confirmation before `skip_sync_run`.
 - Confirm the requested mode before `set_connected_project_sync_mode`; `AUTOMATIC`, `MANUAL`, `PAUSED`, and `ARCHIVED` have materially different behavior.
 - Frontend changes deploy to the target already selected by Staticbot from repository analysis and project configuration. Do not replace it with an agent-chosen AWS or Cloudflare target.
+- App secrets: `get_app_secrets` with `connectedProjectId` lists, per environment, the secrets the app uses and which still need a value — names and states, never values. The user enters values on the project page (`browserUrl`); never ask for them in chat. A sync does not yet detect a secret that a synced change starts using: if a change reads a new key (`Deno.env.get`, `import.meta.env`, `process.env`), tell the user it must be added in Staticbot before that feature works.
 
 Poll at a moderate interval and stop at terminal status or a review gate. Finish with source/target versions, applied and skipped changes, frontend status/URL, and manual follow-up.

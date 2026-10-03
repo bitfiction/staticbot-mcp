@@ -38,7 +38,7 @@ registerApiTool(server,
 // provider's transcript before Staticbot sees it. The user enters them in the dashboard's App
 // secrets tab instead (saving there continues the migration), and `get_migration`'s pendingAction
 // returns that URL plus a `detail` string to show them (Staticbot branches that field on the calling
-// credential). `get_app_secrets` reads names and states — never values — so an agent can still say
+// credential). `get_app_secrets` reads names and states — never values, per environment for a project — so an agent can still say
 // what is missing; a step whose secrets all have values is continued with complete_migration_job. Staticbot's API also refuses the underlying
 // endpoint for MCP callers with 403 SECRET_INTAKE_REFUSED, so re-adding a tool here would not work
 // even if someone tried.

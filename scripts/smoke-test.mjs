@@ -330,6 +330,13 @@ try {
   const secretsStackId = "00000000-0000-4000-8000-000000000044";
   await client.callTool({ name: "get_app_secrets", arguments: { migrationId: secretsMigrationId } });
   await client.callTool({ name: "get_app_secrets", arguments: { stackId: secretsStackId } });
+  const secretsProjectId = "00000000-0000-4000-8000-000000000045";
+  await client.callTool({ name: "get_app_secrets", arguments: { connectedProjectId: secretsProjectId } });
+  assert(
+    apiRequests.some(({ method, url }) =>
+      method === "GET" && url === `/api/v1/connected-projects/${secretsProjectId}/secrets`),
+    "get_app_secrets by connected project must call the per-environment v1 endpoint",
+  );
   assert(
     apiRequests.some(({ method, url }) =>
       method === "GET" && url === `/api/v1/migrations/${secretsMigrationId}/secrets`),

@@ -203,19 +203,25 @@ registerApiTool(server,
 
 registerApiTool(server,
   "get_app_secrets",
-  "Which secrets (API keys for third-party services — Stripe, OpenAI, AWS and the like) a migrated app uses, which already have a value, what the app uses each for, and where a saved value is applied — names and states only, never a value. Pass migrationId, or stackId for a stack that deploys a migrated app (its preview, or a hosted version, including ones Continuous Sync minted). " +
+  "Which secrets (API keys for third-party services — Stripe, OpenAI, AWS and the like) a migrated app uses, which already have a value, what the app uses each for, and where a saved value is applied — names and states only, never a value. Pass connectedProjectId for a project (the app after go-live), migrationId for a migration, or stackId for a stack that deploys a migrated app (its preview, or a hosted version, including ones Continuous Sync minted). " +
+  "A project's answer is per ENVIRONMENT — what its deployments run against (the Supabase project and its values). An environment is not a pipeline stage: several stages can share one, and each entry lists its `stages`; today every project has exactly one, shared by preview and production, so a value saved once applies to both. " +
   "Values are entered ONLY by the user, in the dashboard at `browserUrl` (the migration's App secrets tab): give them that link when `missingCount` is above 0 or they want to change a value. No tool accepts secret values and the API refuses them over this connection, so never ask for them in the conversation and do not accept them if offered. " +
   "`pendingStep` is set while a provide-secrets step is waiting; saving in the dashboard continues the migration. Features that use a secret without a value do not work until it has one — name them (usedFor / usedBy) when reporting on a preview or before going live.",
   {
-    migrationId: z.string().uuid().optional().describe("Migration ID"),
-    stackId: z.string().uuid().optional().describe("Stack ID, for a stack that deploys a migrated app. Ignored when migrationId is given."),
+    connectedProjectId: z.string().uuid().optional().describe("Connected project ID — the app after go-live; answers per environment"),
+    migrationId: z.string().uuid().optional().describe("Migration ID. Ignored when connectedProjectId is given."),
+    stackId: z.string().uuid().optional().describe("Stack ID, for a stack that deploys a migrated app. Ignored when connectedProjectId or migrationId is given."),
   },
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-  async ({ migrationId, stackId }) => {
-    if (!migrationId && !stackId) throw new Error("Pass migrationId, or stackId for a stack that deploys a migrated app.");
-    const data = await apiFetch(migrationId
-      ? `/api/v1/migrations/${migrationId}/secrets`
-      : `/api/v1/migrations/secrets/by-stack/${stackId}`);
+  async ({ connectedProjectId, migrationId, stackId }) => {
+    if (!connectedProjectId && !migrationId && !stackId) {
+      throw new Error("Pass connectedProjectId, migrationId, or stackId for a stack that deploys a migrated app.");
+    }
+    const data = await apiFetch(connectedProjectId
+      ? `/api/v1/connected-projects/${connectedProjectId}/secrets`
+      : migrationId
+        ? `/api/v1/migrations/${migrationId}/secrets`
+        : `/api/v1/migrations/secrets/by-stack/${stackId}`);
     return apiToolResult(data, toText);
   }
 );

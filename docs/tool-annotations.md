@@ -3,7 +3,7 @@
 Every tool declares `readOnlyHint`, `destructiveHint` and `openWorldHint`. OpenAI's plugin review
 requires all three, and a client uses them to decide how much confirmation a call needs.
 
-63 tools: **33 read-only**, **14 destructive**, **21 that can change public or external state**.
+66 tools: **35 read-only**, **14 destructive**, **22 that can change public or external state**.
 (Counts are measured from the built server, not maintained by hand — see "Keeping this honest" below.)
 
 ## How each is decided
@@ -36,6 +36,8 @@ Deliberately **not** destructive, and worth knowing why:
   organization's Staticbot source-control integrations (GitHub, GitLab). It never returns an OAuth token
   or changes provider state. `list_github_repositories` is the deprecated GitHub-only alias for it and
   carries the same hints.
+- `get_app_secrets` only reads which secrets a migrated app uses and whether each has a value — names
+  and states, never a value. No tool writes secret values: the user enters them in the dashboard.
 
 ## Justifications for destructive tools
 
@@ -49,7 +51,7 @@ The submission form requires a justification naming what is irreversible and wha
 | `confirm_migration` | Starts the migration proper — applies schema and imports data into the customer's target database. With a strategy `gateChoice` on a GUARDED migration it only records the choice and builds the plan. | Discovery results are presented for review first; this is the gate that turns a plan into writes. The description forbids chaining a strategy answer into a start, and the API's `CONFIRM` pendingAction carries a `detail` telling the agent to ask again. |
 | `clean_migration_target` | Permanently deletes target database/authentication data, Storage buckets and files, or both. | Requires an exact scope and the target project ref returned by `get_migration`; the tool description requires presenting consequences and obtaining explicit confirmation. |
 | `skip_migration_job` | Marks a pipeline job completed without running it. A skipped job cannot be un-skipped and its work is never performed. | Staticbot explains the failure before an agent may skip; retry is the non-destructive alternative. |
-| `complete_migration_job` | Irreversibly records a manual job as completed and lets dependent migration work proceed. For `MANUAL_REVIEW_DATA_ACCESS` it fixes who can read and change the listed tables. | The caller must use the exact READY job; review jobs must be relayed to the user, and the access options are restricted to the entities the job lists. Sync steps normally complete themselves once the export function answers, so the tool is rarely needed for them; an already-completed sync step returns ok. |
+| `complete_migration_job` | Irreversibly records a manual job as completed and lets dependent migration work proceed. For `MANUAL_REVIEW_DATA_ACCESS` it fixes who can read and change the listed tables. | The caller must use the exact READY job; review jobs must be relayed to the user, and the access options are restricted to the entities the job lists. Sync steps normally complete themselves once the export function answers, so the tool is rarely needed for them; an already-completed sync step returns ok. A provide-secrets step is continued without sending any value, and only once every secret has one (pendingAction `COMPLETE_MANUAL_JOB`). |
 | `validate_function_url` | Completes the migration's sync step when the export function is reachable, letting the data import proceed. | Completion happens only after the deployed function answers an authenticated ping — the same condition under which Staticbot completes the step by itself. |
 | `choose_data_import_method` | Commits the migration to an automated or manual import path that may write target data. | The tool description requires presenting both paths and obtaining the user's choice. |
 | `choose_backend_switchover` | Commits a switchover strategy that can replace repository environment configuration or skip the change permanently. | The tool description requires presenting every strategy and obtaining the user's choice. |

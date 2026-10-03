@@ -44,7 +44,7 @@ Undo in reverse order, from the saved originals: entity rules, functions, automa
 
 ## Sign-in and other changes to announce
 
-Base44 does not expose password hashes. Migrated users are created by email and sign in by email code or magic link (or their OAuth provider, once its client secret is entered in the target Supabase dashboard). Put this in the advance notice and the completion message. Test delivery to a few real mailbox providers during rehearsal. Also check Staticbot's follow-ups for secrets to provide (`PROVIDE_BASE44_SECRETS` is resolved in the browser, never in chat), connectors to replace, and asset URLs stored in data rows that still point at Base44.
+Base44 does not expose password hashes. Migrated users are created by email and sign in by email code or magic link (or their OAuth provider, once its client secret is entered in the target Supabase dashboard). Put this in the advance notice and the completion message. Test delivery to a few real mailbox providers during rehearsal. Also check Staticbot's follow-ups for secrets to provide (`get_app_secrets` lists any still missing; the user enters them in the migration's App secrets tab, never in chat), connectors to replace, and asset URLs stored in data rows that still point at Base44.
 
 ## After reopening
 

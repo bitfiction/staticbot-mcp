@@ -320,6 +320,18 @@
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
+    "get_app_secrets": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves which secrets a migrated app uses and whether each has a value \u2014 names and states, never a value.",
+        "open_world_justification": "Does not change migration work or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
     "retry_migration_job": {
       "annotations": {
         "readOnlyHint": false,

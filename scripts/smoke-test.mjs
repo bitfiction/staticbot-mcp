@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 65;
+const expectedToolCount = 66;
 const expectedTools = [
   "get_account_status",
   "list_templates",
@@ -17,6 +17,7 @@ const expectedTools = [
   "preflight_cloudflare_hosting",
   "recheck_dns_verification",
   "get_migration",
+  "get_app_secrets",
   "list_source_repositories",
   "list_github_repositories",
   "list_supabase_organizations",
@@ -318,6 +319,26 @@ try {
     apiRequests.some(({ method, url }) =>
       method === "POST" && url === `/api/v1/migrations/${recheckMigrationId}/recheck-export`),
     "RECHECK_EXPORT must go to the recheck-export endpoint, never to /confirm",
+  );
+
+  // App secrets are readable — names and states, never values — by migration or by stack.
+  const appSecrets = tools.find(({ name }) => name === "get_app_secrets");
+  assert.equal(appSecrets?.annotations?.readOnlyHint, true, "get_app_secrets must be read-only");
+  assert.match(appSecrets?.description ?? "", /never ask for them/i,
+    "get_app_secrets must tell agents never to ask for secret values");
+  const secretsMigrationId = "00000000-0000-4000-8000-000000000043";
+  const secretsStackId = "00000000-0000-4000-8000-000000000044";
+  await client.callTool({ name: "get_app_secrets", arguments: { migrationId: secretsMigrationId } });
+  await client.callTool({ name: "get_app_secrets", arguments: { stackId: secretsStackId } });
+  assert(
+    apiRequests.some(({ method, url }) =>
+      method === "GET" && url === `/api/v1/migrations/${secretsMigrationId}/secrets`),
+    "get_app_secrets by migration must call the public v1 endpoint",
+  );
+  assert(
+    apiRequests.some(({ method, url }) =>
+      method === "GET" && url === `/api/v1/migrations/secrets/by-stack/${secretsStackId}`),
+    "get_app_secrets by stack must call the public v1 endpoint",
   );
 
   await client.callTool({

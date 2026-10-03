@@ -30,14 +30,16 @@ registerApiTool(server,
   }
 );
 
-// There is deliberately no `provide_base44_secrets` tool.
+// There is deliberately no `provide_base44_secrets` tool, and no tool that takes any secret value.
 //
-// The MANUAL_PROVIDE_BASE44_SECRETS gate takes the values of the customer's own third-party
-// credentials — Stripe keys and the like — which this transport cannot carry: a tool call's
-// arguments are model output, so anything passed here is in the provider's transcript before
-// Staticbot sees it. The gate is completed by the user in the dashboard instead, and
-// `get_migration`'s pendingAction returns the URL plus a `detail` string to show them (Staticbot
-// branches that field on the calling credential). Staticbot's API also refuses the underlying
+// The provide-secrets steps (MANUAL_PROVIDE_BASE44_SECRETS, MANUAL_PROVIDE_SECRETS) take the values
+// of the customer's own third-party credentials — Stripe keys and the like — which this transport
+// cannot carry: a tool call's arguments are model output, so anything passed here is in the
+// provider's transcript before Staticbot sees it. The user enters them in the dashboard's App
+// secrets tab instead (saving there continues the migration), and `get_migration`'s pendingAction
+// returns that URL plus a `detail` string to show them (Staticbot branches that field on the calling
+// credential). `get_app_secrets` reads names and states — never values — so an agent can still say
+// what is missing; a step whose secrets all have values is continued with complete_migration_job. Staticbot's API also refuses the underlying
 // endpoint for MCP callers with 403 SECRET_INTAKE_REFUSED, so re-adding a tool here would not work
 // even if someone tried.
 //

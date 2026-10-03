@@ -114,7 +114,9 @@ not report a Workers custom hostname live until both returned status fields are 
 - `POST /migrations/{migrationId}/jobs/{jobId}/choose-method`
 - `POST /migrations/{migrationId}/jobs/{jobId}/choose-backend-switchover`
 - `POST /migrations/{migrationId}/jobs/{jobId}/choose-frontend-deploy`
-- `POST /migrations/{migrationId}/jobs/{jobId}/provide-base44-secrets`
+- `POST /migrations/{migrationId}/jobs/{jobId}/provide-base44-secrets` (API key only — refused for MCP callers)
+- `GET /migrations/{id}/secrets` — the app's secrets: names, states (`SET` / `NEEDS_VALUE`), what each is for, and `browserUrl` (the migration's App secrets tab, where the user enters values). Never values
+- `GET /migrations/secrets/by-stack/{stackId}` — the same, from a stack that deploys a migrated app; 404 for any other stack
 - `POST /migrations/{migrationId}/jobs/{jobId}/resolve-schema-gap`
 - `POST /migrations/jobs/{jobId}/validate-function`
 - `GET /migrations/integrations/instances`
@@ -142,7 +144,7 @@ Typical migration flow:
 9. On failure, inspect `failureBanner`, job details, and `retryable`; ask before retrying or skipping when consequences are material. A failed target cleanup is retry-only.
 10. Finish with status, preview/live URLs, partial failures, skipped jobs, and manual follow-ups.
 
-`pendingAction.type` can include `REVIEW_TARGET_CONFLICTS`, `WAIT_FOR_TARGET_CLEANUP`, `RETRY_TARGET_CLEANUP`, `CHOOSE_MIGRATION_STRATEGY`, `CONFIRM` (starts writes to the target — needs the user's own approval, never chained onto a strategy answer), `REVIEW_PHASE` / `REVIEW_DATA_ACCESS` (GUARDED stops — relay to the user, complete via `/migrations/jobs/{jobId}/complete` with their answer), `RESUME` (paused, waiting on a person — ask before resuming), `RETRY_OR_SKIP`, `PROVIDE_BASE44_SECRETS`, `RESOLVE_SCHEMA_GAP`, `CHOOSE_BACKEND_SWITCHOVER`, `CHOOSE_DATA_IMPORT_METHOD`, `CHOOSE_FRONTEND_DEPLOY`, and `COMPLETE_MANUAL_JOB`. Use its returned IDs and endpoint rather than reconstructing them from phase assumptions.
+`pendingAction.type` can include `REVIEW_TARGET_CONFLICTS`, `WAIT_FOR_TARGET_CLEANUP`, `RETRY_TARGET_CLEANUP`, `CHOOSE_MIGRATION_STRATEGY`, `CONFIRM` (starts writes to the target — needs the user's own approval, never chained onto a strategy answer), `REVIEW_PHASE` / `REVIEW_DATA_ACCESS` (GUARDED stops — relay to the user, complete via `/migrations/jobs/{jobId}/complete` with their answer), `RESUME` (paused, waiting on a person — ask before resuming), `RETRY_OR_SKIP`, `PROVIDE_BASE44_SECRETS` / `PROVIDE_SECRETS` (the user enters values at `url`, the App secrets tab; when every secret already has a value the step comes back as `COMPLETE_MANUAL_JOB`), `RESOLVE_SCHEMA_GAP`, `CHOOSE_BACKEND_SWITCHOVER`, `CHOOSE_DATA_IMPORT_METHOD`, `CHOOSE_FRONTEND_DEPLOY`, and `COMPLETE_MANUAL_JOB`. Use its returned IDs and endpoint rather than reconstructing them from phase assumptions.
 
 Some steps advance by themselves, so treat an "already done" answer as success rather than an error:
 

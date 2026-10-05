@@ -30,8 +30,8 @@ registerApiTool(server,
 registerApiTool(server,
   "get_migration",
   "Get the current status and phase breakdown of a migration. The response includes all migration phases (Discovery, DB Migration, Data Import, Edge Functions, Storage Buckets, Auth Config, Backend Switchover, Preview & Verify, Continuous Sync, Download, Follow-ups) with their individual statuses, plus sourceType (LOVABLE_SUPABASE / BOLT_SUPABASE / FIREBASE / BASE44_SUPABASE / BASE44_NATIVE), targetType (SUPABASE_CLOUD / SUPABASE_SELF_HOSTED), and packageAvailable (true once the downloadable zip is ready — fetch via download_package).\n\n" +
-  "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. New pre-flight states are explicit: REVIEW_TARGET_CONFLICTS → present `targetConflictReport`, then either call clean_migration_target after destructive confirmation or call confirm_migration only after the user explicitly declines cleanup; WAIT_FOR_TARGET_CLEANUP → poll; RETRY_TARGET_CLEANUP → call retry_migration_job (never skip cleanup); CHOOSE_MIGRATION_STRATEGY → present `preFlightGate.actions` and consequences, then call confirm_migration with the selected gateChoice, except a RECHECK_* action, which goes to recheck_migration_gate. RESUME → the migration is paused and waiting on a person: tell the user what it is waiting for and call resume_migration once they agree (never resume a migration they paused without asking). PROVIDE_BASE44_SECRETS / PROVIDE_SECRETS → the step takes the values of the customer's own third-party credentials (Base44 app secrets; for Lovable/Supabase sources, the ones the source could not supply), so it is resolved in a browser and NOT by a tool: `endpoint` is null, `url` opens the migration's App secrets tab, and `detail` is written to be shown to the user verbatim. Give them the URL, keep polling, and do not ask for the secret values in the conversation — no tool accepts them and the API refuses them over this connection. Saving in that tab continues the migration; get_app_secrets shows which are still missing. PROVIDE_SECRETS blocks nothing (the migration and preview keep going), so another step is reported first when one is waiting. When every secret already has a value, the same step comes back as COMPLETE_MANUAL_JOB: call complete_migration_job to continue it — no values are sent. CONFIRM → confirming STARTS the migration (it creates tables and imports data into the target): present the plan and get the user's explicit approval for that, even if they just answered a CHOOSE_MIGRATION_STRATEGY question — an answered strategy is not approval to start. REVIEW_PHASE (GUARDED migrations) → the migration stopped before a phase: show the job's `title`, `body` and `job_summary` (get_migration_jobs → inputData) and call complete_migration_job only when the user says to continue. REVIEW_DATA_ACCESS (GUARDED Base44 migrations) → show the job's `entities` and `options` and pass the user's choice to complete_migration_job as accessDefault/accessOverrides; never pick for them. When `pendingAction.detail` is present, show it to the user. Other types: RETRY_OR_SKIP, RESOLVE_SCHEMA_GAP, CHOOSE_BACKEND_SWITCHOVER, CHOOSE_DATA_IMPORT_METHOD, CHOOSE_FRONTEND_DEPLOY, COMPLETE_MANUAL_JOB. When `pendingAction` is null, poll only while the status is flowing.\n\n" +
-  "`gatingLevel` says how often the migration stops for the user: GUARDED (the default for migrations created through this connection) stops at every choice, before every phase, and asks who can see data that has no access rules; STREAMLINED takes the recommended option and stops only when it cannot continue safely. Every stop is the user's decision — relay it; do not complete it on their behalf. Change the level only when the user asks, with set_migration_gating_level.\n\n" +
+  "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. New pre-flight states are explicit: REVIEW_TARGET_CONFLICTS → present `targetConflictReport`, then either call clean_migration_target after destructive confirmation or call confirm_migration only after the user explicitly declines cleanup; WAIT_FOR_TARGET_CLEANUP → poll; RETRY_TARGET_CLEANUP → call retry_migration_job (never skip cleanup); CHOOSE_MIGRATION_STRATEGY → present `preFlightGate.actions` and consequences, then call confirm_migration with the selected gateChoice, except a RECHECK_* action, which goes to recheck_migration_gate. RESUME → the migration is paused and waiting on a person: tell the user what it is waiting for and call resume_migration once they agree (never resume a migration they paused without asking). PROVIDE_BASE44_SECRETS / PROVIDE_SECRETS → the step takes the values of the customer's own third-party credentials (Base44 app secrets; for Lovable/Supabase sources, the ones the source could not supply), so it is resolved in a browser and NOT by a tool: `endpoint` is null, `url` opens the migration's App secrets tab, and `detail` is written to be shown to the user verbatim. Give them the URL, keep polling, and do not ask for the secret values in the conversation — no tool accepts them and the API refuses them over this connection. Saving in that tab continues the migration; get_app_secrets shows which are still missing. PROVIDE_SECRETS blocks nothing (the migration and preview keep going), so another step is reported first when one is waiting. When every secret already has a value, the same step comes back as COMPLETE_MANUAL_JOB: call complete_migration_job to continue it — no values are sent. CONFIRM → fetch get_migration_discovery_report, present its proposed work, unknown coverage, findings and approvalBlockers, then pass its exact revisionId as approvedRevisionId only after the user explicitly approves starting writes to the target. On a stale-plan 409, fetch the changed report and obtain approval again; never silently substitute a new revision. An already approved or legacy resume does not need another revision. An answered CHOOSE_MIGRATION_STRATEGY question is not approval to start. REVIEW_PHASE (GUARDED migrations) → the migration stopped before a phase: show the job's `title`, `body` and `job_summary` (get_migration_jobs → inputData) and call complete_migration_job only when the user says to continue. REVIEW_DATA_ACCESS (GUARDED Base44 migrations) → show the job's `entities` and `options` and pass the user's choice to complete_migration_job as accessDefault/accessOverrides; never pick for them. When `pendingAction.detail` is present, show it to the user. Other types: RETRY_OR_SKIP, RESOLVE_SCHEMA_GAP, CHOOSE_BACKEND_SWITCHOVER, CHOOSE_DATA_IMPORT_METHOD, CHOOSE_FRONTEND_DEPLOY, COMPLETE_MANUAL_JOB. When `pendingAction` is null, poll only while the status is flowing.\n\n" +
+  "`gatingLevel` says how often the migration stops for the user: GUARDED (the default for migrations created through this connection) stops at every choice, before every phase, and asks who can see data that has no access rules; STREAMLINED takes recommended options but still requires initial discovery-plan approval and stops when it cannot continue safely. Every stop is the user's decision — relay it; do not complete it on their behalf. Change the level only when the user asks, with set_migration_gating_level.\n\n" +
   "The response exposes `preFlightGate` with backend-authored labels, consequences, export files, and the accepted choice IDs. It also exposes `targetConflictReport` with conflicting objects, cleanup scopes, `confirmationProjectRef`, and endpoint paths. Present these fields instead of inventing or defaulting a choice.\n\n" +
   "The response also includes `failureBanner` with categorised error info (category, title, body, severity, actionable, followupNote, retryable) when a job has a categorised failure. Use this to present richer error feedback. When `retryable=false`, prefer skip_migration_job or an AI-assisted fix over repeating deterministic SQL that will fail again — but check the job's `skipGuard` first, because a guarded job breaks the migration if skipped and needs the user's explicit approval; `retryable=null` means the cause may be environmental.\n\n" +
   "The `support` field reports whether this migration is SELF_SERVICE, SUPPORTED, or SUPPORT_WINDOW_ENDED, together with available human-support contact details. `consultationUrl` is returned only for SUPPORTED migrations and books the optional consultation already included in that migration's existing support entitlement; it is never a purchase, checkout, or upgrade route. When support is active, use those routes for human escalation instead of implying the MCP itself provides human support. Purchase and operator-grant actions are intentionally unavailable through MCP.\n\n" +
@@ -47,19 +47,59 @@ registerApiTool(server,
 );
 
 registerApiTool(server,
+  "get_migration_discovery_report",
+  "Read the migration's discovery report and its revisionId. Present source coverage (including unknown or partial areas), findings, proposed work and approvalBlockers before asking the user to approve initial execution. Reading may retain a proposal but never starts migration or records approval. Send the exact reviewed revisionId as approvedRevisionId to confirm_migration only after explicit approval. A stale-plan 409 needs a fresh report and a new approval; never approve a changed revision automatically. Approved reports are historical and read-only; legacy baselines do not establish customer approval.",
+  { id: z.string().uuid().describe("Migration ID") },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  async ({ id }) => apiToolResult(await apiFetch(`/api/v1/migrations/${id}/discovery-report`), toText),
+);
+
+registerApiTool(server,
+  "get_migration_execution_revisions",
+  "Read retained, sanitized migration execution revisions. A discovery proposal or legacy baseline is not proof of approval; get_migration_discovery_report identifies the approved report. Opaque code, SQL and credentials are withheld. Reading never starts work or activates a replacement plan.",
+  { id: z.string().uuid().describe("Migration ID") },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  async ({ id }) => apiToolResult(await apiFetch(`/api/v1/migrations/${id}/execution-revisions`), toText),
+);
+
+registerApiTool(server,
+  "get_migration_job_history",
+  "Read retained, sanitized job attempts and amendments, newest payload versions first, including deleted queue jobs. Use the oldest returned payloadVersion as the exclusive beforeVersion cursor for another page. Missing historical evidence remains unknown; credentials and opaque SQL/code bodies are withheld. Reading never retries or repairs work.",
+  {
+    id: z.string().uuid().describe("Migration ID owning the job"),
+    jobId: z.string().uuid().describe("Current or deleted migration job ID"),
+    beforeVersion: z.number().int().positive().optional().describe("Exclusive payload-version cursor"),
+    limit: z.number().int().min(1).max(100).optional().describe("Page size, default 25, maximum 100"),
+  },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  async ({ id, jobId, beforeVersion, limit }) => {
+    const query = new URLSearchParams();
+    if (beforeVersion !== undefined) query.set("beforeVersion", String(beforeVersion));
+    if (limit !== undefined) query.set("limit", String(limit));
+    const suffix = query.size ? `?${query}` : "";
+    return apiToolResult(await apiFetch(`/api/v1/migrations/${id}/jobs/${jobId}/history${suffix}`), toText);
+  },
+);
+
+registerApiTool(server,
   "confirm_migration",
-  "Approve a migration after discovery, or resolve a pre-flight migration-strategy gate. Without a gateChoice this STARTS the migration: it creates tables and imports data into the target project, so call it only after the user explicitly approves starting. With a gateChoice on a GUARDED migration it only records the choice and builds the plan — the migration then waits at PAUSED_FOR_APPROVAL (pendingAction CONFIRM) and needs a second, separate approval from the user before you call this again; never chain the two calls. Before calling, get the migration and present the discovery inventory. If `preFlightGate` is non-null, present every enabled action and its consequence verbatim, obtain the user's explicit choice, and pass that exact action ID as gateChoice. RECHECK_* actions are not gate choices: use recheck_migration_gate for them. For USE_OFFICIAL_EXPORT, gateSelection may select an offered export file path; omit it to use the newest. Never infer a gate choice or bypass REVIEW_TARGET_CONFLICTS without discussing the detected target objects.",
+  "Approve the exact reviewed discovery plan, resolve a pre-flight strategy choice, or resume an already approved/legacy migration. Initial execution writes tables and data to the target: first fetch get_migration_discovery_report, present its findings, unknown coverage, proposed work and approvalBlockers, obtain the user's explicit approval, then send that report's revisionId as approvedRevisionId. On a stale-plan 409, fetch and present the updated report and ask again; never substitute a revision automatically. With gateChoice, this records the strategy and returns to review at every gating level, including STREAMLINED; never chain the two calls. If preFlightGate is non-null, present every enabled action and consequence and submit the user's exact action ID. RECHECK_* actions use recheck_migration_gate. USE_OFFICIAL_EXPORT may select an offered export path with gateSelection. An already approved or legacy resume may omit approvedRevisionId. Never infer strategy choices or target-cleanup authorization.",
   {
     id: z.string().uuid().describe("Migration ID"),
     gateChoice: z.string().min(1).optional().describe("Exact enabled action ID from get_migration.preFlightGate.actions. Required when pendingAction.type is CHOOSE_MIGRATION_STRATEGY; do not invent or default a value."),
     gateSelection: z.string().optional().describe("For USE_OFFICIAL_EXPORT only: a path from preFlightGate.exportFiles. Omit to restore the newest detected export."),
+    approvedRevisionId: z.string().uuid().optional().describe("Exact revisionId explicitly reviewed and approved from get_migration_discovery_report. Required for initial execution; omit for a strategy choice or already approved/legacy resume."),
   },
   { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
-  async ({ id, gateChoice, gateSelection }) => {
-    const body = gateChoice ? { gateChoice, ...(gateSelection ? { gateSelection } : {}) } : undefined;
+  async ({ id, gateChoice, gateSelection, approvedRevisionId }) => {
+    const body = {
+      ...(gateChoice ? { gateChoice } : {}),
+      ...(gateChoice && gateSelection ? { gateSelection } : {}),
+      ...(approvedRevisionId ? { approvedRevisionId } : {}),
+    };
     const data = await apiFetch(`/api/v1/migrations/${id}/confirm`, {
       method: "POST",
-      ...(body ? { body: JSON.stringify(body) } : {}),
+      ...(Object.keys(body).length ? { body: JSON.stringify(body) } : {}),
     });
     return apiToolResult(data, toText);
   }
@@ -170,7 +210,7 @@ registerApiTool(server,
   "set_migration_gating_level",
   "Change how often a migration stops for the user. GUARDED stops at every choice, before every phase, and " +
   "asks who can see data that has no access rules. STREAMLINED takes the recommended option and stops only when " +
-  "it cannot continue safely; lowering to STREAMLINED also lets Staticbot answer any review that is currently " +
+  "it cannot continue safely and still requires initial plan approval; lowering to STREAMLINED lets Staticbot answer phase reviews that are currently " +
   "open with its suggestion. Call only when the user explicitly asks — never to get past a stop yourself. " +
   "Refused while the migration is IN_PROGRESS: pause it first (with the user's agreement).",
   {
@@ -296,7 +336,7 @@ registerApiTool(server,
   "7. For templateId: either ask the user to pick from list_templates, or create a new template from the resolved repository using create_template.\n\n" +
   "IMPORTANT: Source and target Supabase projects must be different. Staticbot validates this after source discovery; if it reports a match, ask the user to choose another target.\n\n" +
   "After creation, the migration starts with a DISCOVERY job. Once discovery completes, it pauses (PAUSED_FOR_APPROVAL, or PAUSED_FOR_USER_ACTION with a preFlightGate) — present the inventory to the user and call confirm_migration only if they approve.\n\n" +
-  "gatingLevel: omit it unless the user asked. Migrations created here default to GUARDED — they stop at every choice and before every phase. Pass STREAMLINED only when the user explicitly wants fewer stops (for example a throwaway test run); safety checks still stop both levels.",
+  "gatingLevel: omit it unless the user asked. Migrations created here default to GUARDED — they stop at every choice and before every phase. Pass STREAMLINED only when the user explicitly wants fewer stops (for example a throwaway test run); initial plan approval and safety checks still stop both levels.",
   {
     name: z.string().describe("Human-readable name for this migration"),
     description: z.string().optional().describe("Optional human-readable migration description"),

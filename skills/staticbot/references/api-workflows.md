@@ -100,7 +100,11 @@ not report a Workers custom hostname live until both returned status fields are 
 
 - `GET|POST /migrations`
 - `GET /migrations/{id}`
-- `POST /migrations/{id}/confirm|resume|pause`
+- `GET /migrations/{id}/discovery-report` — discovery coverage, findings, proposed work and the revision to review
+- `GET /migrations/{id}/execution-revisions` — retained sanitized revision evidence
+- `GET /migrations/{id}/jobs/{jobId}/history?beforeVersion=10&limit=25` — retained job evidence, newest first
+- `POST /migrations/{id}/confirm` — initial execution requires `{"approvedRevisionId":"reviewed-report-revision-id"}`; strategy choice and already approved/legacy resume are separate actions
+- `POST /migrations/{id}/resume|pause`
 - `PUT /migrations/{id}/gating-level` — `{"gatingLevel": "STREAMLINED" | "GUARDED"}`; only on the user's request; refused while IN_PROGRESS
 - `GET /migrations/{id}/clean-target-plan` — live cleanup availability, `confirmationProjectRef` and
   per-scope counts; read immediately before authorizing a destructive cleanup, not the discovery-time
@@ -137,10 +141,10 @@ Typical migration flow:
 1. List repositories across every connected account first (`GET /integrations/repositories`) and resolve the current repository from client/project context before asking the user. The result includes private repositories granted to Staticbot; a `sources[]` entry with an `unavailableReason` means that account is missing from the list, and no sources at all means the user should connect one at `https://app.staticbot.dev/integrations`. Carry the chosen repository's `integrationInstanceId` into template creation as `sourceControlIntegrationInstanceId`. Then inspect the source platform, target, and template. The target may be an existing healthy Supabase project or a newly provisioned customer-owned project. Project creation consumes an external project slot and may affect billing, so confirm the exact name, organization, and region first, then poll the returned project rather than creating duplicates. Source and target Supabase credentials are resolved server-side from discovery and connected integrations.
 2. Create the migration with fields validated against the live schema.
 3. Poll until discovery reaches `PAUSED_FOR_APPROVAL`.
-4. Fetch jobs and present the discovery inventory to the user.
+4. Fetch `/migrations/{id}/discovery-report` and jobs. Present the report's coverage, unknown areas, findings, proposed work and approval blockers.
 5. If `targetConflictReport.clashesFound` is true, present the conflicts and cleanup consequences. Cleanup requires a separate explicit confirmation for the exact scope and `confirmationProjectRef`; migration approval does not authorize deletion.
 6. If `preFlightGate` is present, present its enabled actions and consequences and submit the user's exact action ID as `gateChoice` to the confirm endpoint.
-7. Otherwise, confirm only after explicit approval.
+7. At every gating level, a strategy choice returns to report review. Confirm initial execution only after explicit approval, sending that report's exact `revisionId` as `approvedRevisionId`. A stale-plan 409 requires a refreshed report and new approval; never approve a changed revision automatically.
 8. Poll and follow `pendingAction`. Present choices rather than selecting defaults.
 9. On failure, inspect `failureBanner`, job details, and `retryable`; ask before retrying or skipping when consequences are material. A failed target cleanup is retry-only.
 10. Finish with status, preview/live URLs, partial failures, skipped jobs, and manual follow-ups.

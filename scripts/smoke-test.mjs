@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 66;
+const expectedToolCount = 69;
 const expectedTools = [
   "get_account_status",
   "list_templates",
@@ -17,6 +17,9 @@ const expectedTools = [
   "preflight_cloudflare_hosting",
   "recheck_dns_verification",
   "get_migration",
+  "get_migration_discovery_report",
+  "get_migration_execution_revisions",
+  "get_migration_job_history",
   "get_app_secrets",
   "list_source_repositories",
   "list_github_repositories",
@@ -39,6 +42,11 @@ const apiServer = createServer(async (request, response) => {
   let body = "";
   for await (const chunk of request) body += chunk;
   apiRequests.push({ method: request.method, url: request.url, body });
+  if (request.url?.endsWith("/confirm") && body.includes("00000000-0000-4000-8000-000000000057")) {
+    response.writeHead(409, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ message: "Discovery changed. Review the new revision before approving." }));
+    return;
+  }
   response.writeHead(200, { "Content-Type": "application/json" });
   response.end("[]");
 });
@@ -146,7 +154,7 @@ try {
   const confirmMigration = tools.find(({ name }) => name === "confirm_migration");
   assert(confirmMigration?.inputSchema?.properties?.gateChoice, "confirm_migration must expose gateChoice");
   assert(confirmMigration?.inputSchema?.properties?.gateSelection, "confirm_migration must expose gateSelection");
-  // Incident c5e7eb7b: one strategy answer silently started writes. Under GUARDED the answer only
+  // Incident c5e7eb7b: one strategy answer silently started writes. At every gating level the answer only
   // builds the plan, and the follow-up CONFIRM must be its own approval — never chained.
   assert.match(
     confirmMigration?.description ?? "",
@@ -320,6 +328,49 @@ try {
       method === "POST" && url === `/api/v1/migrations/${recheckMigrationId}/recheck-export`),
     "RECHECK_EXPORT must go to the recheck-export endpoint, never to /confirm",
   );
+
+  const approvedRevisionId = "00000000-0000-4000-8000-000000000055";
+  const historyJobId = "00000000-0000-4000-8000-000000000056";
+  for (const name of ["get_migration_discovery_report", "get_migration_execution_revisions", "get_migration_job_history"]) {
+    assert.equal(tools.find(tool => tool.name === name)?.annotations?.readOnlyHint, true);
+  }
+  const confirm = tools.find(tool => tool.name === "confirm_migration");
+  assert(confirm?.inputSchema.properties?.approvedRevisionId, "confirmation must accept the reviewed revision");
+  assert.match(confirm.description, /never substitute a revision automatically/i);
+  await client.callTool({ name: "get_migration_discovery_report", arguments: { id: recheckMigrationId } });
+  await client.callTool({ name: "get_migration_execution_revisions", arguments: { id: recheckMigrationId } });
+  await client.callTool({ name: "get_migration_job_history",
+    arguments: { id: recheckMigrationId, jobId: historyJobId, beforeVersion: 10, limit: 5 } });
+  assert(apiRequests.some(({ method, url }) => method === "GET" &&
+    url === `/api/v1/migrations/${recheckMigrationId}/discovery-report`));
+  assert(apiRequests.some(({ method, url }) => method === "GET" &&
+    url === `/api/v1/migrations/${recheckMigrationId}/execution-revisions`));
+  assert(apiRequests.some(({ method, url }) => method === "GET" &&
+    url === `/api/v1/migrations/${recheckMigrationId}/jobs/${historyJobId}/history?beforeVersion=10&limit=5`));
+  await client.callTool({ name: "confirm_migration", arguments: { id: recheckMigrationId, approvedRevisionId } });
+  const approvalRequest = apiRequests.at(-1);
+  assert.equal(approvalRequest.method, "POST");
+  assert.equal(approvalRequest.url, `/api/v1/migrations/${recheckMigrationId}/confirm`);
+  assert.deepEqual(JSON.parse(approvalRequest.body), { approvedRevisionId });
+  await client.callTool({ name: "confirm_migration",
+    arguments: { id: recheckMigrationId, gateChoice: "USE_OFFICIAL_EXPORT", gateSelection: "export.sql" } });
+  assert.deepEqual(JSON.parse(apiRequests.at(-1).body), { gateChoice: "USE_OFFICIAL_EXPORT", gateSelection: "export.sql" });
+  await client.callTool({ name: "confirm_migration", arguments: { id: recheckMigrationId } });
+  assert.equal(apiRequests.at(-1).body, "", "already approved and legacy resumes must retain bodyless confirmation");
+  const beforeStale = apiRequests.length;
+  const staleApproval = await client.callTool({ name: "confirm_migration",
+    arguments: { id: recheckMigrationId, approvedRevisionId: "00000000-0000-4000-8000-000000000057" } });
+  assert.equal(staleApproval.isError, true, "a stale approval must remain an error");
+  assert.match(JSON.stringify(staleApproval.content), /Discovery changed/);
+  assert.equal(apiRequests.length, beforeStale + 1, "the tool must not refresh or approve a replacement automatically");
+  const requestCount = apiRequests.length;
+  const invalidPage = await client.callTool({ name: "get_migration_job_history",
+    arguments: { id: recheckMigrationId, jobId: historyJobId, limit: 101 } });
+  assert.equal(invalidPage.isError, true);
+  const invalidApproval = await client.callTool({ name: "confirm_migration",
+    arguments: { id: recheckMigrationId, approvedRevisionId: "not-a-revision" } });
+  assert.equal(invalidApproval.isError, true);
+  assert.equal(apiRequests.length, requestCount, "invalid pagination and revision IDs must not reach the API");
 
   // App secrets are readable — names and states, never values — by migration or by stack.
   const appSecrets = tools.find(({ name }) => name === "get_app_secrets");

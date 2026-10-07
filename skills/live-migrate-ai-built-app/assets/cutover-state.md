@@ -11,6 +11,11 @@ Do not commit this file to the builder's repository. No secrets.
 - Repository + builder branch: 
 - Rehearsal migration ID / target project ref: 
 - Final migration ID / target project ref: 
+- Final approved discovery revision ID / number:
+- Final handoff report location (sanitized; no raw job outputs or secrets):
+- Schedule staging / activation required / artifact available / errors resolved:
+- Pre-freeze schedule state reconciled with final report / target-specific activation plan:
+- Activation reviewed by / executed by / verified at:
 - Final-copy strategy: clean-and-reuse | fresh target
 - Production domain: 
 - Production stack / deployment ID / deploymentTarget / dns action: 

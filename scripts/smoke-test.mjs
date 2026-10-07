@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 69;
+const expectedToolCount = 73;
 const expectedTools = [
   "get_account_status",
   "list_templates",
@@ -18,6 +18,10 @@ const expectedTools = [
   "recheck_dns_verification",
   "get_migration",
   "get_migration_discovery_report",
+  "inspect_migration_source",
+  "list_migration_discovery_revisions",
+  "get_migration_discovery_revision",
+  "get_migration_handoff_report",
   "get_migration_execution_revisions",
   "get_migration_job_history",
   "get_app_secrets",
@@ -356,7 +360,7 @@ try {
     arguments: { id: recheckMigrationId, gateChoice: "USE_OFFICIAL_EXPORT", gateSelection: "export.sql" } });
   assert.deepEqual(JSON.parse(apiRequests.at(-1).body), { gateChoice: "USE_OFFICIAL_EXPORT", gateSelection: "export.sql" });
   await client.callTool({ name: "confirm_migration", arguments: { id: recheckMigrationId } });
-  assert.equal(apiRequests.at(-1).body, "", "already approved and legacy resumes must retain bodyless confirmation");
+  assert.equal(apiRequests.at(-1).body, "", "already approved, execution-compatible resumes must retain bodyless confirmation");
   const beforeStale = apiRequests.length;
   const staleApproval = await client.callTool({ name: "confirm_migration",
     arguments: { id: recheckMigrationId, approvedRevisionId: "00000000-0000-4000-8000-000000000057" } });

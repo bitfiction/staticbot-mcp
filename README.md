@@ -124,6 +124,16 @@ Staticbot tools are designed around explicit human control:
 - The hosted server acts strictly as the person who authorized it, within the permissions they
   granted, and can reach nothing outside their own organization.
 
+Migration tools are shared by the local API-key and hosted OAuth servers. Before routing any action,
+check `executionCompatibility.locked`: locked runs cannot resume or retry, even if their old status
+is `IN_PROGRESS`. Reports/history remain readable; start a new migration with fresh discovery and
+prefer a clean target after previous writes. Hosting and Continuous Sync have independent lifecycles.
+
+For customer-owned native Supabase sources, explicitly select `sourceIntegrationInstanceId`
+independently of the target `supabaseIntegrationInstanceId`. One connection may own both projects,
+or each project may use a different connection; source and target projects must differ. Lovable
+Cloud has no source Management API connection and never borrows the target connection.
+
 When a migration response contains `pendingAction`, the client should treat it as the source of truth for the next step. Clients should not hard-code Staticbot's internal pipeline phases.
 
 Migration discovery can expose two additional reviewed actions. `preFlightGate` contains the exact
@@ -131,6 +141,18 @@ export-versus-replay choices an agent must present before calling `confirm_migra
 selected `gateChoice`. `targetConflictReport` lists objects already present on the target and offers
 database, Storage, or whole-project cleanup. `clean_migration_target` is irreversible and requires
 separate confirmation of both the exact scope and returned target project ref.
+
+Before approval, `inspect_migration_source` can queue deeper inspection when the discovery report
+offers it. Committing and deploying the helper in the source account requires explicit authorization
+with `authorizeHelperDeployment: true`. Review the refreshed report before approving target writes.
+`list_migration_discovery_revisions` and `get_migration_discovery_revision` expose retained reports;
+execution revisions and job history preserve the evidence of past attempts.
+
+`get_migration_handoff_report` returns Markdown with gaps, manual actions, remediation prompts,
+a names-only secret checklist, preview and current execution evidence. An optional discovery
+revision does not select historical execution. Migrated schedules remain staged inactive; the
+customer reviews and runs the report's guarded activation SQL at cutover when available. It preserves
+source-disabled jobs. Resolve staging errors before activation; reading a report never activates jobs.
 
 ## Staticbot skills
 

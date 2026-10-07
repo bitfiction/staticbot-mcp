@@ -10,11 +10,11 @@ Load [live-migrate-ai-built-app](../live-migrate-ai-built-app/SKILL.md) first; i
 ## Identify the source shape
 
 - **Lovable Cloud** (`LOVABLE_SUPABASE`, backend managed by Lovable): the user has no direct database credentials. SQL reaches the database through Lovable, either through the Lovable agent (which commits a migration file to the repository) or a SQL runner if the project offers one.
-- **Lovable app on the user's own Supabase project:** the user has the Supabase dashboard (SQL editor, auth settings, cron). If that backend is staying, this is a frontend and domain move only: skip the freeze and final copy and use the runbook's domain phases.
+- **Lovable app on the user's own Supabase project:** the user has the Supabase dashboard (SQL editor, auth settings, cron). If migrating this backend, explicitly select its Supabase connection as `sourceIntegrationInstanceId`, separately from the target connection; projects must differ even when both belong to one integration. Lovable Cloud has no source Management API connection and must not borrow the target connection. If that backend is staying, this is a frontend and domain move only: skip the freeze and final copy and use the runbook's domain phases.
 
 ## Final-copy path
 
-Prefer the **official Cloud Data export** (restore path): it is the only path that carries existing password hashes. The user generates a **new** export after the freeze (Cloud → Overview → Advanced settings); a rehearsal export is stale. Staticbot detects it at discovery and offers the restore-versus-replay choice; present it as usual. The replay path uses a temporary export function in the source project, which reads with the service-role key and is unaffected by the freeze below.
+Prefer the **official Cloud Data export** (restore path) when available. The user generates a **new** export after the freeze (Cloud → Overview → Advanced settings); a rehearsal export is stale. Staticbot detects it at discovery and offers the restore-versus-replay choice; present it as usual. The helper replay path also preserves source user UUIDs and exportable password hashes, and checks Auth export completeness and target parity before application-data import. Incomplete exports, conflicting target users or unverifiable parity stop that path; prefer a clean target and never imply an atomic rollback of Auth writes. The helper reads with the source service-role key and is unaffected by the table-write freeze below. Source-helper deployment requires explicit source-change authorization. Use the discovery and handoff reports for concrete unsupported or unverified areas; never expose hashes or credentials in chat.
 
 ## Write freeze
 
@@ -38,7 +38,7 @@ A database export taken after the freeze contains the freeze. After the final mi
 
 ## Sign-in continuity
 
-With the official export, users keep their passwords and OAuth identities; sessions do not carry over, so everyone signs in again. On the replay path, confirm password handling with a known test account during rehearsal. OAuth providers need the production domain in their redirect URLs and client secrets entered in the target Supabase dashboard (Staticbot lists them as follow-ups). Email links need the production site URL in target auth settings.
+Exportable password hashes can be preserved through official restore or helper replay; verify password and OAuth sign-in with known test accounts during rehearsal. Sessions do not carry over, so users sign in again. Retaining user UUIDs also preserves anonymous user records, but does not transfer their existing browser sessions or guarantee they can recover them. OAuth providers need the production domain in their redirect URLs and client secrets entered in the target Supabase dashboard (Staticbot lists them as follow-ups). Email links need the production site URL in target auth settings.
 
 ## After reopening
 

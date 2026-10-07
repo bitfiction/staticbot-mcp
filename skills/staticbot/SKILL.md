@@ -33,7 +33,7 @@ Paths beginning with `/api/v1/` also work. The helper refuses absolute request U
 
 For a request body, create a temporary JSON file with restrictive permissions or stream JSON through standard input. Do not save secrets in the user's project. Validate the payload against the live OpenAPI schema. Remove temporary payloads after the call.
 
-Pretty-print responses with `jq` only after preserving the command's failure status. Surface HTTP status and the API's error body without exposing credentials.
+The migration `/handoff-report` endpoint returns Markdown: preserve it as text rather than piping it through `jq`. For JSON endpoints, pretty-print responses with `jq` only after preserving the command's failure status. Surface HTTP status and the API's error body without exposing credentials.
 
 ## Choose Actions Safely
 
@@ -42,6 +42,8 @@ Pretty-print responses with `jq` only after preserving the command's failure sta
 - Creating a deployment and starting it are separate actions. Inspect the created deployment before starting it unless the user explicitly requested the full deployment flow.
 - Before a website rollback, show the exact pinned version and obtain explicit confirmation.
 - After migration discovery pauses, fetch `/migrations/{id}/discovery-report` and its jobs, present coverage including unknown areas, findings, proposed work and approval blockers, then obtain explicit approval before calling `/migrations/{id}/confirm` with that report's exact `revisionId` as `approvedRevisionId`. On a stale-plan 409, fetch and review the changed report and obtain approval again; never substitute a revision automatically.
+- Check `executionCompatibility.locked` before migration actions or execution polling. Show its message or `blockedReason` and stop when locked, even with an old `IN_PROGRESS` status. Reports/history remain readable; use a new migration with fresh discovery and preferably a clean target after previous writes. Never reset version pins or try a legacy resume.
+- Before approval, read `discovery-report.sourceInspection`. Deeper inspection commits and deploys a helper in the source account and needs separate explicit authorization via `POST /migrations/{id}/source-inspection` with `authorizeHelperDeployment: true`; poll existing inspection rather than duplicating it and review the refreshed report before approval.
 - Follow the migration response's `pendingAction` object. Present every choice gate to the user; do not invent a default for data import, backend switchover, frontend deployment, Base44 secrets, schema-gap resolution, retry/skip, or manual completion.
 - For `REVIEW_TARGET_CONFLICTS`, present `targetConflictReport` and obtain explicit confirmation for its exact project ref and cleanup scope before `POST /migrations/{id}/clean-target`. Never treat migration approval as cleanup authorization. If the user declines cleanup, call `/confirm` only after recording that decision; wait for cleanup completion before resolving a simultaneous strategy gate.
 - For `CHOOSE_MIGRATION_STRATEGY`, present every enabled `preFlightGate` action and consequence and submit the user's exact action ID as `gateChoice` to `/migrations/{id}/confirm`. Do not silently use the recommendation. At every gating level, including STREAMLINED, that only builds the plan; the following `CONFIRM` starts writes to the target and needs the user's separate approval — never chain the two.
@@ -54,7 +56,7 @@ Pretty-print responses with `jq` only after preserving the command's failure sta
 
 Poll deployment, migration, or sync status at a moderate interval, normally 10–20 seconds. Report meaningful transitions and `progressMessage` values. Stop polling on terminal status or a user-action gate; do not loop indefinitely.
 
-For migrations, treat `pendingAction` as the source of truth for the next step. When it is null, poll only if the migration is still flowing. On completion, report the final state, preview/live URLs, skipped jobs, partial best-effort failures, and any required manual follow-up.
+For migrations, check `executionCompatibility.locked` first, then treat `pendingAction` as the source of truth for the next step. When it is null, poll only if the migration is still flowing. On completion, report the final state, preview/live URLs, skipped jobs, partial best-effort failures, and any required manual follow-up.
 
 For deployments, inspect the `dns` array on every poll. Present records exactly as returned and follow the DNS rules in the reference. Never recommend nameserver delegation as the default.
 When an item offers a linked-Cloudflare push, use only its returned `domainId` and obtain authorization before the DNS write. Rechecking verification does not write DNS.

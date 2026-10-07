@@ -1,3 +1,8 @@
+export interface ApiRequestOptions extends RequestInit {
+  /** Report endpoints return text; ordinary API endpoints must still parse strict JSON. */
+  responseType?: "json" | "text";
+}
+
 /**
  * Everything a tool needs from its host, supplied per call rather than closed over.
  *
@@ -8,13 +13,18 @@
  */
 export interface ToolContext {
   /** Calls the Staticbot API with whatever credential this invocation is entitled to. */
-  apiFetch(path: string, options?: RequestInit): Promise<unknown>;
+  apiFetch(path: string, options?: ApiRequestOptions): Promise<unknown>;
   /** Renders a payload for the model. */
   toText(data: unknown): string;
 }
 
 export function toText(data: unknown): string {
   return JSON.stringify(data, null, 2);
+}
+
+export function parseApiResponse(text: string, responseType: "json" | "text"): unknown {
+  if (responseType === "text") return text;
+  return text ? JSON.parse(text) : null;
 }
 
 /**
@@ -26,9 +36,10 @@ export function toText(data: unknown): string {
 export function createApiKeyContext(apiUrl: string, apiKey: string): ToolContext {
   return {
     toText,
-    async apiFetch(path: string, options: RequestInit = {}): Promise<unknown> {
+    async apiFetch(path: string, options: ApiRequestOptions = {}): Promise<unknown> {
+      const { responseType = "json", ...requestOptions } = options;
       const res = await fetch(`${apiUrl}${path}`, {
-        ...options,
+        ...requestOptions,
         headers: {
           "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json",
@@ -42,7 +53,7 @@ export function createApiKeyContext(apiUrl: string, apiKey: string): ToolContext
         throw new Error(`HTTP ${res.status} ${res.statusText}: ${text}`);
       }
 
-      return text ? JSON.parse(text) : null;
+      return parseApiResponse(text, responseType);
     },
   };
 }

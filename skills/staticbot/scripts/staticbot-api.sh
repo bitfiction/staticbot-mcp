@@ -95,13 +95,18 @@ else
   normalized_path="/api/v1${request_path}"
 fi
 
+response_accept=application/json
+if [[ $method == GET && ${normalized_path%%\?*} == /api/v1/migrations/*/handoff-report ]]; then
+  response_accept=text/markdown
+fi
+
 curl_args=(
   --fail-with-body
   --silent
   --show-error
   --request "$method"
   --config "$auth_config"
-  --header 'Accept: application/json'
+  --header "Accept: ${response_accept}"
 )
 
 if [[ -n $body_source ]]; then

@@ -3,7 +3,7 @@ import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/
 import { z, type ZodRawShape } from "zod";
 
 /**
- * Staticbot's public API is the source of truth for response DTOs. MCP tools preserve those JSON
+ * Staticbot's public API is the source of truth for response DTOs. MCP tools preserve those JSON or text
  * responses under one stable top-level key so every descriptor can advertise structured output
  * without duplicating fifty evolving API schemas in this transport adapter.
  */
@@ -17,10 +17,10 @@ const apiResultSchema = z.union([
 ]);
 
 export const apiToolOutputSchema = {
-  result: apiResultSchema.describe("Parsed JSON response from the Staticbot public API"),
+  result: apiResultSchema.describe("Parsed JSON response or explicitly requested report text from the Staticbot public API"),
 };
 
-/** Register a JSON API-backed tool using the current SDK descriptor form and shared output shape. */
+/** Register an API-backed tool using the current SDK descriptor form and shared output shape. */
 export function registerApiTool<InputShape extends ZodRawShape>(
   server: McpServer,
   name: string,

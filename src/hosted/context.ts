@@ -1,4 +1,4 @@
-import { toText, type ToolContext } from "../context.js";
+import { parseApiResponse, toText, type ApiRequestOptions, type ToolContext } from "../context.js";
 import { collectSecretValues, logEvent, redact, scrubSecrets } from "../log.js";
 import type { HostedConfig } from "./config.js";
 import type { Actor } from "./token-verifier.js";
@@ -58,12 +58,13 @@ export function createDelegatedContext(
 ): ToolContext {
   return {
     toText,
-    async apiFetch(path: string, options: RequestInit = {}): Promise<unknown> {
+    async apiFetch(path: string, options: ApiRequestOptions = {}): Promise<unknown> {
+      const { responseType = "json", ...requestOptions } = options;
       const method = options.method ?? "GET";
       const startedAt = Date.now();
 
       // The argument object is the only record of what the customer's agent asked for, and every
-      // tool reaches the API through here — 63 of them, one call each — so this single line covers
+      // tool reaches the API through here — so this single line covers
       // the whole surface without touching a single tool definition.
       const requestArgs = parseJsonBody(options.body);
       const secrets = collectSecretValues(requestArgs);
@@ -93,7 +94,7 @@ export function createDelegatedContext(
       let res: Response;
       try {
         res = await fetch(`${config.apiUrl}${path}`, {
-          ...options,
+          ...requestOptions,
           headers: {
             "Authorization": `Bearer ${await serviceToken()}`,
             "Content-Type": "application/json",
@@ -129,7 +130,7 @@ export function createDelegatedContext(
       // different matter: the password only ever arrives with a 200.
       logCall("ok", res.status, { responseBytes: text.length });
 
-      return text ? JSON.parse(text) : null;
+      return parseApiResponse(text, responseType);
     },
   };
 }

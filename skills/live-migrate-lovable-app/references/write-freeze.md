@@ -66,5 +66,5 @@ update cron.job set active = true where jobid in (<captured jobids>);
 commit;
 ```
 
-- **On the target after the final copy:** run everything except the cron line (target jobs start at reopening).
+- **On the target after the final copy:** run everything except the cron line. Source job IDs are not target job IDs. At reopening use the final handoff report's guarded activation SQL when supplied; it preserves source-disabled jobs. Since this freeze marks originally active jobs disabled before export, reconcile the report with the captured pre-freeze state and agree any additional target-specific activation with the user before reopening. Never enable every target schedule.
 - **On the source:** run it only for pre-write recovery, or when the recovery period ends.

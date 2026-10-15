@@ -19,11 +19,12 @@ export function registerAccountTools(
 ): void {
   registerApiTool(server,
     "get_account_status",
-    "START HERE. The first call of any Staticbot conversation, and the cheapest: it answers in one " +
+    "START HERE for deployment, migration and sync. For a public website check, scan_website can " +
+      "run directly before any integrations are connected. This account check answers in one " +
       "request who the credential belongs to, which integrations are connected, what the plan allows, " +
       "and what is actually outstanding — so you never propose work whose prerequisites are missing. " +
       "Read `pendingAction` and follow it, exactly as you would follow a migration's pendingAction:\n" +
-      "  • CONNECT_SOURCE_CONTROL / CONNECT_DATABASE — nothing can start. Give the user the `url` and " +
+      "  • CONNECT_SOURCE_CONTROL / CONNECT_DATABASE — deployment/migration prerequisites are missing. Give the user the `url` and " +
       "stop; do not propose a migration or a deployment until they have connected it and you have " +
       "called this tool again.\n" +
       "  • CHOOSE_PATH — everything required is connected. Staticbot does two different things and " +

@@ -1,0 +1,88 @@
+# V1 / MCP capability check — 2026-10-15
+
+This is a source-level check of the current Staticbot app and MCP repositories, not a production
+release certification. The backend has other uncommitted work; these additions preserve it.
+
+## Added locally
+
+| Capability | V1 API | MCP |
+| --- | --- | --- |
+| Start/reuse a website URL check | `POST /api/v1/site-scans` | `scan_website` |
+| Poll an owned website check | `GET /api/v1/site-scans/{id}` | `get_website_scan` |
+| Read deterministic preview evidence | Existing `GET /api/v1/migrations/{id}/preview-evidence` | `get_migration_preview_evidence` |
+| Read/set a migration's live URL | `GET` / `PUT /api/v1/migrations/{id}/live-site` | `get_migration_live_site`, `set_migration_live_site` |
+| Read retained live-commit comparison | `GET /api/v1/migrations/{id}/live-commit-check` | `get_migration_live_commit_check` |
+| Inspect branch targets and shared webhook scope | `GET /api/v1/connected-projects/{id}/operations` | `get_connected_project_operations` |
+| Build a branch preview | `POST /api/v1/connected-projects/{id}/build-preview` | `build_connected_project_preview` |
+| Switch live to the builder branch | `POST /api/v1/connected-projects/{id}/live-branch` | `switch_connected_project_live_branch` |
+| Sync the migration preview onto live | `POST /api/v1/connected-projects/{id}/sync-to-live` | `sync_connected_project_to_live` |
+| Set up/reset/disable a GitHub webhook | `POST /api/v1/connected-projects/{id}/{setup,reset,disable}-webhook` | `{setup,reset,disable}_connected_project_webhook` |
+
+The website routes accept the existing customer API-key or delegated MCP authentication. Tenant IDs
+come only from `RequestOrganization`. Starting requires delegated `staticbot:write`; polling requires
+`staticbot:read`. API-key scans record `api-key`; delegated scans record the resolved human username.
+
+They reuse `SiteScanService.startWorkspaceScan`, including cache reuse, workspace quota, per-target
+throttle, admission, guarded fetching and the bounded queue. They need no connected integrations.
+Only the customer summary is returned: no persisted scan object, raw extracted items or contact
+history. Existing anonymous `/api/v1/public/site-scans` keeps its Turnstile verification.
+
+Cloudflare on the requested target site remains independent: a failed fetch is reported as a scan
+failure. Adding an authenticated entry point does not grant access to protected target content.
+
+## Operation authorization and confirmation
+
+The second extension adds ten V1 operations and ten MCP tools (nine requested actions plus one
+inspection read). It reuses existing preview/live/GitHub services and needs no database migration.
+`V1WorkspaceAccess` preserves organization API-key authority and rechecks delegated users' current
+workspace membership, OAuth scope and role. `ApiV1ProjectAccess` reuses `ProjectAccessPolicy` and
+the persisted-link/branch ownership rules. Feature flags and agency-client restrictions still apply.
+
+Preview/live/webhook mutations require `confirmed: true`. Live-branch operations also require the
+inspected `expectedLiveBranch` and `expectedBuilderBranch`; changed targets return 409. Webhook writes
+require `expectedRepositoryConfigId` from the inspection response and disclose the shared project
+and template scope. Webhook secrets stay inside the existing transactional writer. Upstream deletion
+is best-effort and is never reported as verified. A live switch can persist while its redeploy fails;
+the V1/MCP response preserves that partial outcome.
+
+Migration live-site reads omit raw script/items. A missing scan or commit comparison returns 204;
+an UNKNOWN comparison remains unknown, and `checkedAt` is retained evidence rather than a new probe.
+
+## Remaining gaps and deliberate differences
+
+The newer dashboard is broader than V1/MCP. Examples confirmed in current source:
+
+- Linking a connected project to a stack or an existing deployment remains a separate browser-only
+  capability. Project creation/deletion, collaboration, delivery and pipeline administration are
+  outside these two requested gaps. This change does not claim complete dashboard parity.
+- Credential intake is deliberately different. V1's Base44-secret endpoint exists for API-key
+  callers, while delegated MCP rejects credential material. MCP sends the user to the dashboard.
+  Do not restore `provide_base44_secrets` or the old `scan_deployed_url` key-extraction contract.
+- Migration histories, source inspection, handoff reports, AWS/Cloudflare ownership choices and
+  Supabase provisioning already have MCP tools. A simple text comparison can falsely report gaps
+  for their parameterized paths, so route counts alone do not establish parity.
+
+This check does not claim every dashboard operation, request field or response field has parity.
+
+## Submission maintenance
+
+`chatgpt-app-submission.json` now covers all 86 local runtime tools with explicit annotations and
+justifications, exactly five positive cases and three negative cases. The one-time data-import gate
+test was replaced with a website check. Positive tests still need real reviewer fixtures and a live
+run; metadata validation is not an execution result.
+
+`npm run validate:submission` compares the inventory and required annotations to runtime discovery,
+checks justifications and case counts, and checks the listing subtitle limit. It is part of
+`npm test`. The local Codex plugin remains a local-transport package; the hosted submission still
+needs its remote OAuth package configuration, reviewer account, recording, domain verification and
+successful portal scans.
+
+## Release order
+
+1. Deploy the new backend V1 routes.
+2. Deploy the MCP server containing the new tools.
+3. Verify real API-key and OAuth flows on disposable reviewer fixtures, including read-only denial,
+   tenant isolation, explicit operation confirmation and stale-target rejection.
+4. Refresh the hosted submission package and portal tool scan before recording the final demo.
+
+No deployment or submission was performed as part of this source change.

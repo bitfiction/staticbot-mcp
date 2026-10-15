@@ -49,6 +49,9 @@ const apiServer = createHttpServer(async (request, response) => {
     response.writeHead(202);
     return response.end();
   }
+  if (url.pathname === `${rootPath}/preview-evidence`) {
+    return json(200, { worked: ["HTTP returned 200"], problems: [], unverified: ["Login was not tested"] });
+  }
   if (url.pathname === `${rootPath}/discovery-report/revisions`) {
     return json(200, [{ revisionId, revisionNumber: 3, approvedAt: null, active: true }]);
   }
@@ -140,6 +143,11 @@ try {
       assert.equal((await call("get_migration_discovery_revision", { id: migrationId, revisionId: "bad" })).isError, true);
       assert.equal((await call("get_migration_handoff_report", { id: migrationId, revisionId: "bad" })).isError, true);
       assert.equal(requests.length, beforeInvalid, `${name}: invalid authorization/cursors/IDs must never reach the API`);
+
+      const previewEvidence = await ok("get_migration_preview_evidence", { id: migrationId });
+      assert.deepEqual(previewEvidence.structuredContent.result.unverified, ["Login was not tested"]);
+      assert.equal(requests.at(-1).url, `${rootPath}/preview-evidence`);
+      assert.equal(requests.at(-1).method, "GET");
 
       const queued = await ok("inspect_migration_source", { id: migrationId, authorizeHelperDeployment: true });
       assert.deepEqual(queued.structuredContent.result, { queued: true, migrationId });

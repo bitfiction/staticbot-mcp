@@ -10,6 +10,8 @@ import { registerDeploymentManagementTools } from "../tools/deployment-managemen
 import { registerDeploymentTools } from "../tools/deployments.js";
 import { registerGateTools } from "../tools/gates.js";
 import { registerMigrationTools } from "../tools/migrations.js";
+import { registerSiteScanTools } from "../tools/site-scans.js";
+import { registerProjectOperationTools } from "../tools/project-operations.js";
 import { registerStackTools } from "../tools/stacks.js";
 import { registerTemplateTools } from "../tools/templates.js";
 
@@ -32,6 +34,7 @@ export function createServer(context: ToolContext): McpServer {
   // Registered first so it reads first in the tool list: it is the call that tells an agent
   // what is connected and what the user still has to choose.
   registerAccountTools(server, context);
+  registerSiteScanTools(server, context);
   registerTemplateTools(server, context);
   registerStackTools(server, context);
   registerDeploymentTools(server, context);
@@ -41,6 +44,7 @@ export function createServer(context: ToolContext): McpServer {
   registerDeploymentManagementTools(server, context);
   registerMigrationTools(server, context);
   registerConnectedProjectTools(server, context);
+  registerProjectOperationTools(server, context);
   registerGateTools(server, context);
 
   return server;

@@ -88,6 +88,7 @@ Keep the API key in your MCP client's secret or environment configuration. Do no
 
 The server groups its tools around user outcomes:
 
+- Analyze a public website URL for its platform, backend and supported migration/hosting paths, without requiring connected integrations
 - Inspect templates, stacks, deployments, and integration connections
 - Resolve the repository to work on from a connected GitHub or GitLab account, private repositories included
 - Create and monitor static-site and SSR deployments
@@ -97,11 +98,39 @@ The server groups its tools around user outcomes:
 - Create a customer-owned Supabase project, wait until it is healthy, and use it as a migration target
 - Migrate Lovable, Bolt, Firebase, and Base44 projects to Supabase targets
 - Inspect migration discovery results and guide users through approval and choice gates
+- Set a migration's live-app URL, read its scan and inspect retained live-commit comparisons
 - Create previews and download portable migration packages
+- Build connected-project previews, switch live deployment to the builder branch, or sync a migration preview onto live
+- Inspect shared repository-webhook scope and explicitly set up, reset or disable GitHub push automation
 - Trigger, review, retry, or skip continuous-sync runs
 - Roll back or redeploy a website using valid pinned versions returned by Staticbot
 
 The tool schemas and descriptions are the runtime contract seen by MCP clients. They contain the operational instructions an agent needs at the moment it selects a tool.
+
+### Website URL checks
+
+`scan_website` starts or reuses an authenticated workspace check through `POST /api/v1/site-scans`.
+It needs a Staticbot account but no repository, database, or cloud integration. Poll the returned
+`scan.id` with `get_website_scan` (`GET /api/v1/site-scans/{id}`), waiting `pollAfterMs` between
+requests while the scan is queued or running. Terminal results include detection, support and
+hosting/migration estimates, or an explicit failure. A check never starts a deployment or migration.
+
+This uses the existing workspace scanner with its quotas, cache, target throttle, bounded queue and
+public-address protections. The anonymous marketing-page API keeps its separate Turnstile flow.
+API/MCP results contain the customer summary rather than raw extracted scripts or contact history.
+
+### Connected-project operations
+
+Read `get_connected_project_operations` before preview/live/webhook changes. It returns the current
+builder/live branches, effective role permissions and repository-webhook consumers. Mutation tools
+require explicit confirmation; live operations require those exact branch names and webhook actions
+require the returned repository configuration ID. A changed target returns 409 and needs fresh
+inspection and approval. Feature flags, workspace roles, persisted-link validation and agency-client
+restrictions remain enforced by the backend. Webhook reset/deletion uses the existing best-effort
+upstream removal, so a local configuration change is not proof that GitHub deleted the old hook.
+
+The backend route must be deployed before enabling these tools in the hosted MCP server. See the
+[capability audit](CAPABILITY-PARITY.md) for the remaining dashboard/API differences.
 
 ## Example requests
 

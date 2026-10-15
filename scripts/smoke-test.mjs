@@ -6,9 +6,21 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 73;
+const expectedToolCount = 86;
 const expectedTools = [
   "get_account_status",
+  "scan_website",
+  "get_website_scan",
+  "get_migration_live_site",
+  "set_migration_live_site",
+  "get_migration_live_commit_check",
+  "get_connected_project_operations",
+  "build_connected_project_preview",
+  "switch_connected_project_live_branch",
+  "sync_connected_project_to_live",
+  "setup_connected_project_webhook",
+  "reset_connected_project_webhook",
+  "disable_connected_project_webhook",
   "list_templates",
   "get_deployment",
   "push_dns_to_cloudflare",
@@ -18,6 +30,7 @@ const expectedTools = [
   "recheck_dns_verification",
   "get_migration",
   "get_migration_discovery_report",
+  "get_migration_preview_evidence",
   "inspect_migration_source",
   "list_migration_discovery_revisions",
   "get_migration_discovery_revision",

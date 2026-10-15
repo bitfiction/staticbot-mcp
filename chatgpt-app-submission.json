@@ -8,6 +8,42 @@
     "category": "DEVELOPER_TOOLS"
   },
   "tools": {
+    "get_account_status": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves the caller's account, organization, plan and connection state.",
+        "open_world_justification": "Does not change an integration or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "scan_website": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Creates or reuses a private workspace scan and queues bounded website analysis.",
+        "open_world_justification": "Fetches the requested public website and related public resources through the guarded scanner.",
+        "destructive_justification": "Does not modify the scanned website, start a migration, deploy an app or delete data."
+      }
+    },
+    "get_website_scan": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves the customer summary of a scan belonging to the current organization.",
+        "open_world_justification": "Does not change a public website or an external system.",
+        "destructive_justification": "Does not delete, replace, approve or execute customer resources."
+      }
+    },
     "list_templates": {
       "annotations": {
         "readOnlyHint": true,
@@ -152,6 +188,42 @@
         "destructive_justification": "Does not alter DNS records, nameservers, or user data."
       }
     },
+    "list_aws_hosting_targets": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves supported AWS hosting choices for the current organization and optional stack.",
+        "open_world_justification": "Does not change a public website or an external system.",
+        "destructive_justification": "Does not delete, replace, approve or execute customer resources."
+      }
+    },
+    "list_cloudflare_hosting_targets": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves which Cloudflare accounts the organization may host an app in.",
+        "open_world_justification": "Does not change public internet state or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "preflight_cloudflare_hosting": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only validates a hosting choice and hostname; it does not create or change anything.",
+        "open_world_justification": "Does not change public internet state or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
     "get_auto_deploy_settings": {
       "annotations": {
         "readOnlyHint": true,
@@ -248,16 +320,136 @@
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
-    "recheck_migration_gate": {
+    "get_migration_live_site": {
+      "justifications": {
+        "read_only_justification": "Only retrieves a migration-owned, stored website scan summary.",
+        "open_world_justification": "Does not fetch the website again or modify any external system.",
+        "destructive_justification": "Does not approve work or alter stored migration data."
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    "set_migration_live_site": {
+      "justifications": {
+        "read_only_justification": "Stores the user-selected live URL by creating a migration-linked scan.",
+        "open_world_justification": "Fetches the requested public website through the existing guarded scanner.",
+        "destructive_justification": "Retains scan history and does not change the scanned site or start target migration writes."
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
+    },
+    "get_migration_live_commit_check": {
+      "justifications": {
+        "read_only_justification": "Only reads the latest retained live-commit comparison.",
+        "open_world_justification": "Does not perform a fresh Git fetch or change a repository.",
+        "destructive_justification": "Does not alter branches, deployments or migration state."
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    "get_migration_preview_evidence": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves the stored deterministic preview evidence, preserving failed and unverified checks.",
+        "open_world_justification": "Does not change a public website or an external system.",
+        "destructive_justification": "Does not delete, replace, approve or execute customer resources."
+      }
+    },
+    "get_migration_discovery_report": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves the sanitized discovery proposal and its approval blockers.",
+        "open_world_justification": "Does not change a public website or an external system.",
+        "destructive_justification": "Does not delete, replace, approve or execute customer resources."
+      }
+    },
+    "inspect_migration_source": {
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": true,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Queues a fresh check (Cloud Data export, target capacity, or target emptiness) and records the result on the migration.",
-        "open_world_justification": "Reads the source project through its deployed export function, or the connected target Supabase project.",
-        "destructive_justification": "Only measures; does not confirm or start the migration, and never writes to the source or target."
+        "read_only_justification": "Queues an explicitly authorized fresh source inspection and records updated discovery evidence.",
+        "open_world_justification": "Can deploy the explicitly authorized source export helper and inspect the connected source system.",
+        "destructive_justification": "Does not approve target migration writes or delete customer data."
+      }
+    },
+    "list_migration_discovery_revisions": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves retained discovery revision metadata for the current organization.",
+        "open_world_justification": "Does not change a public website or an external system.",
+        "destructive_justification": "Does not delete, replace, approve or execute customer resources."
+      }
+    },
+    "get_migration_discovery_revision": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves the selected retained, sanitized discovery revision.",
+        "open_world_justification": "Does not change a public website or an external system.",
+        "destructive_justification": "Does not delete, replace, approve or execute customer resources."
+      }
+    },
+    "get_migration_handoff_report": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves the sanitized migration handoff report and current execution evidence.",
+        "open_world_justification": "Does not change a public website or an external system.",
+        "destructive_justification": "Does not delete, replace, approve or execute customer resources."
+      }
+    },
+    "get_migration_execution_revisions": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves retained, sanitized execution revision evidence.",
+        "open_world_justification": "Does not change a public website or an external system.",
+        "destructive_justification": "Does not delete, replace, approve or execute customer resources."
+      }
+    },
+    "get_migration_job_history": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves sanitized job-attempt and amendment history for the migration.",
+        "open_world_justification": "Does not change a public website or an external system.",
+        "destructive_justification": "Does not delete, replace, approve or execute customer resources."
       }
     },
     "confirm_migration": {
@@ -270,6 +462,30 @@
         "read_only_justification": "Approves discovery or a selected migration strategy and allows target writes to begin.",
         "open_world_justification": "Can apply schema, data, storage, functions, and configuration to connected external systems.",
         "destructive_justification": "Can apply irreversible target changes after the discovery inventory and any pre-flight choice are explicitly reviewed."
+      }
+    },
+    "recheck_migration_gate": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Queues a fresh check (Cloud Data export, target capacity, or target emptiness) and records the result on the migration.",
+        "open_world_justification": "Reads the source project through its deployed export function, or the connected target Supabase project.",
+        "destructive_justification": "Only measures; does not confirm or start the migration, and never writes to the source or target."
+      }
+    },
+    "get_clean_target_plan": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only inspects the current target-cleanup eligibility, scope and confirmation requirements.",
+        "open_world_justification": "Does not change a public website or an external system.",
+        "destructive_justification": "Does not delete, replace, approve or execute customer resources."
       }
     },
     "clean_migration_target": {
@@ -308,6 +524,18 @@
         "destructive_justification": "The migration can be resumed later and the current job is allowed to finish."
       }
     },
+    "set_migration_gating_level": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Changes the migration review configuration only when the user explicitly requests it.",
+        "open_world_justification": "Changes private Staticbot configuration without starting or approving external work.",
+        "destructive_justification": "Does not remove resources or approve pending writes; the setting can be changed again."
+      }
+    },
     "get_migration_jobs": {
       "annotations": {
         "readOnlyHint": true,
@@ -327,7 +555,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Only retrieves which secrets a migrated app uses and whether each has a value \u2014 names and states, never a value.",
+        "read_only_justification": "Only retrieves which secrets a migrated app uses and whether each has a value — names and states, never a value.",
         "open_world_justification": "Does not change migration work or an external system.",
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
@@ -464,18 +692,6 @@
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
-    "get_account_status": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Only retrieves the caller's account, organization, plan and connection state.",
-        "open_world_justification": "Does not change an integration or an external system.",
-        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
-      }
-    },
     "list_source_repositories": {
       "annotations": {
         "readOnlyHint": true,
@@ -560,6 +776,18 @@
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
+    "list_base44_apps": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves apps available through the selected, organization-owned Base44 integration.",
+        "open_world_justification": "Does not change a public website or an external system.",
+        "destructive_justification": "Does not delete, replace, approve or execute customer resources."
+      }
+    },
     "list_connected_projects": {
       "annotations": {
         "readOnlyHint": true,
@@ -582,6 +810,18 @@
         "read_only_justification": "Only retrieves the selected connected project's sync and deployment details.",
         "open_world_justification": "Does not change a connected project or an external system.",
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "list_connected_project_previews": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves tracked branches and their existing ephemeral preview state.",
+        "open_world_justification": "Does not change a public website or an external system.",
+        "destructive_justification": "Does not delete, replace, approve or execute customer resources."
       }
     },
     "trigger_sync": {
@@ -668,6 +908,18 @@
         "destructive_justification": "Permanently skips the failed work after the tool description requires explanation and explicit confirmation."
       }
     },
+    "get_sync_schema_gaps": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves migrations that continuous sync never applied to the project's database.",
+        "open_world_justification": "Does not change public internet state or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
     "set_connected_project_sync_mode": {
       "annotations": {
         "readOnlyHint": false,
@@ -678,6 +930,90 @@
         "read_only_justification": "Updates the connected project's private continuous-sync mode.",
         "open_world_justification": "Does not immediately synchronize or modify an external system.",
         "destructive_justification": "The sync mode can be changed again after user confirmation."
+      }
+    },
+    "get_connected_project_operations": {
+      "justifications": {
+        "read_only_justification": "Only retrieves current branch targets, role permissions and shared webhook scope.",
+        "open_world_justification": "Reads Staticbot records without changing a repository or public site.",
+        "destructive_justification": "Does not execute or approve an operation."
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    "build_connected_project_preview": {
+      "justifications": {
+        "read_only_justification": "Queues a new or refreshed preview build after explicit confirmation.",
+        "open_world_justification": "Can provision preview infrastructure and publish a preview site.",
+        "destructive_justification": "Can replace an existing preview; explicit build confirmation is required."
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      }
+    },
+    "switch_connected_project_live_branch": {
+      "justifications": {
+        "read_only_justification": "Changes the live branch and can queue a live redeployment.",
+        "open_world_justification": "Can redeploy the public website from the builder branch.",
+        "destructive_justification": "Stops mirror maintenance and can replace the live build; explicit confirmation and matching branch targets are required."
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      }
+    },
+    "sync_connected_project_to_live": {
+      "justifications": {
+        "read_only_justification": "Queues a preview-to-live merge or returns the already running sync.",
+        "open_world_justification": "The worker can write Git commits and trigger preview builds.",
+        "destructive_justification": "Can modify the live branch; explicit confirmation and matching inspected branch targets are required."
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      }
+    },
+    "setup_connected_project_webhook": {
+      "justifications": {
+        "read_only_justification": "Registers a repository webhook using server-held credentials.",
+        "open_world_justification": "Creates a GitHub webhook affecting push-triggered automation for its shared consumers.",
+        "destructive_justification": "Adds a webhook without replacing an existing one; the inspected repository scope must be explicitly confirmed."
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
+    },
+    "reset_connected_project_webhook": {
+      "justifications": {
+        "read_only_justification": "Replaces stored webhook configuration and rotates the server-held secret.",
+        "open_world_justification": "Requests upstream webhook deletion and registers a replacement on GitHub.",
+        "destructive_justification": "Replaces a repository-wide webhook shared by projects or templates; explicit confirmation of the inspected configuration is required."
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      }
+    },
+    "disable_connected_project_webhook": {
+      "justifications": {
+        "read_only_justification": "Clears stored webhook configuration and requests upstream deletion.",
+        "open_world_justification": "Can delete the GitHub webhook and stop push-triggered automation for all shared consumers.",
+        "destructive_justification": "Removes webhook configuration; the exact inspected repository and shared scope require explicit confirmation."
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
       }
     },
     "create_migration_preview": {
@@ -703,42 +1039,6 @@
         "open_world_justification": "Only reads source state or changes the private migration state without writing externally.",
         "destructive_justification": "The abort option permanently ends the migration, with recheck offered as the safe alternative."
       }
-    },
-    "list_cloudflare_hosting_targets": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Only retrieves which Cloudflare accounts the organization may host an app in.",
-        "open_world_justification": "Does not change public internet state or an external system.",
-        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
-      }
-    },
-    "preflight_cloudflare_hosting": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Only validates a hosting choice and hostname; it does not create or change anything.",
-        "open_world_justification": "Does not change public internet state or an external system.",
-        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
-      }
-    },
-    "get_sync_schema_gaps": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Only retrieves migrations that continuous sync never applied to the project's database.",
-        "open_world_justification": "Does not change public internet state or an external system.",
-        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
-      }
     }
   },
   "test_cases": [
@@ -748,14 +1048,6 @@
       "file_attachment_urls": null,
       "tools_triggered": "list_templates",
       "expected_output": "Returns available templates with identifiers, names, categories, and repository links.",
-      "expected_output_url": null
-    },
-    {
-      "description": "Resolve an explicitly chosen data-import method for a migration.",
-      "user_prompt": "The user picked the automated data import option for our selected Staticbot migration. Record that choice on the open gate.",
-      "file_attachment_urls": null,
-      "tools_triggered": "choose_data_import_method",
-      "expected_output": "Records the user's chosen method on the READY gate job and reports the migration's next pending action.",
       "expected_output_url": null
     },
     {
@@ -783,11 +1075,11 @@
       "expected_output_url": null
     },
     {
-      "description": "Discover where a Cloudflare Workers app can be hosted.",
-      "user_prompt": "Which Cloudflare accounts can Staticbot deploy my app into?",
+      "description": "Analyze a public website before choosing hosting or migration.",
+      "user_prompt": "Check https://staticbot.dev and explain its detected platform and supported hosting or migration paths. Do not deploy or migrate anything.",
       "file_attachment_urls": null,
-      "tools_triggered": "list_cloudflare_hosting_targets",
-      "expected_output": "Returns Staticbot's managed hosting option plus any connected customer Cloudflare account that can host a Worker \u2014 each with a ready-to-render label and an opaque value \u2014 and explains any account that could not be offered. Does not choose an account for the user.",
+      "tools_triggered": "scan_website",
+      "expected_output": "Starts or reuses a workspace scan. While QUEUED or RUNNING, polls get_website_scan with the returned scan ID and pollAfterMs. On completion explains the reported platform, framework, backend and available paths, preserving estimate qualifiers. Reports access or rate-limit failures without bypassing them; never creates a migration or deployment.",
       "expected_output_url": null
     }
   ],

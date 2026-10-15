@@ -49,14 +49,17 @@
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "smoke": "node scripts/smoke-test.mjs",
-    "test": "npm run build && npm run smoke && npm run validate:discovery && npm run validate:versions && npm run validate:redaction && npm run validate:migrations",
+    "test": "npm run build && npm run smoke && npm run validate:discovery && npm run validate:versions && npm run validate:redaction && npm run validate:migrations && npm run validate:site-scans && npm run validate:project-operations && npm run validate:submission",
     "validate:discovery": "node scripts/validate-discovery-prompts.mjs",
     "prepack": "npm run build",
     "prepublishOnly": "npm test",
     "start:http": "node dist/hosted/index.js",
     "validate:versions": "node scripts/check-versions.mjs",
     "validate:redaction": "node scripts/check-redaction.mjs",
-    "validate:migrations": "node scripts/check-migration-contracts.mjs"
+    "validate:migrations": "node scripts/check-migration-contracts.mjs",
+    "validate:site-scans": "node scripts/check-site-scan-contracts.mjs",
+    "validate:submission": "node scripts/check-submission.mjs",
+    "validate:project-operations": "node scripts/check-project-operation-contracts.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

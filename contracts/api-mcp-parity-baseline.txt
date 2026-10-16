@@ -1,0 +1,16 @@
+# V1 → MCP differences recorded 2026-10-17; context is in CAPABILITY-PARITY.md.
+# New missing routes and stale entries both fail validate:api-parity.
+# Method/path only; {} normalizes a path parameter name.
+
+# Signed email-link action and hosted connection registration are not agent tools.
+GET /api/v1/onboarding/unsubscribe
+POST /api/v1/mcp/client-connections
+
+# Credential values must never enter MCP tool arguments; use the browser handoff.
+POST /api/v1/migrations/{}/jobs/{}/provide-base44-secrets
+
+# Anonymous browser website-check journey; MCP uses authenticated owned site-scan routes.
+GET /api/v1/public/site-scans/{}
+GET /api/v1/public/site-scans/{}/screenshot
+POST /api/v1/public/site-scans
+POST /api/v1/public/site-scans/{}/report

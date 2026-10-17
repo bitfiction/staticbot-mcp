@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 88;
+const expectedToolCount = 93;
 const expectedTools = [
   "get_account_status",
   "scan_website",
@@ -50,6 +50,11 @@ const expectedTools = [
   "create_migration_preview",
   "set_connected_project_sync_mode",
   "list_connected_project_previews",
+  "list_pending_actions",
+  "list_platform_updates",
+  "check_platform_updates",
+  "apply_platform_updates",
+  "dismiss_platform_update",
 ];
 
 const installedCommand = process.env.STATICBOT_MCP_COMMAND;

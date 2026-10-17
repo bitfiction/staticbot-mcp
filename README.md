@@ -132,6 +132,15 @@ upstream removal, so a local configuration change is not proof that GitHub delet
 The backend route must be deployed before enabling these tools in the hosted MCP server. See the
 [capability audit](CAPABILITY-PARITY.md) for the remaining dashboard/API differences.
 
+### Platform updates and pending actions
+
+`list_pending_actions` and `list_platform_updates` expose the same post-migration fixes as the project's
+Sync tab. `check_platform_updates` refreshes the evidence and may enqueue approved automatic fixes;
+it is a mutating operation. `apply_platform_updates` applies the selected fixes only after the user
+approves the returned effects. Customer-owned branches get pull requests, never direct pushes.
+`dismiss_platform_update` declines optional fixes; required fixes cannot be dismissed. Follow the
+returned sync run and PR links. The server feature flag may keep these operations disabled during rollout.
+
 ## Example requests
 
 - “Deploy this repository with Staticbot and tell me what DNS records I need.”
@@ -149,6 +158,8 @@ Staticbot tools are designed around explicit human control:
 - Destructive sync changes pause for review.
 - Failed work is explained before an agent retries or skips it.
 - Rollbacks use an exact version returned by `list_rollback_versions` and require confirmation.
+- Platform updates are applied only after the user has seen each update's `whatApplyingDoes` and
+  approved it; a required update is not approval. Customer branches get pull requests, never pushes.
 - Long-running operations return durable state that can be resumed across agent sessions.
 - The hosted server acts strictly as the person who authorized it, within the permissions they
   granted, and can reach nothing outside their own organization.
@@ -208,12 +219,3 @@ These apply to the local server. The hosted server needs none of them.
 ## License
 
 MIT
-
-### Platform updates and pending actions
-
-`list_pending_actions` and `list_platform_updates` expose the same post-migration fixes as the project's
-Sync tab. `check_platform_updates` refreshes the evidence and may enqueue approved automatic fixes;
-it is a mutating operation. `apply_platform_updates` applies the selected fixes only after the user
-approves the returned effects. Customer-owned branches get pull requests, never direct pushes.
-`dismiss_platform_update` declines optional fixes; required fixes cannot be dismissed. Follow the
-returned sync run and PR links. The server feature flag may keep these operations disabled during rollout.

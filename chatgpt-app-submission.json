@@ -1063,6 +1063,66 @@
         "open_world_justification": "Only reads source state or changes the private migration state without writing externally.",
         "destructive_justification": "The abort option permanently ends the migration, with recheck offered as the safe alternative."
       }
+    },
+    "list_pending_actions": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only lists open pending actions in the workspace.",
+        "open_world_justification": "Does not change a public website or an external system.",
+        "destructive_justification": "Does not delete, replace, approve or execute customer resources."
+      }
+    },
+    "list_platform_updates": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only returns platform updates, their last checks and branch evidence.",
+        "open_world_justification": "Does not change a public website or an external system.",
+        "destructive_justification": "Does not delete, replace, approve or execute customer resources."
+      }
+    },
+    "check_platform_updates": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Re-runs read-only checks, and starts any automatic update that is needed.",
+        "open_world_justification": "An automatic update changes the customer's Supabase project.",
+        "destructive_justification": "Automatic updates only add what is missing (for example Realtime tables); nothing is removed."
+      }
+    },
+    "apply_platform_updates": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Applies platform updates the user selected after reviewing what each does.",
+        "open_world_justification": "Changes the customer's Supabase project, or commits to Staticbot's branches and opens pull requests.",
+        "destructive_justification": "Can replace existing settings such as function verify_jwt or the auth email hook; explicit user approval is required."
+      }
+    },
+    "dismiss_platform_update": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Records that the user declined an optional update.",
+        "open_world_justification": "Only changes Staticbot's own record.",
+        "destructive_justification": "Does not delete, replace or execute customer resources; required updates cannot be dismissed."
+      }
     }
   },
   "test_cases": [

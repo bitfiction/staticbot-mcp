@@ -101,6 +101,23 @@
         }
       }
     },
+    "/api/v1/connected-projects/{id}/platform-updates" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "get" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
     "/api/v1/connected-projects/{id}/schema-gaps" : {
       "parameters" : [ {
         "name" : "id",
@@ -752,6 +769,15 @@
         }
       }
     },
+    "/api/v1/pending-actions" : {
+      "get" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
     "/api/v1/public/site-scans/{id}" : {
       "parameters" : [ {
         "name" : "id",
@@ -949,6 +975,64 @@
     "/api/v1/connected-projects/{id}/live-branch" : {
       "parameters" : [ {
         "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "post" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
+    "/api/v1/connected-projects/{id}/platform-updates/apply" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "post" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
+    "/api/v1/connected-projects/{id}/platform-updates/check" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "post" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
+    "/api/v1/connected-projects/{id}/platform-updates/{updateId}/dismiss" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      }, {
+        "name" : "updateId",
         "in" : "path",
         "required" : true,
         "schema" : {

@@ -208,3 +208,12 @@ These apply to the local server. The hosted server needs none of them.
 ## License
 
 MIT
+
+### Platform updates and pending actions
+
+`list_pending_actions` and `list_platform_updates` expose the same post-migration fixes as the project's
+Sync tab. `check_platform_updates` refreshes the evidence and may enqueue approved automatic fixes;
+it is a mutating operation. `apply_platform_updates` applies the selected fixes only after the user
+approves the returned effects. Customer-owned branches get pull requests, never direct pushes.
+`dismiss_platform_update` declines optional fixes; required fixes cannot be dismissed. Follow the
+returned sync run and PR links. The server feature flag may keep these operations disabled during rollout.

@@ -10,6 +10,29 @@ import { apiToolResult, registerApiTool } from "../server/api-tool.js";
  * which is what lets one registry serve both the API-key stdio server and the hosted OAuth one.
  */
 export function registerConnectedProjectTools(server: McpServer, { apiFetch, toText }: ToolContext): void {
+// Platform updates share the API rules: no automatic approval of gated changes.
+registerApiTool(server, "list_pending_actions", "List the workspace's pending actions, including required platform updates and pull requests waiting for merge. Show actionable items to the user.",
+  { connectedProjectId: z.string().uuid().optional() },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  async ({ connectedProjectId }) => apiToolResult(await apiFetch(`/api/v1/pending-actions${connectedProjectId ? `?connectedProjectId=${encodeURIComponent(connectedProjectId)}` : ""}`), toText));
+
+registerApiTool(server, "list_platform_updates", "List post-migration platform fixes, affected versions, branch adoption evidence, and the last check/apply results for a project.",
+  { id: z.string().uuid() }, { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  async ({ id }) => apiToolResult(await apiFetch(`/api/v1/connected-projects/${id}/platform-updates`), toText));
+
+registerApiTool(server, "check_platform_updates", "Refresh project checks. IMPORTANT: this also applies eligible AUTOMATIC fixes. Explain that effect before using it. GATED updates continue to wait for approval.",
+  { id: z.string().uuid() }, { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  async ({ id }) => apiToolResult(await apiFetch(`/api/v1/connected-projects/${id}/platform-updates/check`, { method: "POST", body: "{}" }), toText));
+
+registerApiTool(server, "apply_platform_updates", "Apply the selected platform updates after showing whatApplyingDoes and obtaining user approval. Changes the customer's backend or commits to Staticbot's branches and opens PRs on customer branches. Never infer approval from an update being required.",
+  { id: z.string().uuid(), updateIds: z.array(z.string().min(1)).min(1).max(20) },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  async ({ id, updateIds }) => apiToolResult(await apiFetch(`/api/v1/connected-projects/${id}/platform-updates/apply`, { method: "POST", body: JSON.stringify({ updateIds }) }), toText));
+
+registerApiTool(server, "dismiss_platform_update", "Dismiss an optional platform update when the user asks to decline it. Required updates cannot be dismissed.",
+  { id: z.string().uuid(), updateId: z.string().min(1) }, { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  async ({ id, updateId }) => apiToolResult(await apiFetch(`/api/v1/connected-projects/${id}/platform-updates/${encodeURIComponent(updateId)}/dismiss`, { method: "POST", body: "{}" }), toText));
+
 // ─── Connected Projects (Continuous Sync) ───────────────────────────────────
 
 registerApiTool(server,

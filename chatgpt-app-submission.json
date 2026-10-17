@@ -104,6 +104,30 @@
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
+    "list_stack_template_updates": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only lists newer versions of the infrastructure templates the selected stack uses.",
+        "open_world_justification": "Does not change public internet state or an external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "adopt_stack_template_update": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Points a private Staticbot stack at a newer version of one of its infrastructure templates.",
+        "open_world_justification": "Does not provision infrastructure or change an external system; infrastructure changes only on a later redeploy.",
+        "destructive_justification": "Keeps the stack's config overrides and live infrastructure; the previous template version stays available."
+      }
+    },
     "create_stack": {
       "annotations": {
         "readOnlyHint": false,

@@ -38,6 +38,35 @@ registerApiTool(server,
 );
 
 registerApiTool(server,
+  "list_stack_template_updates",
+  "List newer versions of a stack's infrastructure templates (for example a Staticbot-published update to the built-in AWS static-website infrastructure). Empty when the stack already uses the newest version of each. Each entry carries the current `templateId` to pass to adopt_stack_template_update, the current and latest versions, and a `message` to relay to the user.",
+  {
+    id: z.string().uuid().describe("Stack ID"),
+  },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  async ({ id }) => {
+    const data = await apiFetch(`/api/v1/stacks/${id}/template-updates`);
+    return apiToolResult(data, toText);
+  }
+);
+
+registerApiTool(server,
+  "adopt_stack_template_update",
+  "Move a stack onto the newest version of one of its infrastructure templates, keeping its config overrides. This deploys nothing: live infrastructure changes only when the infrastructure is redeployed afterwards. Ask the user before adopting, and suggest previewing with a plan on the latest version first. Get `templateId` from list_stack_template_updates.",
+  {
+    id: z.string().uuid().describe("Stack ID"),
+    templateId: z.string().uuid().describe("The template version the stack uses now — `templateId` from list_stack_template_updates"),
+  },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  async ({ id, templateId }) => {
+    const data = await apiFetch(`/api/v1/stacks/${id}/template-updates/${templateId}/adopt`, {
+      method: "POST",
+    });
+    return apiToolResult(data, toText);
+  }
+);
+
+registerApiTool(server,
   "create_stack",
   "Create a new infrastructure stack from a template. A stack ties a template to a domain and becomes deployable. Call list_templates first to find the right templateId. Staticbot analyzes the template's repository and owns the hosting decision: static sites route to the supported AWS static target, SSR/full-stack apps route to the supported Cloudflare Workers target. Report the returned `hostingWorkload`, `deploymentTarget`, and `infrastructureOwnership` fields to the user.\n\n" +
   "**Never invent a provider or an account.** Cloudflare alone accepts an account-placement default during stack creation because a customer Worker stack pins its connected integration and resolved zone. If the user wants that, call list_cloudflare_hosting_targets, let them choose, then preflight_cloudflare_hosting and pass the preflighted `value` as cloudflareChoice. Otherwise omit it for Staticbot hosting. For an AWS static site, create the stack first, then call list_aws_hosting_targets with its stackId and pass the selected `value` to create_deployment as targetAccountId. There is no AWS account field on create_stack.\n\n" +

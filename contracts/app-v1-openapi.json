@@ -836,6 +836,23 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/template-updates" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "get" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
     "/api/v1/templates" : {
       "get" : {
         "responses" : {
@@ -1555,6 +1572,30 @@
       }
     },
     "/api/v1/site-scans" : {
+      "post" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/template-updates/{templateId}/adopt" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      }, {
+        "name" : "templateId",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
       "post" : {
         "responses" : {
           "default" : {

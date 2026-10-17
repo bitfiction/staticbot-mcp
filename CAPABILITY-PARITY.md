@@ -113,7 +113,7 @@ This check does not claim every dashboard operation, request field or response f
 
 ## Submission maintenance
 
-`chatgpt-app-submission.json` now covers all 86 local runtime tools with explicit annotations and
+`chatgpt-app-submission.json` now covers all 88 local runtime tools with explicit annotations and
 justifications, exactly five positive cases and three negative cases. The one-time data-import gate
 test was replaced with a website check. Positive tests still need real reviewer fixtures and a live
 run; metadata validation is not an execution result.

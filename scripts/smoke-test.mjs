@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 93;
+const expectedToolCount = 94;
 const expectedTools = [
   "get_account_status",
   "scan_website",
@@ -28,6 +28,7 @@ const expectedTools = [
   "list_cloudflare_hosting_targets",
   "preflight_cloudflare_hosting",
   "recheck_dns_verification",
+  "get_migration_overview",
   "get_migration",
   "get_migration_discovery_report",
   "get_migration_preview_evidence",

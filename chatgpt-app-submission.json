@@ -332,6 +332,18 @@
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
+    "get_migration_overview": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads a bounded migration status overview from the authenticated workspace; never approves, captures a report, probes the source, or changes execution.",
+        "open_world_justification": "Only reads stored Staticbot migration status and metadata through the authenticated API; no external application or provider is called.",
+        "destructive_justification": "No mutations are performed. All existing execution decisions and approvals require separate tools and user authorization."
+      }
+    },
     "get_migration": {
       "annotations": {
         "readOnlyHint": true,

@@ -45,6 +45,11 @@ const apiServer = createHttpServer(async (request, response) => {
     return json(200, { status: "IN_PROGRESS", pendingAction: null,
       executionCompatibility: { locked: true, message: lockMessage }, blockedReason: lockMessage });
   }
+  if (url.pathname === `${rootPath}/overview`) {
+    return json(200, { overview: { migration: { id: migrationId, status: "PAUSED_FOR_APPROVAL" },
+      jobs: { total: 1023, pending: 1021, completed: 2 }, attention: { total: 0, jobs: [] } },
+      version: "overview-v1", pollAfterMs: 30000, links: { detailApi: rootPath, jobsApi: `${rootPath}/jobs` } });
+  }
   if (url.pathname === `${rootPath}/source-inspection`) {
     response.writeHead(202);
     return response.end();
@@ -143,6 +148,17 @@ try {
       assert.equal((await call("get_migration_discovery_revision", { id: migrationId, revisionId: "bad" })).isError, true);
       assert.equal((await call("get_migration_handoff_report", { id: migrationId, revisionId: "bad" })).isError, true);
       assert.equal(requests.length, beforeInvalid, `${name}: invalid authorization/cursors/IDs must never reach the API`);
+
+      assert.equal(descriptor("get_migration_overview").annotations.readOnlyHint, true);
+      assert.match(descriptor("get_migration_overview").description, /pollAfterMs/);
+      assert.match(descriptor("get_migration_overview").description, /get_migration_jobs/);
+      const overview = await ok("get_migration_overview", { id: migrationId });
+      assert.equal(overview.structuredContent.result.overview.jobs.total, 1023);
+      assert.equal(overview.structuredContent.result.version, "overview-v1");
+      assert.equal(requests.at(-1).url, `${rootPath}/overview`);
+      assert.equal(requests.at(-1).method, "GET");
+      await ok("get_migration", { id: migrationId });
+      assert.equal(requests.at(-1).url, rootPath, "Detailed migration tool remains available");
 
       const previewEvidence = await ok("get_migration_preview_evidence", { id: migrationId });
       assert.deepEqual(previewEvidence.structuredContent.result.unverified, ["Login was not tested"]);

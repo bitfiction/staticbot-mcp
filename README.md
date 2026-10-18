@@ -164,6 +164,8 @@ Staticbot tools are designed around explicit human control:
 - The hosted server acts strictly as the person who authorized it, within the permissions they
   granted, and can reach nothing outside their own organization.
 
+Use `get_migration_overview` for lightweight status polling. It returns phase/job counts, saved-report metadata, jobs needing attention and preview status, with `version` and `pollAfterMs`. It never loads raw payloads or changes the migration. Use `get_migration`, `get_migration_jobs`, discovery reports and job history for all existing technical details and before routing an action.
+
 Migration tools are shared by the local API-key and hosted OAuth servers. Before routing any action,
 check `executionCompatibility.locked`: locked runs cannot resume or retry, even if their old status
 is `IN_PROGRESS`. Reports/history remain readable; start a new migration with fresh discovery and

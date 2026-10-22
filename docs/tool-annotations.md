@@ -58,7 +58,7 @@ The submission form requires a justification naming what is irreversible and wha
 | `choose_frontend_deploy` | Commits the migration to continuous sync, a Staticbot deployment, or a permanent skip. | The tool description requires presenting all deployment choices and obtaining the user's choice. |
 | `confirm_sync_run` | Applies the sync run's SQL to the customer's database, which can drop or rewrite data. | Destructive statements are surfaced for review first; this tool is the approval step and must not be called before the user has seen them. |
 | `skip_sync_run` | Marks a sync run handled without applying it; source and target diverge permanently. | The run's contents are inspectable via `get_sync_run_jobs` beforehand. |
-| `resolve_schema_gap` | The `abort` action ends the migration permanently. | `recheck` is the safe alternative and the user chooses; the tool description requires asking first. |
+| `resolve_schema_gap` | The `abort` action ends the migration permanently; `reprepare` replaces the unexecuted plan. | `reprepare` writes nothing to the target and needs a new plan approval; the user chooses, and the tool description requires asking first. |
 
 ## Keeping this honest
 

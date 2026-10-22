@@ -47,15 +47,21 @@ registerApiTool(server,
 
 registerApiTool(server,
   "resolve_schema_gap",
-  "Resolve a MANUAL_REVIEW_SCHEMA_GAP gate. " +
+  "Resolve a MANUAL_REVIEW_SCHEMA_GAP gate: the source database has objects the repository's migration " +
+  "files don't declare. The gate's inputData.summary.builder_chat_prompt (get_migration_jobs) is the prompt " +
+  "the user pastes into their AI builder so it adds them.\n" +
   "IMPORTANT: You MUST present these options to the user and ask them to choose before calling:\n" +
-  "  1. 'recheck' — Re-check the source schema for drift.\n" +
-  "  2. 'abort' — Skip the migration.\n" +
+  "  1. 'reprepare' — once the builder has pushed the missing migration files: Staticbot re-reads the " +
+  "source branch at its newest commit, re-runs discovery and rebuilds the plan. This replaces the approved " +
+  "plan, so the migration returns to CONFIRM and the user must approve the new discovery report revision " +
+  "before anything runs. If objects are still missing, a new schema-gap gate lists them. Refused while the " +
+  "branch has no new commit.\n" +
+  "  2. 'abort' — Stop the migration at this review.\n" +
   "Do NOT pick an option without asking the user first.",
   {
     migrationId: z.string().uuid().describe("Migration ID"),
     jobId: z.string().uuid().describe("The MANUAL_REVIEW_SCHEMA_GAP job ID"),
-    action: z.enum(["recheck", "abort"]).describe("Resolution action"),
+    action: z.enum(["reprepare", "abort"]).describe("Resolution action"),
   },
   { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   async ({ migrationId, jobId, action }) => {

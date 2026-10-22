@@ -1071,9 +1071,9 @@
         "destructiveHint": true
       },
       "justifications": {
-        "read_only_justification": "Either queues a source-schema recheck or aborts the migration as explicitly selected by the user.",
+        "read_only_justification": "Either re-prepares the migration from the source repository's newest commit or aborts it, as explicitly selected by the user.",
         "open_world_justification": "Only reads source state or changes the private migration state without writing externally.",
-        "destructive_justification": "The abort option permanently ends the migration, with recheck offered as the safe alternative."
+        "destructive_justification": "The abort option permanently ends the migration; re-preparing replaces the unexecuted plan and needs a new approval before anything runs."
       }
     },
     "list_pending_actions": {

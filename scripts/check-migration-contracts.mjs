@@ -19,6 +19,8 @@ const staleRevisionId = "00000000-0000-4000-8000-000000000105";
 const templateId = "00000000-0000-4000-8000-000000000106";
 const sourceIntegrationId = "00000000-0000-4000-8000-000000000107";
 const targetIntegrationId = "00000000-0000-4000-8000-000000000108";
+const staleSqlId = "00000000-0000-4000-8000-000000000109";
+const originalCommit = "a".repeat(40);
 const rootPath = `/api/v1/migrations/${migrationId}`;
 const lockMessage = "Execution contract is no longer supported. Create a new migration.";
 const report = "# Migration handoff\n\nREPORT_BODY_ONLY_8d1fb4\n\n## Activate migrated schedules\n\n```sql\nbegin;\n-- Guarded activation artifact supplied by the backend\ncommit;\n```\n";
@@ -44,6 +46,22 @@ const apiServer = createHttpServer(async (request, response) => {
     }
     return json(200, { status: "IN_PROGRESS", pendingAction: null,
       executionCompatibility: { locked: true, message: lockMessage }, blockedReason: lockMessage });
+  }
+  if (url.pathname === `/api/v1/migrations/${staleSqlId}/recheck-sql-syntax`) {
+    return json(409, { message: "There are no new commits yet. Push the SQL fixes, then check again." });
+  }
+  if (url.pathname === `${rootPath}/source-recovery`) {
+    if (request.method === "GET") return json(200, {
+      eligible: true, revisionId, commitSha: originalCommit, message: "Restore the original approved snapshot." });
+    const restore = JSON.parse(body);
+    if (restore.revisionId !== revisionId || restore.commitSha !== originalCommit) {
+      return json(400, { message: "The approved source snapshot changed. Refresh and review it again." });
+    }
+    return json(200, { message: "Original source snapshot restored. Retry the failed step to continue." });
+  }
+  if (url.pathname === `${rootPath}/recheck-sql-syntax`) {
+    response.writeHead(202);
+    return response.end();
   }
   if (url.pathname === `${rootPath}/overview`) {
     return json(200, { overview: { migration: { id: migrationId, status: "PAUSED_FOR_APPROVAL" },
@@ -149,6 +167,55 @@ try {
       assert.equal((await call("get_migration_handoff_report", { id: migrationId, revisionId: "bad" })).isError, true);
       assert.equal(requests.length, beforeInvalid, `${name}: invalid authorization/cursors/IDs must never reach the API`);
 
+      assert.equal(descriptor("get_migration_source_recovery").annotations.readOnlyHint, true);
+      assert.equal(descriptor("restore_migration_source_snapshot").annotations.readOnlyHint, false);
+      assert.equal(descriptor("restore_migration_source_snapshot").annotations.openWorldHint, true);
+      assert.match(descriptor("restore_migration_source_snapshot").description, /never substitute/i);
+      assert.match(descriptor("recheck_migration_gate").description, /replaces the prepared plan/);
+      const recoveryBeforeInvalid = requests.length;
+      const restoreArgs = { id: migrationId, revisionId, commitSha: originalCommit, confirmed: true };
+      for (const args of [
+        { ...restoreArgs, confirmed: undefined }, { ...restoreArgs, confirmed: false },
+        { ...restoreArgs, commitSha: "short" }, { ...restoreArgs, commitSha: "a".repeat(64) },
+        { ...restoreArgs, commitSha: "z".repeat(40) }, { ...restoreArgs, revisionId: "invalid" },
+      ]) assert.equal((await call("restore_migration_source_snapshot", args)).isError, true);
+      for (const confirmed of [undefined, false]) {
+        assert.equal((await call("recheck_migration_gate", {
+          id: migrationId, action: "RECHECK_SQL_SYNTAX", ...(confirmed === undefined ? {} : { confirmed }),
+        })).isError, true);
+      }
+      assert.equal(requests.length, recoveryBeforeInvalid, "Invalid snapshots or missing re-prepare approval must make no HTTP call");
+
+      const recovery = await ok("get_migration_source_recovery", { id: migrationId });
+      assert.deepEqual(recovery.structuredContent.result, { eligible: true, revisionId,
+        commitSha: originalCommit, message: "Restore the original approved snapshot." });
+      assert.equal(requests.at(-1).method, "GET");
+      assert.equal(requests.at(-1).url, `${rootPath}/source-recovery`);
+      const beforeRestore = requests.length;
+      const restored = await ok("restore_migration_source_snapshot", restoreArgs);
+      assert.match(restored.structuredContent.result.message, /Retry the failed step/);
+      assert.equal(requests.length, beforeRestore + 1, "Recovery must not automatically confirm, resume or retry");
+      assert.equal(requests.at(-1).method, "POST");
+      assert.equal(requests.at(-1).url, `${rootPath}/source-recovery`);
+      assert.deepEqual(JSON.parse(requests.at(-1).body), { revisionId, commitSha: originalCommit });
+      const beforeChanged = requests.length;
+      const changedSnapshot = await call("restore_migration_source_snapshot", { ...restoreArgs, revisionId: staleRevisionId });
+      assert.equal(changedSnapshot.isError, true);
+      assert.match(JSON.stringify(changedSnapshot.content), /HTTP 400.*snapshot changed/);
+      assert.equal(requests.length, beforeChanged + 1, "Changed snapshots must not trigger target substitution or retries");
+
+      const sqlRecheck = await ok("recheck_migration_gate", { id: migrationId, action: "RECHECK_SQL_SYNTAX", confirmed: true });
+      assert.equal(sqlRecheck.structuredContent.result.queued, true);
+      assert.match(sqlRecheck.structuredContent.result.next, /separate approval/);
+      assert.equal(requests.at(-1).url, `${rootPath}/recheck-sql-syntax`);
+      assert.equal(requests.at(-1).method, "POST");
+      assert.equal(requests.at(-1).body, "");
+      const beforeStaleSql = requests.length;
+      const staleSql = await call("recheck_migration_gate", { id: staleSqlId, action: "RECHECK_SQL_SYNTAX", confirmed: true });
+      assert.equal(staleSql.isError, true);
+      assert.match(JSON.stringify(staleSql.content), /HTTP 409.*no new commits/);
+      assert.equal(requests.length, beforeStaleSql + 1, "A refused re-prepare must not fall back to confirm/resume/retry");
+
       assert.equal(descriptor("get_migration_overview").annotations.readOnlyHint, true);
       assert.match(descriptor("get_migration_overview").description, /pollAfterMs/);
       assert.match(descriptor("get_migration_overview").description, /get_migration_jobs/);
@@ -209,6 +276,8 @@ try {
         ["confirm_migration", { id: lockedId, approvedRevisionId: revisionId }],
         ["resume_migration", { id: lockedId }],
         ["inspect_migration_source", { id: lockedId, authorizeHelperDeployment: true }],
+        ["restore_migration_source_snapshot", { ...restoreArgs, id: lockedId }],
+        ["recheck_migration_gate", { id: lockedId, action: "RECHECK_SQL_SYNTAX", confirmed: true }],
       ]) {
         const count = requests.length;
         const denied = await call(toolName, args);

@@ -44,6 +44,9 @@ registerApiTool(server,
 
 registerApiTool(server,
   "get_migration",
+  "For missing original source-snapshot metadata on a paused migration, inspect get_migration_source_recovery. " +
+  "Restore only the eligible revision and commit with restore_migration_source_snapshot after explicit approval. " +
+  "Restoration never resumes or retries work and cannot bypass an execution lock.\n\n" +
   "Get detailed migration state and next-action context. Use get_migration_overview for routine status polling; this detailed tool remains available whenever the full context is needed. Get the current status and phase breakdown of a migration. The response includes all migration phases (Discovery, DB Migration, Data Import, Edge Functions, Storage Buckets, Auth Config, Backend Switchover, Preview & Verify, Continuous Sync, Download, Follow-ups) with their individual statuses, plus sourceType (LOVABLE_SUPABASE / BOLT_SUPABASE / FIREBASE / BASE44_SUPABASE / BASE44_NATIVE), targetType (SUPABASE_CLOUD / SUPABASE_SELF_HOSTED), and packageAvailable (true once the downloadable zip is ready — fetch via download_package).\n\n" +
   "**Execution compatibility:** check `executionCompatibility.locked` before routing any action. If true, stop execution polling and all migration mutations, even when status is IN_PROGRESS and pendingAction is null. Show `executionCompatibility.message` or `blockedReason`. Reports, job history and previews remain readable. Start a new migration with fresh discovery; prefer a clean target when the old run made writes. Never upgrade/reset version pins or try legacy confirm/resume/retry paths. Hosting and Continuous Sync have independent lifecycles.\n\n" +
   "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. New pre-flight states are explicit: REVIEW_TARGET_CONFLICTS → present `targetConflictReport`, then either call clean_migration_target after destructive confirmation or call confirm_migration only after the user explicitly declines cleanup; WAIT_FOR_TARGET_CLEANUP → poll; RETRY_TARGET_CLEANUP → call retry_migration_job (never skip cleanup); RESOLVE_TARGET_CAPACITY → the target database ran out of room mid-import: present preFlightGate.targetCapacity (plan, size, the stopped job and its remediation — Supabase billing changes the user must agree to), then call recheck_migration_gate once space is added; the stopped job continues after its last imported row. Use PROCEED_ANYWAY via confirm_migration only if the user accepts losing the remaining rows, and never retry the job directly; CHOOSE_MIGRATION_STRATEGY → present `preFlightGate.actions` and consequences, then call confirm_migration with the selected gateChoice, except a RECHECK_* action, which goes to recheck_migration_gate. RESUME → the migration is paused and waiting on a person: tell the user what it is waiting for and call resume_migration once they agree (never resume a migration they paused without asking). PROVIDE_BASE44_SECRETS / PROVIDE_SECRETS → the step takes the values of the customer's own third-party credentials (Base44 app secrets; for Lovable/Supabase sources, the ones the source could not supply), so it is resolved in a browser and NOT by a tool: `endpoint` is null, `url` opens the migration's App secrets tab, and `detail` is written to be shown to the user verbatim. Give them the URL, keep polling, and do not ask for the secret values in the conversation — no tool accepts them and the API refuses them over this connection. Saving in that tab continues the migration; get_app_secrets shows which are still missing. PROVIDE_SECRETS blocks nothing (the migration and preview keep going), so another step is reported first when one is waiting. When every secret already has a value, the same step comes back as COMPLETE_MANUAL_JOB: call complete_migration_job to continue it — no values are sent. CONFIRM → fetch get_migration_discovery_report, present its proposed work, unknown coverage, findings and approvalBlockers, then pass its exact revisionId as approvedRevisionId only after the user explicitly approves starting writes to the target. On a stale-plan 409, fetch the changed report and obtain approval again; never silently substitute a new revision. An already approved, execution-compatible resume does not need another revision. An answered CHOOSE_MIGRATION_STRATEGY question is not approval to start. REVIEW_PHASE (GUARDED migrations) → the migration stopped before a phase: show the job's `title`, `body` and `job_summary` (get_migration_jobs → inputData) and call complete_migration_job only when the user says to continue. REVIEW_DATA_ACCESS (GUARDED Base44 migrations) → show the job's `entities` and `options` and pass the user's choice to complete_migration_job as accessDefault/accessOverrides; never pick for them. When `pendingAction.detail` is present, show it to the user. Other types: RETRY_OR_SKIP, RESOLVE_SCHEMA_GAP, CHOOSE_BACKEND_SWITCHOVER, CHOOSE_DATA_IMPORT_METHOD, CHOOSE_FRONTEND_DEPLOY, COMPLETE_MANUAL_JOB. When `pendingAction` is null, poll only while the status is flowing.\n\n" +
@@ -60,6 +63,36 @@ registerApiTool(server,
     const data = await apiFetch(`/api/v1/migrations/${id}`);
     return apiToolResult(data, toText);
   }
+);
+
+registerApiTool(server,
+  "get_migration_source_recovery",
+  "Check whether a paused migration can restore the original source snapshot recorded in its approved plan. " +
+  "Returns eligible, revisionId, commitSha and message. Present the exact revision and commit before proposing " +
+  "restore_migration_source_snapshot. An ineligible result must remain a refusal; do not choose another commit, " +
+  "change version pins or bypass an execution lock. Reading never verifies Git, restores, resumes or retries work.",
+  { id: z.string().uuid().describe("Migration ID") },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  async ({ id }) => apiToolResult(await apiFetch(`/api/v1/migrations/${id}/source-recovery`), toText),
+);
+
+registerApiTool(server,
+  "restore_migration_source_snapshot",
+  "Restore missing source-snapshot metadata from the migration's existing approved plan. First call " +
+  "get_migration_source_recovery and show its eligible revisionId and commitSha. Obtain explicit approval " +
+  "for that exact snapshot, then copy both values verbatim and set confirmed=true. The backend verifies " +
+  "the original Git commit and retains completed work and the approved plan. It never selects the newest " +
+  "branch commit, bypasses an execution lock, approves target writes, re-prepares, resumes or retries. " +
+  "If recovery is refused or the snapshot changed, inspect again; never substitute a new revision or commit " +
+  "automatically. Review and authorize any failed-job retry separately. Credentials remain server-side.",
+  { id: z.string().uuid().describe("Migration ID"),
+    revisionId: z.string().uuid().describe("Exact approved revisionId from get_migration_source_recovery"),
+    commitSha: z.string().regex(/^[0-9a-fA-F]{40}$/).describe("Exact 40-character commitSha from get_migration_source_recovery"),
+    confirmed: z.literal(true).describe("Explicit user approval of the displayed original revision and commit") },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  async ({ id, revisionId, commitSha }) => apiToolResult(await apiFetch(`/api/v1/migrations/${id}/source-recovery`, {
+    method: "POST", body: JSON.stringify({ revisionId, commitSha }),
+  }), toText),
 );
 
 registerApiTool(server,
@@ -240,30 +273,39 @@ const GATE_RECHECK_ENDPOINTS = {
   RECHECK_OFFICIAL_EXPORT: "recheck-export",
   RECHECK_CAPACITY: "recheck-capacity",
   RECHECK_TARGET_EMPTY: "recheck-target-emptiness",
+  RECHECK_SQL_SYNTAX: "recheck-sql-syntax",
 } as const;
 
 registerApiTool(server,
   "recheck_migration_gate",
   "Run a pre-flight gate's re-check action: the enabled action in get_migration.preFlightGate.actions " +
-  "whose ID is RECHECK_EXPORT, RECHECK_OFFICIAL_EXPORT, RECHECK_CAPACITY or RECHECK_TARGET_EMPTY. " +
-  "These never go to confirm_migration, which refuses them. A re-check only queues a fresh measurement: " +
-  "it does not confirm or start the migration, and the migration stays paused. Each assumes the user " +
+  "whose ID is RECHECK_EXPORT, RECHECK_OFFICIAL_EXPORT, RECHECK_CAPACITY, RECHECK_TARGET_EMPTY or RECHECK_SQL_SYNTAX. " +
+  "These never go to confirm_migration, which refuses them. A re-check never approves initial execution. Each assumes the user " +
   "fixed something outside Staticbot first, so ask them to do that and confirm it is done before calling: " +
   "RECHECK_EXPORT / RECHECK_OFFICIAL_EXPORT — they created a Cloud Data export in their Lovable project " +
   "(Staticbot cannot create it); RECHECK_TARGET_EMPTY — they emptied the target's `public` schema in " +
-  "Supabase; RECHECK_CAPACITY — they upgraded or freed space on the target. Then poll get_migration: " +
-  "preFlightGate changes when the re-check finds something (an export found turns it into the " +
-  "LOVABLE_OFFICIAL_EXPORT choice), and stays as it was when it does not.",
+  "Supabase; RECHECK_CAPACITY — they upgraded or freed space on the target; a successful capacity check can " +
+  "continue the already-approved stopped import. RECHECK_SQL_SYNTAX — they pushed SQL fixes to the source branch: " +
+  "explain that this adopts its newest commit, reruns discovery and replaces the prepared plan. Obtain explicit " +
+  "approval for that source re-prepare and set confirmed=true. This requires an open SQL_SYNTAX_ERRORS gate " +
+  "and returns to plan review without approving target writes. Poll get_migration_overview, read get_migration " +
+  "after a change and fetch the new discovery report for review. A refusal never falls back to confirm/resume/retry.",
   {
     id: z.string().uuid().describe("Migration ID"),
-    action: z.enum(["RECHECK_EXPORT", "RECHECK_OFFICIAL_EXPORT", "RECHECK_CAPACITY", "RECHECK_TARGET_EMPTY"])
+    action: z.enum(["RECHECK_EXPORT", "RECHECK_OFFICIAL_EXPORT", "RECHECK_CAPACITY", "RECHECK_TARGET_EMPTY", "RECHECK_SQL_SYNTAX"])
       .describe("Exact enabled re-check action ID from get_migration.preFlightGate.actions"),
+    confirmed: z.literal(true).optional().describe("Required for RECHECK_SQL_SYNTAX after explicit approval to adopt the newest source commit and replace the prepared plan"),
   },
   { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-  async ({ id, action }) => {
+  async ({ id, action, confirmed }) => {
+    if (action === "RECHECK_SQL_SYNTAX" && !confirmed) {
+      throw new Error("RECHECK_SQL_SYNTAX requires explicit approval to re-prepare from the newest source commit; pass confirmed=true only after approval.");
+    }
     await apiFetch(`/api/v1/migrations/${id}/${GATE_RECHECK_ENDPOINTS[action]}`, { method: "POST" });
     return apiToolResult({ queued: true, action,
-      next: "Poll get_migration; preFlightGate changes when the re-check finds something." }, toText);
+      next: action === "RECHECK_SQL_SYNTAX"
+        ? "Poll get_migration_overview, then inspect get_migration and the new discovery report. The new plan needs separate approval before target writes."
+        : "Poll get_migration_overview, then inspect get_migration for the updated gate or resumed import." }, toText);
   }
 );
 

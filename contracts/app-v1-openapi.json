@@ -777,6 +777,30 @@
         }
       }
     },
+    "/api/v1/migrations/{migrationId}/source-recovery" : {
+      "parameters" : [ {
+        "name" : "migrationId",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "get" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      },
+      "post" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
     "/api/v1/onboarding/unsubscribe" : {
       "get" : {
         "responses" : {
@@ -1442,6 +1466,23 @@
       }
     },
     "/api/v1/migrations/{id}/recheck-export" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "post" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
+    "/api/v1/migrations/{id}/recheck-sql-syntax" : {
       "parameters" : [ {
         "name" : "id",
         "in" : "path",

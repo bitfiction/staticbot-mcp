@@ -33,6 +33,23 @@ baseline entries whose gap has closed or whose API route was removed. It does no
 `contracts/api-mcp-parity-baseline.txt` keeps method/path entries; context belongs here and in the
 app follow-up docs. No date/reason syntax is required per baseline line.
 
+### Latest backend alignment — 2026-10-26
+
+Compared with the current app-generated contract, all 109 V1 operations are now accounted for:
+102 are exercised by the 96 runtime tools and seven remain deliberate differences below.
+The snapshot now includes the current migration source-recovery GET/POST and SQL syntax recheck.
+`get_migration_source_recovery` reads eligibility and the exact approved revision/commit;
+`restore_migration_source_snapshot` requires approval of that exact pair and never resumes or retries.
+`recheck_migration_gate` now supports `RECHECK_SQL_SYNTAX`, with explicit source re-prepare approval.
+This adopts the latest source commit, reruns discovery and returns to a new plan review, without
+approving target writes. Existing capacity rechecks can continue an already-approved stopped import.
+Focused adapter tests cover both credential contexts, invalid confirmations, changed snapshots,
+execution locks, refused SQL rechecks and the absence of implicit confirm/resume/retry calls.
+
+This is local source and contract verification. The hosted release must be updated and its tool scan
+refreshed before claiming these additions are available to reviewers. No production mutation or
+submission was performed on 2026-10-26.
+
 ### Seven current route differences
 
 | V1 route | Context |
@@ -113,7 +130,7 @@ This check does not claim every dashboard operation, request field or response f
 
 ## Submission maintenance
 
-`chatgpt-app-submission.json` now covers all 88 local runtime tools with explicit annotations and
+`chatgpt-app-submission.json` now covers all 96 local runtime tools with explicit annotations and
 justifications, exactly five positive cases and three negative cases. The one-time data-import gate
 test was replaced with a website check. Positive tests still need real reviewer fixtures and a live
 run; metadata validation is not an execution result.

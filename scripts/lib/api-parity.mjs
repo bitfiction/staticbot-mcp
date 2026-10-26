@@ -104,6 +104,8 @@ export const TOOL_PROBES = {
     { name: 'Parity fixture', templateId: FIXTURE_ID, sourceType: 'BASE44_NATIVE', sourceIntegrationInstanceId: FIXTURE_ID, base44AppId: 'parity-app' }],
   // Three mutually exclusive optional selectors dispatch to three distinct endpoints.
   get_app_secrets: [{ connectedProjectId: FIXTURE_ID }, { migrationId: FIXTURE_ID }, { stackId: FIXTURE_ID }],
+  // Recovery only accepts a complete commit identity and explicit approval of that exact snapshot.
+  restore_migration_source_snapshot: [{ id: FIXTURE_ID, revisionId: FIXTURE_ID, commitSha: 'a'.repeat(40), confirmed: true }],
 };
 
 export async function collectToolCalls(createServer, probes = TOOL_PROBES) {

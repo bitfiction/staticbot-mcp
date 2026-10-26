@@ -507,9 +507,9 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Queues a fresh check (Cloud Data export, target capacity, or target emptiness) and records the result on the migration.",
-        "open_world_justification": "Reads the source project through its deployed export function, or the connected target Supabase project.",
-        "destructive_justification": "Only measures; does not confirm or start the migration, and never writes to the source or target."
+        "read_only_justification": "Records refreshed export, target or SQL checks; SQL syntax rechecking adopts the latest source commit and replaces the prepared plan.",
+        "open_world_justification": "Reads the source Git/export service or connected target Supabase project. A successful capacity check may continue an already-approved import.",
+        "destructive_justification": "Does not approve initial execution or delete source/target data. SQL re-prepare returns to discovery-plan review; a stopped import continues only within its existing approval."
       }
     },
     "get_clean_target_plan": {
@@ -1134,6 +1134,30 @@
         "read_only_justification": "Records that the user declined an optional update.",
         "open_world_justification": "Only changes Staticbot's own record.",
         "destructive_justification": "Does not delete, replace or execute customer resources; required updates cannot be dismissed."
+      }
+    },
+    "get_migration_source_recovery": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads eligibility and the exact approved revision/commit from retained migration state without changing it.",
+        "open_world_justification": "Reads only the authenticated workspace migration; no Git fetch or arbitrary URL is accessed.",
+        "destructive_justification": "Does not restore source identity, approve, resume or retry work."
+      }
+    },
+    "restore_migration_source_snapshot": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "After explicit approval of an exact revision and commit, restores missing source-snapshot metadata and records its audit evidence.",
+        "open_world_justification": "The backend verifies that the original commit is still readable through the connected Git provider; credentials remain server-side.",
+        "destructive_justification": "Restores the same approved snapshot without deleting data, replacing the approved plan, replaying completed work, or automatically approving/resuming/retrying execution."
       }
     }
   },

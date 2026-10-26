@@ -47,6 +47,22 @@ Target cleanup is available only before execution starts and only for Supabase C
 
 Treat package download URLs and passwords as secrets. Fetch a package only when requested.
 
+## Restoring the approved source snapshot
+
+When a paused migration reports missing source-snapshot metadata, call
+`get_migration_source_recovery`. If eligible, show the exact `revisionId` and `commitSha` and obtain
+explicit approval for that pair. Call `restore_migration_source_snapshot` with those values and
+`confirmed: true`. Credentials are resolved by the backend; do not ask for a token. A refusal or
+changed snapshot requires fresh inspection, never a substituted commit. This restores only the
+original snapshot identity: it does not re-prepare, approve, resume or retry work. Inspect any failed
+step and obtain separate retry authorization. An execution lock remains a stop.
+
+For `RECHECK_SQL_SYNTAX`, push source SQL fixes first. Explain that the action takes the latest
+source commit, reruns discovery and replaces the prepared plan. After explicit approval, call
+`recheck_migration_gate` with `action: "RECHECK_SQL_SYNTAX"` and `confirmed: true`. Poll the overview,
+inspect the detailed gate and new discovery report, and request separate approval before target
+writes. A 409 may mean no new commit or a changed gate; never fall back to confirm/resume/retry.
+
 ## Retained evidence and handoff
 
 - `list_migration_discovery_revisions` lists saved reports newest first; use the oldest returned `revisionNumber` as the exclusive `beforeRevision` cursor (page size 1–100, default 25). `get_migration_discovery_revision` reads one by `revisionId`. A missing historical report remains unknown. Historical approval is evidence, not permission to approve a replacement plan.

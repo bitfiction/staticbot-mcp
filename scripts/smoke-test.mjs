@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 94;
+const expectedToolCount = 96;
 const expectedTools = [
   "get_account_status",
   "scan_website",
@@ -14,6 +14,8 @@ const expectedTools = [
   "get_migration_live_site",
   "set_migration_live_site",
   "get_migration_live_commit_check",
+  "get_migration_source_recovery",
+  "restore_migration_source_snapshot",
   "get_connected_project_operations",
   "build_connected_project_preview",
   "switch_connected_project_live_branch",

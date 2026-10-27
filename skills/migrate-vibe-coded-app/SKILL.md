@@ -43,3 +43,9 @@ Use `get_migration_overview` for routine status polling and respect its `pollAft
 
 - For missing original source-snapshot metadata, inspect `get_migration_source_recovery`. Show its eligible revision and commit, obtain approval for that exact pair and pass them verbatim to `restore_migration_source_snapshot` with `confirmed: true`. An ineligible or changed snapshot is a refusal. Recovery does not approve, resume or retry; review any failed-job retry separately and never bypass an execution lock.
 - For an enabled `RECHECK_SQL_SYNTAX` gate action, first have the user push the fixes. Explain that rechecking adopts the latest source commit and replaces the prepared plan, obtain explicit approval, then call `recheck_migration_gate` with that action and `confirmed: true`. Poll the overview and review the new discovery report before requesting separate execution approval. Never route this action through `confirm_migration`.
+
+## Source version and shared backend operations
+
+- To re-prepare from another template version, use `preview_migration_source_update` first. Present the exact returned template and full commit and explain that the prior plan approval is invalidated. Apply with `update_migration_source` only after approval of that pair. Review the new discovery report and obtain separate execution approval; never bypass eligibility or locks.
+- `get_backend_workflows` can inspect a migration's existing backend. Show every shared stage, including production, before proposing an available dispatcher action. Match environment, project and observed flags exactly; preserve unknown outcomes and never retry automatically.
+- Authentication for a frontend hosted elsewhere uses `get_external_auth_domain` / `set_external_auth_domain` on its connected project. Confirm the exact inspected backend and public origin. This does not switch hosting or prove login/email-link flows work.

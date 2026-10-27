@@ -67,6 +67,23 @@
         }
       }
     },
+    "/api/v1/connected-projects/{id}/backend" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "get" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
     "/api/v1/connected-projects/{id}/branches" : {
       "parameters" : [ {
         "name" : "id",
@@ -77,6 +94,54 @@
         }
       } ],
       "get" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
+    "/api/v1/connected-projects/{id}/feature-branch-previews" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "get" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      },
+      "put" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
+    "/api/v1/connected-projects/{id}/hosting/auth-domain" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "get" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      },
+      "post" : {
         "responses" : {
           "default" : {
             "description" : "See the runtime OpenAPI specification."
@@ -501,6 +566,23 @@
         }
       }
     },
+    "/api/v1/migrations/{id}/backend" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "get" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
     "/api/v1/migrations/{id}/clean-target-plan" : {
       "parameters" : [ {
         "name" : "id",
@@ -688,6 +770,30 @@
         }
       } ],
       "get" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
+    "/api/v1/migrations/{id}/source-update" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "get" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      },
+      "post" : {
         "responses" : {
           "default" : {
             "description" : "See the runtime OpenAPI specification."
@@ -971,6 +1077,40 @@
       }
     },
     "/api/v1/cloudflare/hosting-preflight" : {
+      "post" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
+    "/api/v1/connected-projects/{id}/backend/workflows" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "post" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
+    "/api/v1/connected-projects/{id}/branches/preview" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
       "post" : {
         "responses" : {
           "default" : {
@@ -1383,6 +1523,23 @@
     "/api/v1/migrations/jobs/{jobId}/validate-function" : {
       "parameters" : [ {
         "name" : "jobId",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "post" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
+    "/api/v1/migrations/{id}/backend/workflows" : {
+      "parameters" : [ {
+        "name" : "id",
         "in" : "path",
         "required" : true,
         "schema" : {

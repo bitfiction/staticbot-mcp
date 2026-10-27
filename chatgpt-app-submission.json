@@ -864,12 +864,12 @@
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": true,
-        "destructiveHint": false
+        "destructiveHint": true
       },
       "justifications": {
         "read_only_justification": "Starts a synchronization run for the selected connected project.",
         "open_world_justification": "Can apply repository changes to Supabase and the project's deployed frontend.",
-        "destructive_justification": "Starts a bounded sync workflow whose destructive database changes pause for separate review."
+        "destructive_justification": "Sync can apply reviewed changes and overwrite function deployments. Full function redeployment requires explicit confirmation; backend review gates still apply."
       }
     },
     "list_sync_runs": {
@@ -1158,6 +1158,114 @@
         "read_only_justification": "After explicit approval of an exact revision and commit, restores missing source-snapshot metadata and records its audit evidence.",
         "open_world_justification": "The backend verifies that the original commit is still readable through the connected Git provider; credentials remain server-side.",
         "destructive_justification": "Restores the same approved snapshot without deleting data, replacing the approved plan, replaying completed work, or automatically approving/resuming/retrying execution."
+      }
+    },
+    "get_backend_workflows": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads the scoped backend state, shared stages, available actions and blockers without dispatching workflows.",
+        "open_world_justification": "Inspects only the connected workspace backend and retained operation history.",
+        "destructive_justification": "Does not activate, deactivate or record a workflow action."
+      }
+    },
+    "operate_backend_workflows": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Records the explicitly confirmed operation and can activate or deactivate the shared backend dispatcher.",
+        "open_world_justification": "The connected Supabase backend is inspected and may run background workflows with external effects.",
+        "destructive_justification": "Activation can trigger irreversible automation, while deactivation can stop capture/dispatch. Exact target, observed flags, shared stages and approval are required; unknown outcomes are not retried."
+      }
+    },
+    "get_feature_branch_preview_settings": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads current preview settings, eligibility and plan limits.",
+        "open_world_justification": "Reads the bounded Staticbot project and account entitlement.",
+        "destructive_justification": "Does not change settings or provision previews."
+      }
+    },
+    "set_feature_branch_preview_settings": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Changes the project preview setting after explicit approval.",
+        "open_world_justification": "Enabling affects future infrastructure builds triggered by repository pushes.",
+        "destructive_justification": "Automatic preview builds may replace older previews at the plan limit; the consequence is disclosed before confirmation."
+      }
+    },
+    "build_feature_branch_preview": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Queues a build after confirmation of the observed branch commit and build hint.",
+        "open_world_justification": "Provisions or updates a deployment using connected repository and hosting services.",
+        "destructive_justification": "A new preview can remove another preview at the plan limit; changed commit or eviction hints are refused."
+      }
+    },
+    "preview_migration_source_update": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Plans and resolves a selected source version without applying the source pin or replacing migration work.",
+        "open_world_justification": "Reads the selected Git provider ref using server-side credentials.",
+        "destructive_justification": "Returns only the source/version/commit notice; does not approve or resume migration."
+      }
+    },
+    "update_migration_source": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Re-pins and re-prepares an eligible migration after approval of the exact template and source commit.",
+        "open_world_justification": "Reads the source Git repository and queues discovery.",
+        "destructive_justification": "Replaces the prepared plan and invalidates its approval; existing execution guards and a separate new-plan approval remain required."
+      }
+    },
+    "get_external_auth_domain": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads backend binding and value-free authentication configuration status.",
+        "open_world_justification": "Reads only the connected project and its scoped worker readback.",
+        "destructive_justification": "Does not change authentication, hosting, DNS or secret values."
+      }
+    },
+    "set_external_auth_domain": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Queues authentication origin configuration after exact-target and origin approval.",
+        "open_world_justification": "Updates the connected Supabase authentication configuration and known base-URL secrets server-side.",
+        "destructive_justification": "Changes can affect production login and email links; exact backend/hostname confirmation, reauthorization and concurrent-operation guards apply."
       }
     }
   },

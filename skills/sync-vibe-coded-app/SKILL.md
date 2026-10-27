@@ -22,3 +22,10 @@ Read [references/sync-workflow.md](references/sync-workflow.md) for the tool seq
 - App secrets: `get_app_secrets` with `connectedProjectId` lists, per environment, the secrets the app uses and which still need a value — names and states, never values. The user enters values on the project page (`browserUrl`); never ask for them in chat. A sync does not yet detect a secret that a synced change starts using: if a change reads a new key (`Deno.env.get`, `import.meta.env`, `process.env`), tell the user it must be added in Staticbot before that feature works.
 
 Poll at a moderate interval and stop at terminal status or a review gate. Finish with source/target versions, applied and skipped changes, frontend status/URL, and manual follow-up.
+
+## Shared backend and feature previews
+
+- Inspect `get_backend_workflows` for the connected project before proposing dispatcher controls. Show all shared stages and live scope, exact environment/project and observed flags. Use only an available action with explicit approval; an UNVERIFIED outcome is not a reason to retry automatically.
+- For a tracked feature branch, inspect preview settings and branch rows. Show `lastCommitSha` and `build.hint`, including any removed preview. Copy them exactly to `build_feature_branch_preview`; refresh and ask again on 409. Changing automatic previews needs approval of the exact on/off setting and its plan limits.
+- Use `trigger_sync` with `redeployAllFunctions=true` only after explaining the full replacement of unchanged functions and receiving explicit approval; pass `confirmed=true` only then.
+- For an externally hosted frontend, inspect `get_external_auth_domain`, confirm the exact backend and user-supplied public origin, then call `set_external_auth_domain`. UPDATED is configuration evidence only; test real login/reset/magic-link flows separately.

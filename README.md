@@ -141,6 +141,28 @@ approves the returned effects. Customer-owned branches get pull requests, never 
 `dismiss_platform_update` declines optional fixes; required fixes cannot be dismissed. Follow the
 returned sync run and PR links. The server feature flag may keep these operations disabled during rollout.
 
+### Backend controls and source updates
+
+`get_backend_workflows` inspects the shared backend for exactly one connected project or migration.
+Present every affected stage and the observed flags before using `operate_backend_workflows`.
+These controls manage Staticbot's migrated Base44 scheduler on Supabase Cloud; unknown outcomes
+remain unknown and are never retried automatically.
+
+For tracked feature branches, inspect `list_connected_project_previews` and
+`get_feature_branch_preview_settings`. A build requires the exact commit and build hint, including
+any preview removed by the plan limit. Automatic settings keep the existing hosting-plan limits.
+`trigger_sync` optionally redeploys all functions only after explicit confirmation; normal sync
+requests stay compatible.
+
+`preview_migration_source_update` resolves a chosen template version to its exact commit without
+applying it. `update_migration_source` requires approval of that exact pair and prepares a new plan
+for separate review; it does not approve target writes.
+
+For a frontend hosted elsewhere, inspect `get_external_auth_domain` before approving its exact
+backend and new public origin through `set_external_auth_domain`. This changes authentication
+configuration, not frontend hosting or DNS. Even an UPDATED result needs real sign-in, reset and
+magic-link testing.
+
 ## Example requests
 
 - “Deploy this repository with Staticbot and tell me what DNS records I need.”

@@ -32,3 +32,15 @@ Read [references/deployment-workflow.md](references/deployment-workflow.md) for 
 - For `OFFER_CLOUDFLARE_PUSH`, use the exact returned `domainId`, explain that Staticbot will upsert deployment-owned records without changing nameservers or mail, and obtain authorization before calling `push_dns_to_cloudflare`.
 
 For rollback, list valid versions first, present the exact target and commit, and obtain explicit confirmation. Never infer a rollback template ID.
+
+## Feature previews and external frontend authentication
+
+For a tracked feature branch, inspect `list_connected_project_previews` and
+`get_feature_branch_preview_settings`. Show the exact commit and `build.hint`, including previews
+removed by the plan limit, before obtaining approval and calling `build_feature_branch_preview`.
+Forward the inspected values verbatim and obtain fresh approval after a changed-target 409.
+
+For a frontend hosted outside Staticbot, `get_external_auth_domain` inspects its connected backend.
+Confirm the exact backend and user-supplied public hostname before `set_external_auth_domain`.
+This updates authentication/base-URL configuration server-side, not hosting or DNS. Even UPDATED
+requires real login, password-reset and magic-link verification; never request secret values.

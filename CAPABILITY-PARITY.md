@@ -50,6 +50,48 @@ This is local source and contract verification. The hosted release must be updat
 refreshed before claiming these additions are available to reviewers. No production mutation or
 submission was performed on 2026-10-26.
 
+### Backend, previews, source updates and external authentication — 2026-10-26
+
+This extension adds eleven V1 operations and nine tools: 120 V1 operations are now accounted for,
+113 exercised by 105 runtime tools and the same seven deliberate differences. The snapshot is
+regenerated from the backend controller mappings. This remains a source-level contract check.
+
+| Capability | V1 routes | MCP tools |
+| --- | --- | --- |
+| Shared backend workflow state/actions | GET `/{connected-projects,migrations}/{id}/backend`; POST the same path plus `/workflows` | `get_backend_workflows`, `operate_backend_workflows` (exactly one project/migration selector) |
+| Feature-branch preview settings | GET/PUT `/connected-projects/{id}/feature-branch-previews` | `get_feature_branch_preview_settings`, `set_feature_branch_preview_settings` |
+| Build a tracked feature-branch preview | POST `/connected-projects/{id}/branches/preview` | `build_feature_branch_preview` |
+| Preview/apply source re-preparation | GET/POST `/migrations/{id}/source-update` | `preview_migration_source_update`, `update_migration_source` |
+| Authentication for an external frontend | GET/POST `/connected-projects/{id}/hosting/auth-domain` | `get_external_auth_domain`, `set_external_auth_domain` |
+
+All paths above are under `/api/v1`. Existing sync accepts `redeployAllFunctions`; it requires
+`confirmed=true` only when force redeploying every function. An ordinary sync keeps its previous
+request shape. The sync boundary now checks current production-operation permission and stored links.
+
+Backend actions retain the Base44/Supabase Cloud scope, exact environment/project reference and
+observed flags. All shared stages, including production, are displayed before confirmation. An
+UNVERIFIED remote outcome stays unknown and never triggers an automatic retry. Defer and verify
+record decisions; neither means the app's real workflows have been tested.
+
+Branch reads now include `build` availability/hints. Builds require the inspected commit and hint,
+including the plan-limit eviction consequence; changed values return 409 before provisioning.
+Preview settings retain hosting-plan eligibility and the existing transactional writer.
+
+Source re-prepare resolves the chosen template version before approval. The read response is an
+explicit projection: credential-bearing prepared plans never enter public JSON. Applying requires
+the exact full commit and explicit approval, invalidates the previous plan approval and returns to
+new discovery review. Existing execution/target/feature guards remain enforced.
+
+External authentication reuses the same service and transaction boundaries as the browser. Each
+adapter supplies current authority; the API adapter rechecks scope, membership, production policy,
+links and the inspected backend binding inside the project/authentication locks. Hostname validation,
+concurrent domain-move/job guards and worker readback remain unchanged. Secret values stay server-side.
+UPDATED proves configuration readback, not login/reset/magic-link functionality or a hosting move.
+
+The focused backend batch and full MCP suite pass. Real provider/reviewer-fixture runs and production
+deployment remain release validation. Deploy the backend before the hosted MCP server and refresh
+the portal scan after release.
+
 ### Seven current route differences
 
 | V1 route | Context |
@@ -130,7 +172,7 @@ This check does not claim every dashboard operation, request field or response f
 
 ## Submission maintenance
 
-`chatgpt-app-submission.json` now covers all 96 local runtime tools with explicit annotations and
+`chatgpt-app-submission.json` now covers all 105 local runtime tools with explicit annotations and
 justifications, exactly five positive cases and three negative cases. The one-time data-import gate
 test was replaced with a website check. Positive tests still need real reviewer fixtures and a live
 run; metadata validation is not an execution result.

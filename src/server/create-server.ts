@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { ToolContext } from "../context.js";
 import { registerAccountTools } from "../tools/account.js";
+import { registerBackendOperationTools } from "../tools/backend-operations.js";
 import { registerAwsHostingTools } from "../tools/aws-hosting.js";
 import { registerCloudflareHostingTools } from "../tools/cloudflare-hosting.js";
 import { registerConnectedProjectTools } from "../tools/connected-projects.js";
@@ -45,6 +46,7 @@ export function createServer(context: ToolContext): McpServer {
   registerMigrationTools(server, context);
   registerConnectedProjectTools(server, context);
   registerProjectOperationTools(server, context);
+  registerBackendOperationTools(server, context);
   registerGateTools(server, context);
 
   return server;

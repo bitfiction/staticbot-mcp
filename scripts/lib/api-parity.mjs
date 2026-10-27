@@ -106,6 +106,11 @@ export const TOOL_PROBES = {
   get_app_secrets: [{ connectedProjectId: FIXTURE_ID }, { migrationId: FIXTURE_ID }, { stackId: FIXTURE_ID }],
   // Recovery only accepts a complete commit identity and explicit approval of that exact snapshot.
   restore_migration_source_snapshot: [{ id: FIXTURE_ID, revisionId: FIXTURE_ID, commitSha: 'a'.repeat(40), confirmed: true }],
+  update_migration_source: [{ id: FIXTURE_ID, templateId: FIXTURE_ID, expectedCommitSha: 'a'.repeat(40), confirmed: true }],
+  get_backend_workflows: [{ connectedProjectId: FIXTURE_ID }, { migrationId: FIXTURE_ID }],
+  operate_backend_workflows: ['connectedProjectId', 'migrationId'].map(key => ({ [key]: FIXTURE_ID,
+    environmentId: `migration:${FIXTURE_ID}`, expectedProjectRef: 'target', action: 'DEACTIVATE',
+    expectedActivated: true, expectedTickActive: true, confirmed: true })),
 };
 
 export async function collectToolCalls(createServer, probes = TOOL_PROBES) {

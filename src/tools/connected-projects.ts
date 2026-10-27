@@ -54,14 +54,19 @@ registerApiTool(server,
 
 registerApiTool(server,
   "trigger_sync",
-  "Trigger a manual sync for a connected project. Detects changes since the last sync (new database migrations, edge function updates, frontend changes) and applies them to the target Supabase instance and the project's Staticbot-selected deployment target.",
+  "Trigger a manual sync for a connected project. Detects changes since the last sync (new database migrations, edge function updates, frontend changes) and applies them to the target Supabase instance and the project's Staticbot-selected deployment target. Optional redeployAllFunctions=true also replaces unchanged Base44 functions: explain this full function redeploy and obtain explicit approval before setting confirmed=true. Never force redeployment merely to bypass a failed sync. A queued result is not completion; monitor the returned sync run.",
   {
     id: z.string().uuid().describe("Connected project ID"),
     commitSha: z.string().optional().describe("Specific commit SHA to sync to (defaults to latest on branch)"),
+    redeployAllFunctions: z.boolean().optional().describe("Explicitly requested full Base44 function redeploy, including unchanged functions"),
+    confirmed: z.literal(true).optional().describe("Required when redeployAllFunctions=true, after explicit approval"),
   },
-  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-  async ({ id, commitSha }) => {
-    const body = commitSha ? { commitSha } : {};
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+  async ({ id, commitSha, redeployAllFunctions, confirmed }) => {
+    if (redeployAllFunctions && !confirmed) throw new Error("Full function redeployment requires explicit approval and confirmed=true");
+    const body = { ...(commitSha ? { commitSha } : {}),
+      ...(redeployAllFunctions !== undefined ? { redeployAllFunctions } : {}),
+      ...(confirmed !== undefined ? { confirmed } : {}) };
     const data = await apiFetch(`/api/v1/connected-projects/${id}/sync`, {
       method: "POST",
       body: JSON.stringify(body),

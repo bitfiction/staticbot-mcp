@@ -29,6 +29,23 @@ export function registerProjectOperationTools(server: McpServer, { apiFetch, toT
     }), toText),
   );
 
+  registerApiTool(server,
+    "switch_connected_project_migration_backend",
+    "Explicitly switch this app's project to a completed migration's backend, including its sync credentials. " +
+      "Inspect the project and migration first and obtain approval naming the target backend. " +
+      "The previous migration must be archived and no sync may be active. " +
+      "The live build stays as it is until a new preview is verified and promoted.",
+    {
+      id: z.string().uuid().describe("Connected project ID"),
+      migrationId: z.string().uuid().describe("Completed migration of this project's app"),
+      confirmed: z.literal(true).describe("True only after approval of the named backend switch"),
+    },
+    { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    async ({ id, migrationId }) => apiToolResult(await apiFetch(`/api/v1/connected-projects/${id}/migration-backend`, {
+      method: "POST", body: JSON.stringify({ migrationId }),
+    }), toText),
+  );
+
   const branchInput = {
     id: z.string().uuid().describe("Connected project ID"),
     confirmed: z.literal(true).describe("True only after explicit approval of the named branch targets and consequences"),

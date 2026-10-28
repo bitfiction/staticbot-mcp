@@ -1170,6 +1170,23 @@
         }
       }
     },
+    "/api/v1/connected-projects/{id}/migration-backend" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "post" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
     "/api/v1/connected-projects/{id}/platform-updates/apply" : {
       "parameters" : [ {
         "name" : "id",

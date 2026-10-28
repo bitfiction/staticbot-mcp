@@ -138,7 +138,9 @@ The backend route must be deployed before enabling these tools in the hosted MCP
 Sync tab. `check_platform_updates` refreshes the evidence and may enqueue approved automatic fixes;
 it is a mutating operation. `apply_platform_updates` applies the selected fixes only after the user
 approves the returned effects. Customer-owned branches get pull requests, never direct pushes.
-`dismiss_platform_update` declines optional fixes; required fixes cannot be dismissed. Follow the
+`dismiss_platform_update` declines optional fixes; required fixes cannot be dismissed.
+`refresh_platform_update` re-runs the read-only refresh of an update marked `canRefresh` (Refresh account
+connections); it installs nothing and changes no credentials or user connections. Follow the
 returned sync run and PR links. The server feature flag may keep these operations disabled during rollout.
 
 ### Backend controls and source updates

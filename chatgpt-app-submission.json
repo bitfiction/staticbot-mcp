@@ -968,6 +968,18 @@
         "destructive_justification": "The sync mode can be changed again after user confirmation."
       }
     },
+    "switch_connected_project_migration_backend": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Changes which migration backend the connected project and its sync use.",
+        "open_world_justification": "Changes Staticbot's own project link and sync target; the live build stays until a promoted preview.",
+        "destructive_justification": "Replaces the project's backend link and sync credentials; it requires explicit approval naming the target backend."
+      }
+    },
     "get_connected_project_operations": {
       "justifications": {
         "read_only_justification": "Only retrieves current branch targets, role permissions and shared webhook scope.",
@@ -1134,6 +1146,18 @@
         "read_only_justification": "Records that the user declined an optional update.",
         "open_world_justification": "Only changes Staticbot's own record.",
         "destructive_justification": "Does not delete, replace or execute customer resources; required updates cannot be dismissed."
+      }
+    },
+    "refresh_platform_update": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Starts a sync run and records refreshed account-connection metadata.",
+        "open_world_justification": "Reads the customer's repository branch and Base44 workspace metadata.",
+        "destructive_justification": "Installs nothing and keeps credentials and user connections; installing is a separate update."
       }
     },
     "get_migration_source_recovery": {

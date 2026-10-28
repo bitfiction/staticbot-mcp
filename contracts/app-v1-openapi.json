@@ -1245,6 +1245,30 @@
         }
       }
     },
+    "/api/v1/connected-projects/{id}/platform-updates/{updateId}/refresh" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      }, {
+        "name" : "updateId",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "post" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
     "/api/v1/connected-projects/{id}/reset-webhook" : {
       "parameters" : [ {
         "name" : "id",

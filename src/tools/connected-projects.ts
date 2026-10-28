@@ -281,4 +281,19 @@ registerApiTool(server,
       { method: "POST", body: "{}" }),
     toText)
 );
+
+registerApiTool(server,
+  "refresh_platform_update",
+  "Refresh the recorded metadata of a platform update whose list_platform_updates entry has canRefresh, such as base44-connector-metadata (Refresh account connections). It re-reads the project's current branch and available Base44 workspace metadata to find added, changed or possibly removed account connections. It does not install, deploy, change credentials or remove user connections; installing stays a separate update for apply_platform_updates. Returns the sync run to follow.",
+  {
+    id: z.string().uuid().describe("Connected project ID"),
+    updateId: z.string().min(1).describe("Update id from list_platform_updates whose canRefresh is true"),
+  },
+  // Not read-only: it starts a sync run and records the new metadata, but changes no customer resource.
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  async ({ id, updateId }) => apiToolResult(
+    await apiFetch(`/api/v1/connected-projects/${id}/platform-updates/${encodeURIComponent(updateId)}/refresh`,
+      { method: "POST", body: "{}" }),
+    toText)
+);
 }

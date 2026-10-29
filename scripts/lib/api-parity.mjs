@@ -108,6 +108,8 @@ export const TOOL_PROBES = {
   restore_migration_source_snapshot: [{ id: FIXTURE_ID, revisionId: FIXTURE_ID, commitSha: 'a'.repeat(40), confirmed: true }],
   update_migration_source: [{ id: FIXTURE_ID, templateId: FIXTURE_ID, expectedCommitSha: 'a'.repeat(40), confirmed: true }],
   get_backend_workflows: [{ connectedProjectId: FIXTURE_ID }, { migrationId: FIXTURE_ID }],
+  test_connection_credentials: [{ connectedProjectId: FIXTURE_ID, connectorId: 'calendar' },
+    { migrationId: FIXTURE_ID, connectorId: 'calendar' }],
   operate_backend_workflows: ['connectedProjectId', 'migrationId'].map(key => ({ [key]: FIXTURE_ID,
     environmentId: `migration:${FIXTURE_ID}`, expectedProjectRef: 'target', action: 'DEACTIVATE',
     expectedActivated: true, expectedTickActive: true, confirmed: true })),

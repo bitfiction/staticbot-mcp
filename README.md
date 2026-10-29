@@ -220,6 +220,11 @@ revision does not select historical execution. Migrated schedules remain staged 
 customer reviews and runs the report's guarded activation SQL at cutover when available. It preserves
 source-disabled jobs. Resolve staging errors before activation; reading a report never activates jobs.
 
+`get_app_secrets` lists the app's secrets and per-user account connections (Google, Dropbox) by name
+and state, never a value. `test_connection_credentials` asks the provider whether it recognises the
+OAuth client the user saved for one connection, the dashboard's "Test credentials". It takes and returns
+no credential value; the user enters values only in the dashboard at the returned `browserUrl`.
+
 ## Staticbot skills
 
 The repository includes focused deployment, migration, and Continuous Sync skills plus a [general Staticbot Skill](https://github.com/bitfiction/staticbot-mcp/tree/main/skills/staticbot) for Codex or Claude environments that can operate the REST API directly without an MCP server. The direct-API workflow fetches the live OpenAPI contract and applies the same approval and credential-handling rules.

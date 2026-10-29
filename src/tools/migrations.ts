@@ -437,6 +437,28 @@ registerApiTool(server,
 );
 
 registerApiTool(server,
+  "test_connection_credentials",
+  "Ask the provider (Google or Dropbox) whether it accepts the OAuth client ID and secret the user saved for one per-user account connection — the same \"Test credentials\" button as the dashboard. Take connectorId from the `connectors` in get_app_secrets, typically one in state READY_TO_TEST. " +
+  "It sends a deliberately invalid authorization code with the saved client, so the provider only answers whether it recognises the client: nothing is saved or changed, and no value is sent by you or returned. The redirect URI is not checked; the provider checks it when a user connects. " +
+  "`status`: ACCEPTED (the client is recognised; next, the user tests Connect in their preview), REJECTED (wrong client ID or secret), MISSING (not both saved yet), UNAVAILABLE (the connection cannot be installed; `message` says why) or UNKNOWN (no verdict, e.g. the provider could not be reached). Show `message` as given. " +
+  "When the values need entering or fixing, give the user `browserUrl`: they enter them in the dashboard themselves. Never ask for client IDs or secrets in the conversation and do not accept them if offered.",
+  {
+    connectedProjectId: z.string().uuid().optional().describe("Connected project ID — the app after go-live"),
+    migrationId: z.string().uuid().optional().describe("Migration ID. Ignored when connectedProjectId is given."),
+    connectorId: z.string().min(1).describe("connectors[].connectorId from get_app_secrets"),
+  },
+  { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+  async ({ connectedProjectId, migrationId, connectorId }) => {
+    if (!connectedProjectId && !migrationId) throw new Error("Pass connectedProjectId or migrationId.");
+    const path = `secrets/connections/${encodeURIComponent(connectorId)}/check`;
+    const data = await apiFetch(connectedProjectId
+      ? `/api/v1/connected-projects/${connectedProjectId}/${path}`
+      : `/api/v1/migrations/${migrationId}/${path}`, { method: "POST", body: "{}" });
+    return apiToolResult(data, toText);
+  }
+);
+
+registerApiTool(server,
   "retry_migration_job",
   "Retry a failed migration job, or a skipped one whose `retryableAfterSkip` is true. It will be reset to READY and picked up by the worker again. A skipped SQL file can be retried while the migration is paused: it runs first, and whatever step is failing then runs again after it; retry one skipped file at a time. Use get_migration_jobs first to find the job's ID, error message and retryableAfterSkip.",
   {

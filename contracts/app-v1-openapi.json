@@ -1286,6 +1286,30 @@
         }
       }
     },
+    "/api/v1/connected-projects/{id}/secrets/connections/{connectorId}/check" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      }, {
+        "name" : "connectorId",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "post" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
     "/api/v1/connected-projects/{id}/setup-webhook" : {
       "parameters" : [ {
         "name" : "id",
@@ -1717,6 +1741,30 @@
     "/api/v1/migrations/{id}/resume" : {
       "parameters" : [ {
         "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "post" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
+    "/api/v1/migrations/{id}/secrets/connections/{connectorId}/check" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      }, {
+        "name" : "connectorId",
         "in" : "path",
         "required" : true,
         "schema" : {

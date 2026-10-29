@@ -38,6 +38,10 @@ Deliberately **not** destructive, and worth knowing why:
   carries the same hints.
 - `get_app_secrets` only reads which secrets a migrated app uses and whether each has a value — names
   and states, never a value. No tool writes secret values: the user enters them in the dashboard.
+- `test_connection_credentials` is read-only and open-world: it asks Google's or Dropbox's token endpoint
+  whether it recognises the OAuth client the user saved for one account connection, using a deliberately
+  invalid authorization code. Nothing is saved or changed, it takes no credential value, and it returns only
+  a status, a sentence and the dashboard link.
 
 ## Justifications for destructive tools
 

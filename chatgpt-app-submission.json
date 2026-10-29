@@ -596,6 +596,18 @@
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
+    "test_connection_credentials": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only asks the provider whether it recognises the OAuth client already saved for one account connection; nothing is saved or changed, and no value is sent or returned.",
+        "open_world_justification": "Sends one deliberately invalid authorization code to Google's or Dropbox's token endpoint with the saved client.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
     "retry_migration_job": {
       "annotations": {
         "readOnlyHint": false,

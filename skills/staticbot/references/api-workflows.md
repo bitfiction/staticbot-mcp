@@ -126,6 +126,7 @@ not report a Workers custom hostname live until both returned status fields are 
 - `GET /migrations/{id}/secrets` — the app's secrets: names, states (`SET` / `NEEDS_VALUE`), what each is for, and `browserUrl` (the migration's App secrets tab, where the user enters values). Never values
 - `GET /migrations/secrets/by-stack/{stackId}` — the same, from a stack that deploys a migrated app; 404 for any other stack
 - `GET /connected-projects/{id}/secrets` — the app's secrets per environment (an environment is what deployments run against; several pipeline stages can share one — today every project has exactly one), with `browserUrl` to the project page's App secrets section. Never values
+- `POST /migrations/{id}/secrets/connections/{connectorId}/check` and `POST /connected-projects/{id}/secrets/connections/{connectorId}/check` — ask the provider whether it recognises the OAuth client saved for one account connection (`connectors[].connectorId`). Takes and returns no value: `status` (ACCEPTED / REJECTED / MISSING / UNAVAILABLE / UNKNOWN), `message`, `browserUrl`
 - `POST /migrations/{migrationId}/jobs/{jobId}/resolve-schema-gap`
 - `POST /migrations/jobs/{jobId}/validate-function`
 - `GET /migrations/integrations/instances`

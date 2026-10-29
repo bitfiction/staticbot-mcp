@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 107;
+const expectedToolCount = 108;
 const expectedTools = [
   "get_account_status",
   "scan_website",
@@ -50,6 +50,7 @@ const expectedTools = [
   "get_migration_execution_revisions",
   "get_migration_job_history",
   "get_app_secrets",
+  "test_connection_credentials",
   "list_source_repositories",
   "list_github_repositories",
   "list_supabase_organizations",
@@ -432,6 +433,28 @@ try {
     apiRequests.some(({ method, url }) =>
       method === "GET" && url === `/api/v1/migrations/secrets/by-stack/${secretsStackId}`),
     "get_app_secrets by stack must call the public v1 endpoint",
+  );
+
+  // Testing saved connection credentials takes no value and sends none back.
+  const credentialTest = tools.find(({ name }) => name === "test_connection_credentials");
+  assert.equal(credentialTest?.annotations?.readOnlyHint, true, "test_connection_credentials must be read-only");
+  assert.match(credentialTest?.description ?? "", /Never ask for client IDs or secrets/,
+    "test_connection_credentials must tell agents never to ask for credential values");
+  assert.deepEqual(Object.keys(credentialTest?.inputSchema?.properties ?? {}).sort(),
+    ["connectedProjectId", "connectorId", "migrationId"], "test_connection_credentials must take no credential values");
+  await client.callTool({ name: "test_connection_credentials",
+    arguments: { migrationId: secretsMigrationId, connectorId: "calendar" } });
+  await client.callTool({ name: "test_connection_credentials",
+    arguments: { connectedProjectId: secretsProjectId, connectorId: "calendar" } });
+  assert(
+    apiRequests.some(({ method, url }) => method === "POST"
+      && url === `/api/v1/migrations/${secretsMigrationId}/secrets/connections/calendar/check`),
+    "test_connection_credentials by migration must call the public v1 check",
+  );
+  assert(
+    apiRequests.some(({ method, url }) => method === "POST"
+      && url === `/api/v1/connected-projects/${secretsProjectId}/secrets/connections/calendar/check`),
+    "test_connection_credentials by connected project must call the project's v1 check",
   );
 
   await client.callTool({

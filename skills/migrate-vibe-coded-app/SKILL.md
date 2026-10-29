@@ -49,3 +49,11 @@ Use `get_migration_overview` for routine status polling and respect its `pollAft
 - To re-prepare from another template version, use `preview_migration_source_update` first. Present the exact returned template and full commit and explain that the prior plan approval is invalidated. Apply with `update_migration_source` only after approval of that pair. Review the new discovery report and obtain separate execution approval; never bypass eligibility or locks.
 - `get_backend_workflows` can inspect a migration's existing backend. Show every shared stage, including production, before proposing an available dispatcher action. Match environment, project and observed flags exactly; preserve unknown outcomes and never retry automatically.
 - Authentication for a frontend hosted elsewhere uses `get_external_auth_domain` / `set_external_auth_domain` on its connected project. Confirm the exact inspected backend and public origin. This does not switch hosting or prove login/email-link flows work.
+
+## What Staticbot support covers
+
+Before drafting a request to Staticbot support for the user, check it against the scope instead of forwarding it as written:
+
+- Supported Migration (one migration) works from a run: failed jobs, the preview, the handoff. Help the user run first, with a test migration into an empty target that stops at each review, and bring questions about what that run did.
+- Guarantees or documentation before a run (exact outcomes, safeguard procedures, generated files, delivery dates), security, permission or tenant-isolation reviews of the app, app-specific test suites, changes to the app's own logic, project plans with owners and dates, itemized quotes, and working within the user's change-control process are Enterprise scope, priced per project. Point the user to `https://www.staticbot.dev/pricing#enterprise-migration` and do not present these as Supported Migration requests.
+- Full scope: `https://www.staticbot.dev/pricing#supported-migration-scope`.

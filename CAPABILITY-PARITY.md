@@ -1,7 +1,90 @@
-# V1 / MCP capability check — 2026-10-15
+# V1 / MCP capability check — 2026-10-29
 
-This is a source-level check of the current Staticbot app and MCP repositories, not a production
-release certification. The backend has other uncommitted work; these additions preserve it.
+The latest check covers current source, focused tests, the live V1 route inventory and read-only
+production deployment metadata. It does not certify authenticated reviewer workflows or portal
+submission readiness. Earlier dated sections below retain the scope of their original checks.
+
+## Current readiness — 2026-10-29
+
+| Surface | Verified state |
+| --- | --- |
+| V1 source contract | 128 operations, including the four new cutover operations; the backend controller-inventory and internal-gap guardrails pass. |
+| MCP source | 112 runtime tools exercise 121 V1 routes; seven deliberate differences remain listed below. |
+| Live V1 API | The earlier read-only audit returned 124 operations. The four new cutover routes require a backend release; source coverage is not evidence of live availability. |
+| Hosted MCP | The earlier audit found one ready replica of `staticbot-mcp:1.8.37-prod`, matching committed main `dfcaaad`, with passing health/readiness and OAuth discovery. The new cutover tools are local changes after that release and require a hosted MCP release. |
+| Published npm package | npm's latest `@staticbot/mcp` is still `1.8.2`; this checkout is `1.8.3`. The current hosted image and the npm publication are separate releases. |
+| Package preparation | `npm pack --dry-run` passes for `1.8.3` and includes the new tool modules and plugin configuration. Nothing was published by this work. |
+
+The previous workflow, branch preview, source-update and external-authentication additions remain
+covered. Website URL scanning is already exposed through `scan_website` / `get_website_scan` and
+owned `/api/v1/site-scans` routes; browser Turnstile is not needed for this authenticated entry point.
+Target sites' own Cloudflare/access restrictions still apply.
+
+Since the previous feature batch, V1/MCP also gained:
+
+- `switch_connected_project_migration_backend`: explicitly switch a project's backend to a completed
+  migration of the same app, with confirmation and backend eligibility checks.
+- `refresh_platform_update`: queue an update's read-only metadata refresh separately from installing it.
+- `test_connection_credentials`: ask Google or Dropbox about a saved connection's OAuth client,
+  using either the project or migration selector. No credential values enter or leave the tool;
+  acceptance is not proof of a working redirect or end-user connection.
+
+### Cutover gap closed locally — 2026-10-29
+
+The project's **Switch tab / cutover watch** now has four V1 operations and four MCP tools:
+
+| V1 operation | MCP tool |
+| --- | --- |
+| `GET /api/v1/connected-projects/{id}/cutover` | `get_connected_project_cutover` |
+| `POST /api/v1/connected-projects/{id}/cutover/check` | `check_connected_project_cutover` |
+| `POST /api/v1/connected-projects/{id}/cutover/copy` | `copy_connected_project_late_changes` |
+| `POST /api/v1/connected-projects/{id}/cutover/conflicts/reviewed` | `mark_cutover_conflicts_reviewed` |
+
+GET reads retained evidence without enrollment, scan reconciliation or notifications. Check uses
+the existing guarded scanner and bounded source reader, can send configured workspace notifications,
+and never queues a copy. Unknown and incomplete evidence remains qualified.
+
+Copy and conflict review use scoped V1 authority and require `confirmed=true` plus the exact inspected
+`stateVersion` as `expectedState`. Copy also requires an explicit INSERT_ONLY or FULL_UPDATE mode.
+The snapshot binds project/source/import settings, target, watch evidence, copy window and last-copy
+results. The service reauthorizes and rechecks it under project/watch locks before writes. Changed
+state returns 409 and cannot silently substitute a new window, backend or copy. Replays of an old
+approval cannot start a second copy or review newer conflicts. The worker reads current source rows
+after the approved lower bound, not a frozen set of the observed rows.
+
+Public responses contain explicit identities, timestamps, qualified counts and bounded summaries;
+worker inputs, row values, raw provider errors and signed file URLs are excluded. Conflict lists
+are capped at 20 with a truncation indicator; the user must review any remaining conflicts in the
+dashboard. Marking review advances Staticbot's source window and does not repair database records.
+Legacy migrations with no recorded source app ID remain readable, but API copying is refused because
+inspection cannot identify their encrypted-integration fallback; those copies use the dashboard.
+
+The previous four internal-route deferrals have been removed. This extension needs no database
+migration or worker change. Deploy the backend before the hosted MCP and refresh the portal scan.
+No production deployment or customer copy was performed as part of this implementation.
+
+Other documented dashboard gaps remain, including project linking, pipeline administration,
+deployment cleanup/destruction and general DNS-zone management. Passing V1-to-MCP coverage does not
+mean every dashboard feature has a public endpoint. Secret entry remains a deliberate browser boundary.
+
+### Validation and submission follow-through
+
+The full MCP suite passes, including all 112 tools, submission annotations/cases and route parity
+against the regenerated backend contract. The new cutover adapter checks exercise both API-key and
+delegated OAuth contexts, exact-state forwarding, both copy modes, invalid confirmations, retained
+unknown evidence and no implicit copy/review/retry calls. The focused backend batch passes 94 tests,
+including six PostgreSQL transaction tests. Backend checks cover current roles/scopes,
+tenant isolation, value-free projections, stale windows/settings/backends, revocation under locks
+and replay refusal. PostgreSQL tests invoke the proxied service with auto-commit disabled and verify
+commits/rollback through independent connections. Package and discovery validation also pass.
+
+This audit did not log in as the reviewer, run the five submission scenarios against real fixtures,
+record a video, inspect the current portal draft or submit the application. Those remain unverified.
+The existing local plugin configuration still launches stdio with `STATICBOT_API_KEY`; a hosted
+submission needs the appropriate remote OAuth configuration and a fresh portal tool scan. Verify
+reviewer access and fixtures, confirm the portal connects to the current hosted release, then record
+the final demo. The npm publication is a separate release task and is not evidence that the hosted
+server is stale.
 
 ## Automated route guardrails — 2026-10-17
 
@@ -172,7 +255,7 @@ This check does not claim every dashboard operation, request field or response f
 
 ## Submission maintenance
 
-`chatgpt-app-submission.json` now covers all 105 local runtime tools with explicit annotations and
+`chatgpt-app-submission.json` now covers all 112 local runtime tools with explicit annotations and
 justifications, exactly five positive cases and three negative cases. The one-time data-import gate
 test was replaced with a website check. Positive tests still need real reviewer fixtures and a live
 run; metadata validation is not an execution result.

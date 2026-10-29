@@ -591,7 +591,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Only retrieves which secrets a migrated app uses and whether each has a value — names and states, never a value.",
+        "read_only_justification": "Only retrieves which secrets a migrated app uses and whether each has a value \u2014 names and states, never a value.",
         "open_world_justification": "Does not change migration work or an external system.",
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
@@ -1302,6 +1302,54 @@
         "read_only_justification": "Queues authentication origin configuration after exact-target and origin approval.",
         "open_world_justification": "Updates the connected Supabase authentication configuration and known base-URL secrets server-side.",
         "destructive_justification": "Changes can affect production login and email links; exact backend/hostname confirmation, reauthorization and concurrent-operation guards apply."
+      }
+    },
+    "get_connected_project_cutover": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads retained cutover status, bounded source-change summaries and copy confirmation scope without scanning or writing.",
+        "open_world_justification": "Does not change a website, database or external system.",
+        "destructive_justification": "Does not start a copy or advance a conflict review window."
+      }
+    },
+    "check_connected_project_cutover": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Starts a guarded live-site scan and source check and records current evidence.",
+        "open_world_justification": "Fetches the public app and connected source; configured workspace notifications may be sent.",
+        "destructive_justification": "Does not copy customer data, overwrite target rows or mark conflicts reviewed."
+      }
+    },
+    "copy_connected_project_late_changes": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Queues a confirmed catch-up copy from Base44 into the migrated backend.",
+        "open_world_justification": "Writes customer records and missing accounts in Supabase and may copy associated files.",
+        "destructive_justification": "FULL_UPDATE overwrites differing target rows. Requires approval of the selected mode and exact inspected source, target and copy window, with state rechecked under locks."
+      }
+    },
+    "mark_cutover_conflicts_reviewed": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Records an explicit conflict-review decision and advances the watch window.",
+        "open_world_justification": "Updates only Staticbot state; it does not fix database records or change an external system.",
+        "destructive_justification": "Advances the source window past the reviewed copy. Requires explicit user attestation and the exact inspected copy/result snapshot, reauthorized under locks."
       }
     }
   },

@@ -6,6 +6,7 @@ import { registerBackendOperationTools } from "../tools/backend-operations.js";
 import { registerAwsHostingTools } from "../tools/aws-hosting.js";
 import { registerCloudflareHostingTools } from "../tools/cloudflare-hosting.js";
 import { registerConnectedProjectTools } from "../tools/connected-projects.js";
+import { registerCutoverTools } from "../tools/cutover.js";
 import { registerDeploymentDnsTools } from "../tools/deployment-dns.js";
 import { registerDeploymentManagementTools } from "../tools/deployment-management.js";
 import { registerDeploymentTools } from "../tools/deployments.js";
@@ -47,6 +48,7 @@ export function createServer(context: ToolContext): McpServer {
   registerConnectedProjectTools(server, context);
   registerProjectOperationTools(server, context);
   registerBackendOperationTools(server, context);
+  registerCutoverTools(server, context);
   registerGateTools(server, context);
 
   return server;

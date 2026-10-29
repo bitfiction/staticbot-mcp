@@ -165,6 +165,23 @@ backend and new public origin through `set_external_auth_domain`. This changes a
 configuration, not frontend hosting or DNS. Even an UPDATED result needs real sign-in, reset and
 magic-link testing.
 
+### Cutover status and late source changes
+
+`get_connected_project_cutover` reads retained Switch-tab evidence without starting a check.
+`check_connected_project_cutover` scans the live app and checks the old backend for late writes;
+it never copies data. Unknown, blocked or truncated checks remain qualified.
+
+For Base44 catch-up, present the source, target, copy window and copy mode before using
+`copy_connected_project_late_changes`. `INSERT_ONLY` leaves differing target records for review;
+`FULL_UPDATE` overwrites them. Both require `confirmed=true` and the exact inspected `stateVersion`
+as `expectedState`. A 409 requires new inspection and approval. Follow the returned sync run;
+never retry an unknown outcome automatically.
+
+`mark_cutover_conflicts_reviewed` requires a separate, explicit user decision about that copy's
+conflicts. It advances Staticbot's watch window and does not repair database records. Partial
+conflict lists require review of the remaining results in the dashboard. These additions need
+the corresponding backend and hosted MCP release before clients can use them.
+
 ## Example requests
 
 - “Deploy this repository with Staticbot and tell me what DNS records I need.”

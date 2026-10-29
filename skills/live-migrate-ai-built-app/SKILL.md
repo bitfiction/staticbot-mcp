@@ -13,6 +13,18 @@ Then load the builder sub-skill: [live-migrate-lovable-app](../live-migrate-lova
 
 Staticbot tools cover: discovery, migration, target cleanup, preview + evidence, frontend deployment, DNS records (and pushing them to a linked Cloudflare zone), and Continuous Sync. Nothing in Staticbot can freeze writes in Lovable or Base44, send user notices, or edit DNS at a third-party registrar. For those steps the agent prepares exact instructions, scripts, and checks; the user performs them and confirms. Say this plainly at the start. Never report a manual step as done without the user's confirmation or a check you ran yourself.
 
+For cutover observation and aftercare, use `get_connected_project_cutover` for retained evidence and
+`check_connected_project_cutover` for a fresh live-site/source check. Preserve unknown and incomplete
+results: timestamp checks do not cover deletions, files, existing account changes or external systems.
+Base44 catch-up uses `copy_connected_project_late_changes` only after the user approves the named source,
+target, copiedThrough/copyFinishedAt window and mode. `FULL_UPDATE` overwrites differing Supabase rows;
+`INSERT_ONLY` leaves them for review. Forward the inspected stateVersion as expectedState with explicit
+confirmation. Changed state requires fresh review and approval; never silently replace the snapshot or
+retry an unknown outcome. Follow the sync run, then inspect the results. Marking conflicts reviewed is
+a separate user attestation through `mark_cutover_conflicts_reviewed`, including any conflicts omitted
+from a partial list; it advances the watch window and does not fix the database. These tools do not
+replace the source-freeze or final-copy phase gates below.
+
 ## Hard rules
 
 - **Phase gates are the user's.** Every phase below ends in an explicit go/no-go from the user. Never chain phases on your own, even if the previous one looked green.

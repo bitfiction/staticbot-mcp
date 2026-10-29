@@ -47,6 +47,12 @@ Deliberately **not** destructive, and worth knowing why:
 
 The submission form requires a justification naming what is irreversible and what safeguards exist.
 
+The cutover read is side-effect free. `check_connected_project_cutover` records scans/checks and can
+send configured workspace notifications, so it is not read-only and is open-world. The catch-up copy
+is destructive and open-world because FULL_UPDATE can overwrite target rows. Conflict review is
+destructive but not open-world: it advances Staticbot's watch window without changing the customer
+database. Both require explicit approval of an inspected state snapshot, rechecked under locks.
+
 | Tool | Irreversible outcome | Safeguard |
 |---|---|---|
 | `push_dns_to_cloudflare` | Writes records into the customer's live Cloudflare zone and can overwrite existing ones. A wrong record takes the domain offline until corrected. | Pushes only deployment-owned records, never nameservers or mail records; reports every per-record result. Requires an exact `domainId` from an `OFFER_CLOUDFLARE_PUSH` item. |

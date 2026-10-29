@@ -99,6 +99,9 @@ export function probeCases(tool, overrides = {}) {
 }
 
 export const TOOL_PROBES = {
+  copy_connected_project_late_changes: ['INSERT_ONLY', 'FULL_UPDATE'].map(mode => ({
+    id: FIXTURE_ID, mode, expectedState: 'a'.repeat(64), confirmed: true })),
+  mark_cutover_conflicts_reviewed: [{ id: FIXTURE_ID, expectedState: 'a'.repeat(64), confirmed: true }],
   // A missing template and the browser-only Firebase handoff intentionally make no API call.
   create_migration: [{ name: 'Parity fixture', templateId: FIXTURE_ID },
     { name: 'Parity fixture', templateId: FIXTURE_ID, sourceType: 'BASE44_NATIVE', sourceIntegrationInstanceId: FIXTURE_ID, base44AppId: 'parity-app' }],

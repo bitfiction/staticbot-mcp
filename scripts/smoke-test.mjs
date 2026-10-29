@@ -6,8 +6,12 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 108;
+const expectedToolCount = 112;
 const expectedTools = [
+  "get_connected_project_cutover",
+  "check_connected_project_cutover",
+  "copy_connected_project_late_changes",
+  "mark_cutover_conflicts_reviewed",
   "get_account_status",
   "scan_website",
   "get_website_scan",

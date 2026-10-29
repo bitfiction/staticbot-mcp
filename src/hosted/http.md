@@ -42,6 +42,18 @@ supported scopes. A 401 carries `WWW-Authenticate: Bearer resource_metadata="…
 without that hint the client has a 401 and nowhere to go, and the connect flow stalls before it
 starts.
 
+## OpenAI domain verification
+
+Set `OPENAI_APPS_CHALLENGE_TOKEN` to the single public verification token generated
+for this plugin in the submission portal. `GET /.well-known/openai-apps-challenge`
+returns that exact token as plain text, without authentication, JSON or a trailing
+newline. HEAD returns the same headers without a body. The response is not cached.
+Unset configuration and unsupported methods retain the normal 404 response.
+This route does not change `/mcp` authentication or OAuth resource discovery.
+The setting accepts a single URL-safe token; it is public ownership proof, not an
+OAuth credential. Do not replace a challenge belonging to another plugin without
+checking the portal ownership and required verification state.
+
 ## `KEYCLOAK_ISSUER` vs `KEYCLOAK_JWKS_URL`
 
 In production they are the same host and the JWKS URL should be left unset. They come apart in local

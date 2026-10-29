@@ -1,0 +1,6 @@
+{
+  "draftUrl": "https://platform.openai.com/plugins/manage/plugin_asdk_app_6ae3b22b73dc8191b2830ef4b1770d7d",
+  "url": "https://mcp.staticbot.dev/.well-known/openai-apps-challenge",
+  "environmentVariable": "OPENAI_APPS_CHALLENGE_TOKEN",
+  "token": "tiKmlJOqohBlutp0XThzKudAArUaadH0Z6Q-C9n0y7k"
+}

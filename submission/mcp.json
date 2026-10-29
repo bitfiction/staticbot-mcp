@@ -1,0 +1,25 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "staticbot": {
+      "type": "streamable-http",
+      "url": "https://mcp.staticbot.dev/mcp",
+      "extensions": {
+        "com.openai": {
+          "auth": {
+            "type": "oauth",
+            "client": {
+              "mode": "provided",
+              "clientId": "staticbot-openai",
+              "tokenEndpointAuthMethod": "none"
+            },
+            "authorizationUrl": "https://app.staticbot.dev/auth/realms/staticbot/protocol/openid-connect/auth",
+            "tokenUrl": "https://app.staticbot.dev/auth/realms/staticbot/protocol/openid-connect/token",
+            "resource": "https://mcp.staticbot.dev/mcp",
+            "baseScopes": ["staticbot:read", "staticbot:write"]
+          }
+        }
+      }
+    }
+  }
+}

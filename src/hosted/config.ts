@@ -1,4 +1,4 @@
-/** Configuration for the hosted server. Every value is required — none has a safe default. */
+/** Configuration for the hosted server. OAuth identity values have no safe defaults. */
 export interface HostedConfig {
   /** Canonical OAuth resource identifier. Must match the `aud` of every user token exactly. */
   mcpResource: string;
@@ -19,6 +19,8 @@ export interface HostedConfig {
   /** Confidential client the server authenticates to the Staticbot API as. */
   serviceClientId: string;
   serviceClientSecret: string;
+  /** Public ownership proof from the OpenAI portal; absent until a challenge is configured. */
+  openAiAppsChallenge?: string;
   port: number;
 }
 
@@ -35,6 +37,10 @@ function required(name: string): string {
 
 export function loadConfig(): HostedConfig {
   const issuer = required("KEYCLOAK_ISSUER");
+  const openAiAppsChallenge = process.env.OPENAI_APPS_CHALLENGE_TOKEN?.trim() || undefined;
+  if (openAiAppsChallenge && !/^[A-Za-z0-9_-]{1,512}$/.test(openAiAppsChallenge)) {
+    throw new Error("OPENAI_APPS_CHALLENGE_TOKEN must contain one URL-safe verification token");
+  }
   return {
     mcpResource: required("MCP_RESOURCE"),
     issuer,
@@ -42,6 +48,7 @@ export function loadConfig(): HostedConfig {
     apiUrl: process.env.STATICBOT_API_URL?.trim() || "https://app.staticbot.dev",
     serviceClientId: required("MCP_SERVICE_CLIENT_ID"),
     serviceClientSecret: required("MCP_SERVICE_CLIENT_SECRET"),
+    openAiAppsChallenge,
     port: Number(process.env.PORT ?? 3000),
   };
 }

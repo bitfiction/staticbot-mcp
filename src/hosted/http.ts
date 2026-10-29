@@ -11,6 +11,7 @@ import { createTokenVerifier, TokenVerificationError, type Actor } from "./token
 
 const MCP_PATH = "/mcp";
 const PROTECTED_RESOURCE_PATH = "/.well-known/oauth-protected-resource";
+const OPENAI_APPS_CHALLENGE_PATH = "/.well-known/openai-apps-challenge";
 
 /**
  * Paths whose requests are never logged.
@@ -169,6 +170,16 @@ export function createHostedServer(config: HostedConfig) {
     };
     res.on("finish", () => logRequest(true));
     res.on("close", () => logRequest(false));
+
+    if (path === OPENAI_APPS_CHALLENGE_PATH && config.openAiAppsChallenge &&
+      (req.method === "GET" || req.method === "HEAD")) {
+      res.writeHead(200, {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
+      });
+      res.end(req.method === "HEAD" ? undefined : config.openAiAppsChallenge);
+      return;
+    }
 
     if (req.method === "GET" && path === PROTECTED_RESOURCE_PATH) {
       res.writeHead(200, { "Content-Type": "application/json" });

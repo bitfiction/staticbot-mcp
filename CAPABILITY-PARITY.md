@@ -78,13 +78,66 @@ tenant isolation, value-free projections, stale windows/settings/backends, revoc
 and replay refusal. PostgreSQL tests invoke the proxied service with auto-commit disabled and verify
 commits/rollback through independent connections. Package and discovery validation also pass.
 
-This audit did not log in as the reviewer, run the five submission scenarios against real fixtures,
-record a video, inspect the current portal draft or submit the application. Those remain unverified.
+The capability audit did not log in as the reviewer, run the five submission scenarios against real
+fixtures, record a video or submit the application. Those remain unverified. Portal connection
+preparation is recorded below.
 The existing local plugin configuration still launches stdio with `STATICBOT_API_KEY`; a hosted
 submission needs the appropriate remote OAuth configuration and a fresh portal tool scan. Verify
 reviewer access and fixtures, confirm the portal connects to the current hosted release, then record
 the final demo. The npm publication is a separate release task and is not evidence that the hosted
 server is stale.
+
+### Remote submission connection preparation — 2026-10-29
+
+The legacy OpenAI portal draft was inspected directly. It has no displayed MCP
+URL or authentication settings, no discovered tools, and no domain-verification
+state. The portal rejected a remote package update because it requires an
+original URL that it no longer displays or allows editing. The owner explicitly
+authorized creating a separate unpublished draft; the old draft remains intact.
+
+The [current draft](https://platform.openai.com/plugins/manage/plugin_asdk_app_6ae3b22b73dc8191b2830ef4b1770d7d)
+accepted version 1.8.3 with seven skills and the existing five positive/three
+negative draft cases. Its saved settings show the correct HTTPS MCP endpoint,
+MCP key `staticbot`, OAuth `provided` client `staticbot-openai`, token endpoint
+authentication `none`, explicit endpoints/resource and read/write scopes. No
+client-secret field is required. It now shows authorization required and domain
+not verified, instead of unavailable connection metadata.
+
+`npm run pack:chatgpt` now produces a separate remote draft ZIP from the current
+listing, tracked skills and existing review cases. `submission/mcp.json` declares
+`https://mcp.staticbot.dev/mcp`, the registered public `staticbot-openai` client,
+token endpoint authentication `none`, and the read/write scopes. No client secret
+is needed. This leaves the local stdio configuration intact. Archive integrity,
+allowlisted contents, mapped review cases, versions and submission metadata pass
+local checks. Future uploads use internal name `staticbot` and the current draft.
+
+The live client accepted an intentionally invalid authorization code without a
+client secret and returned `invalid_grant`, rather than `invalid_client`. An
+authorization-start probe found no invalid client, redirect or scope response.
+These checks do not establish successful login, consent or token exchange.
+The default `https://mcp.staticbot.dev/.well-known/openai-apps-challenge` returned
+404. The current portal-generated public proof is retained in
+`submission/domain-verification.json`, outside the public ZIP. The hosted server
+now supports serving it as exact plain text through `OPENAI_APPS_CHALLENGE_TOKEN`.
+The infrastructure repository has the corresponding optional variable, production
+wiring and local production value prepared. Full MCP tests and production
+OpenTofu validation pass. No production deployment or domain verification was
+performed. Release the backend before the latest MCP toolset, then verify the
+domain, authorize the scan account in the browser and inspect the completed scan.
+
+Portal metadata checks confirm the support URL, primary icon and review details
+are still required. Non-blocking findings mention other AI platforms and an
+incomplete automated privacy-policy assessment. Skill scans were still pending
+when first inspected. Reviewer fixtures/runs and the demo video remain unverified.
+Nothing has been submitted for review or published.
+
+The platform-reference finding says the plugin's name or description references
+another AI assistant, model or platform; it does not assert that Staticbot uses
+another model provider. Neither uploaded ZIP contains a DeepSeek reference.
+Base44, Lovable and Bolt in the public description are migration sources and are
+the likely trigger, though the finding does not identify a matched phrase.
+The browser could not be reinspected after the owner's correction because the
+Mac was locked; this explanation refers to the captured finding above.
 
 ## Automated route guardrails — 2026-10-17
 

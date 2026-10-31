@@ -1,18 +1,21 @@
-# V1 / MCP capability check — 2026-10-29
+# V1 / MCP capability check — 2026-10-31
 
-The latest check covers current source, focused tests, the live V1 route inventory and read-only
-production deployment metadata. It does not certify authenticated reviewer workflows or portal
-submission readiness. Earlier dated sections below retain the scope of their original checks.
+The latest live checks cover reviewer account metadata and the public hosted MCP endpoints.
+Source/tests, live V1 inventory and deployment-image checks retain their previously recorded scope.
+This does not certify authenticated reviewer workflows or portal submission readiness. Earlier
+dated sections below retain the scope of their original checks.
 
-## Current readiness — 2026-10-29
+## Current readiness — 2026-10-31
 
 | Surface | Verified state |
 | --- | --- |
 | V1 source contract | 128 operations, including the four new cutover operations; the backend controller-inventory and internal-gap guardrails pass. |
 | MCP source | 112 runtime tools exercise 121 V1 routes; seven deliberate differences remain listed below. |
-| Live V1 API | The earlier read-only audit returned 124 operations. The four new cutover routes require a backend release; source coverage is not evidence of live availability. |
-| Hosted MCP | The earlier audit found one ready replica of `staticbot-mcp:1.8.37-prod`, matching committed main `dfcaaad`, with passing health/readiness and OAuth discovery. The new cutover tools are local changes after that release and require a hosted MCP release. |
-| Published npm package | npm's latest `@staticbot/mcp` is still `1.8.2`; this checkout is `1.8.3`. The current hosted image and the npm publication are separate releases. |
+| Live V1 API | Last verified on 2026-10-29: the deployed OpenAPI inventory returns 128 operations, including all four cutover routes. Authenticated workflow behavior still requires real fixtures. |
+| Hosted MCP | `release.sh` released `staticbot-mcp:1.8.38-prod` from commit `738f987`. One replica is ready with zero restarts and the expected immutable image digest. Health/readiness and OAuth discovery pass; unauthenticated MCP returns 401. The image contains 112 tools, including the four cutover tools. |
+| Portal connection | The draft was verified as **Domain verified**. The approved optional `offline_access` client binding is live. The earlier main-testing-account exchange failed because that user lacks the realm role; the owner chose to leave it unchanged. Reviewer token exchange and completed tool discovery/scan remain unverified. All seven skill checks passed. |
+| Reviewer account | Read-only checks on 2026-10-31 confirm one enabled account, effective `offline_access`, a password credential, no pending required actions and no OTP credential. Email is not marked verified. Demo workspace/projects and real login/workflow checks remain to be completed. |
+| Published npm package | The last registry check on 2026-10-29 found `@staticbot/mcp` at `1.8.2`; this checkout is `1.8.3`. The hosted image and npm publication are separate releases. |
 | Package preparation | `npm pack --dry-run` passes for `1.8.3` and includes the new tool modules and plugin configuration. Nothing was published by this work. |
 
 The previous workflow, branch preview, source-update and external-authentication additions remain
@@ -29,7 +32,7 @@ Since the previous feature batch, V1/MCP also gained:
   using either the project or migration selector. No credential values enter or leave the tool;
   acceptance is not proof of a working redirect or end-user connection.
 
-### Cutover gap closed locally — 2026-10-29
+### Cutover API/MCP implementation released — 2026-10-29
 
 The project's **Switch tab / cutover watch** now has four V1 operations and four MCP tools:
 
@@ -60,8 +63,8 @@ Legacy migrations with no recorded source app ID remain readable, but API copyin
 inspection cannot identify their encrypted-integration fallback; those copies use the dashboard.
 
 The previous four internal-route deferrals have been removed. This extension needs no database
-migration or worker change. Deploy the backend before the hosted MCP and refresh the portal scan.
-No production deployment or customer copy was performed as part of this implementation.
+migration or worker change. The backend and hosted MCP have now been released; refresh the
+portal scan after connecting its account. No customer copy was performed by this audit.
 
 Other documented dashboard gaps remain, including project linking, pipeline administration,
 deployment cleanup/destruction and general DNS-zone management. Passing V1-to-MCP coverage does not
@@ -101,7 +104,7 @@ negative draft cases. Its saved settings show the correct HTTPS MCP endpoint,
 MCP key `staticbot`, OAuth `provided` client `staticbot-openai`, token endpoint
 authentication `none`, explicit endpoints/resource and read/write scopes. No
 client-secret field is required. It now shows authorization required and domain
-not verified, instead of unavailable connection metadata.
+verified, instead of unavailable connection metadata.
 
 `npm run pack:chatgpt` now produces a separate remote draft ZIP from the current
 listing, tracked skills and existing review cases. `submission/mcp.json` declares
@@ -115,20 +118,50 @@ The live client accepted an intentionally invalid authorization code without a
 client secret and returned `invalid_grant`, rather than `invalid_client`. An
 authorization-start probe found no invalid client, redirect or scope response.
 These checks do not establish successful login, consent or token exchange.
-The default `https://mcp.staticbot.dev/.well-known/openai-apps-challenge` returned
-404. The current portal-generated public proof is retained in
-`submission/domain-verification.json`, outside the public ZIP. The hosted server
-now supports serving it as exact plain text through `OPENAI_APPS_CHALLENGE_TOKEN`.
-The infrastructure repository has the corresponding optional variable, production
-wiring and local production value prepared. Full MCP tests and production
-OpenTofu validation pass. No production deployment or domain verification was
-performed. Release the backend before the latest MCP toolset, then verify the
-domain, authorize the scan account in the browser and inspect the completed scan.
+The default `https://mcp.staticbot.dev/.well-known/openai-apps-challenge` now returns
+200 with the portal's exact token, no newline, a plain-text content type and
+`Cache-Control: no-store`. The public proof is retained in
+`submission/domain-verification.json`, outside the public ZIP, and is configured
+through `OPENAI_APPS_CHALLENGE_TOKEN`. The owner-approved production release went
+through `release.sh prepare`, `release.sh build` and `release.sh deploy`, applying
+one in-place MCP deployment update and no other resource changes. The running
+`1.8.38-prod` image has digest
+`sha256:d83f7188649e120868b0582ab182e98ca45af33995e9f148edaeae836b6e611c`.
+The portal's Verify Domain action succeeded and visibly shows Domain verified.
+OAuth discovery passes and unauthenticated MCP still returns 401. Full MCP tests,
+production OpenTofu validation and 26 isolated release-script tests pass.
+The owner approved starting Connect on 2026-10-30. The real portal request then
+returned `invalid_scope` for `openid email offline_access staticbot:read
+staticbot:write`, before login. Unauthenticated probes isolate `offline_access`:
+without it, the same client/redirect/PKCE request reaches `login_required`; adding
+it returns `invalid_scope`. The canonical registered-client definition omitted that
+optional scope. After the owner's explicit approval, `release.sh mcp-oauth-scopes
+--apply` attached only optional `offline_access` to the existing production client
+and verified readback. The public-client, consent, PKCE and existing read/write
+binding checks pass; inspected security settings, default scopes and other bindings
+are unchanged. The canonical definition and dev/qa/prod fresh-realm imports contain
+the same optional scope. All 43 isolated release/OAuth helper tests pass.
+The full unauthenticated request now reaches `login_required`, and a real portal
+retry visibly opens Staticbot's sign-in page with the expected client, stable
+redirect, resource, scopes and S256 challenge. The owner then completed login/consent
+with the main testing account, which must not be handed to reviewers. Token exchange
+returned 400. The matching Keycloak event reports `Offline tokens not allowed for the
+user or client`. Read-only checks confirm the optional scope's required role mapping
+is present but the failed exchange's user lacks the standard realm `offline_access`
+role. A targeted `release.sh mcp-oauth-user` plan/apply command is prepared, but the
+owner chose to leave that account's roles unchanged and use a dedicated reviewer
+account. Read-only checks on 2026-10-31 confirm the reviewer account is unique and
+enabled, has effective `offline_access` and a password credential, has no pending
+required actions and has no OTP credential configured. Its email is not marked
+verified. Public health/readiness, domain-proof bytes, OAuth discovery/protection
+and full requested-scope acceptance pass again. Successful reviewer login, token
+exchange, tool discovery and workflow runs remain unverified. The owner is preparing
+demo workspace/projects; email verification remains to be completed before handover.
 
 Portal metadata checks confirm the support URL, primary icon and review details
 are still required. Non-blocking findings mention other AI platforms and an
-incomplete automated privacy-policy assessment. Skill scans were still pending
-when first inspected. Reviewer fixtures/runs and the demo video remain unverified.
+incomplete automated privacy-policy assessment. All seven skill scans now show
+Checks passed. Reviewer fixtures/runs and the demo video remain unverified.
 Nothing has been submitted for review or published.
 
 The platform-reference finding says the plugin's name or description references
@@ -136,8 +169,8 @@ another AI assistant, model or platform; it does not assert that Staticbot uses
 another model provider. Neither uploaded ZIP contains a DeepSeek reference.
 Base44, Lovable and Bolt in the public description are migration sources and are
 the likely trigger, though the finding does not identify a matched phrase.
-The browser could not be reinspected after the owner's correction because the
-Mac was locked; this explanation refers to the captured finding above.
+The same non-blocking platform-reference finding remains visible after deployment
+and domain verification.
 
 ## Automated route guardrails — 2026-10-17
 

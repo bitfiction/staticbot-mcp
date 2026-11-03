@@ -103,7 +103,8 @@ registerApiTool(server,
   "Manual records at the current provider remain the fallback.\n" +
   "- `OFFER_CLOUDFLARE_CONNECT` — domain is on Cloudflare without an integration. Suggest connecting Cloudflare " +
   "(direct the user to the integrations page) for the smoothest no-NS-change path.\n" +
-  "- `REGISTER_DOMAIN_FIRST` — domain is not registered. Block and ask the user to register it first.\n\n" +
+  "- `REGISTER_DOMAIN_FIRST` — domain is not registered. Block and ask the user to register it first.\n" +
+  "- `RESERVED_DOMAIN` — domain is a reserved name nobody can register (e.g. a.com, example.com, *.test). It can never work: stop and ask the user for a domain they own.\n\n" +
   "**Other fields per domain:**\n" +
   "- `staticbotManaged` — true when live registrar NS overlap our recorded Route53 zone NS for this apex. Useful " +
   "for explaining 'your domain is already pointing at us'.\n" +

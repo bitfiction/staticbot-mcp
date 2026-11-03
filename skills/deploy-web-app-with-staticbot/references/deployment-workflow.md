@@ -37,6 +37,7 @@ Always inspect every `dns` item:
 - `OFFER_CLOUDFLARE_PUSH`: offer `push_dns_to_cloudflare` using this item's exact `domainId`; explain the external DNS write and obtain authorization first. Show manual records as fallback.
 - `OFFER_CLOUDFLARE_CONNECT`: suggest connecting Cloudflare and show manual records as fallback.
 - `REGISTER_DOMAIN_FIRST`: stop until the domain is registered.
+- `RESERVED_DOMAIN`: stop; the name is reserved and can never be registered. Ask for a domain the user owns.
 
 Never recommend nameserver delegation as the default. If `mailRecordsDetected` is true, treat nameserver-change advice as blocked.
 

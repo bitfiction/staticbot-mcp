@@ -23,6 +23,7 @@ A stack's domain is fixed once its deployment is created, and one hostname canno
 | `MANUAL_RECORDS_AT_REGISTRAR` | The user, at their DNS provider. Give exact records and wait for confirmation. |
 | `OFFER_CLOUDFLARE_CONNECT` | Offer to connect Cloudflare in Staticbot integrations before the window; manual records remain the fallback. |
 | `REGISTER_DOMAIN_FIRST` | Stop. |
+| `RESERVED_DOMAIN` | Stop. The name can never be registered; ask for a domain the user owns. |
 
 Never recommend moving nameservers as part of the cutover. With mail records present, nameserver changes are out of the question.
 

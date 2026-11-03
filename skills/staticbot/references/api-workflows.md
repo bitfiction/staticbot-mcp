@@ -88,6 +88,7 @@ DNS actions:
 - `OFFER_CLOUDFLARE_PUSH`: offer the linked-zone push using this item's exact `domainId`; explain the external DNS write and obtain authorization first. Show manual records as fallback.
 - `OFFER_CLOUDFLARE_CONNECT`: suggest connecting Cloudflare; show manual records as fallback.
 - `REGISTER_DOMAIN_FIRST`: stop and ask the user to register the domain.
+- `RESERVED_DOMAIN`: the domain is a reserved name nobody can register (a.com, example.com, *.test); stop and ask for a domain the user owns.
 
 If `mailRecordsDetected` is true, treat that as a hard block on nameserver-change advice.
 

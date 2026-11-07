@@ -28,13 +28,13 @@ registerApiTool(server,
 
 registerApiTool(server,
   "create_deployment",
-  "Create a new deployment for a stack. This prepares the deployment but does NOT start it — call start_deployment next. Default type is APPLY (creates real resources). Use PLAN for a dry-run preview.\n\n" +
+  "Create a new deployment for a stack. This prepares the deployment but does NOT start it — call start_deployment next. Default type is APPLY (creates real resources). Use PLAN to preview infrastructure changes without applying them. Readiness-report DRY_RUN mode is not supported by this API.\n\n" +
   "For an AWS-hosted stack, call list_aws_hosting_targets with the stackId first and pass the selected option's exact `value` as targetAccountId. That value DECIDES infrastructure ownership: the managed value means Staticbot-managed hosting and a customer account value means customer-managed hosting. Never invent an account id or send infrastructureOwnership.\n\n" +
   "Do not set cloudflareChoice or cloudflareHostname unless the user has chosen to host a Cloudflare Workers app in their OWN Cloudflare account: call list_cloudflare_hosting_targets, let the user pick, then preflight_cloudflare_hosting, and pass that choice plus the hostname. Omit both to use the stack's existing hosting, which is the normal case — Staticbot hosts it.",
   {
     stackId: z.string().uuid().describe("Stack ID to deploy"),
-    deploymentType: z.enum(["APPLY", "PLAN", "DRY_RUN"]).optional().describe(
-      "APPLY creates real infrastructure (default). PLAN shows what would change without creating anything. DRY_RUN validates the template."
+    deploymentType: z.enum(["APPLY", "PLAN"]).optional().describe(
+      "APPLY creates real infrastructure (default). PLAN runs a Terraform plan without applying it."
     ),
     targetAccountId: z.string().optional().describe(
       "AWS-hosted stacks only. The exact `value` selected from list_aws_hosting_targets. This value is the ownership choice: the managed value means Staticbot-managed infrastructure; a customer account value means customer-managed infrastructure. Never invent an account id or pass infrastructureOwnership."
@@ -73,7 +73,7 @@ registerApiTool(server,
 
 registerApiTool(server,
   "start_deployment",
-  "Start a deployment that was created with create_deployment. The deployment must be in CREATED status. Once started, Staticbot provisions the repository-derived target stored on the stack. Poll get_deployment to track progress.",
+  "Start a deployment that was created with create_deployment. The deployment must be in CREATED status. APPLY provisions the repository-derived target stored on the stack; PLAN runs only the infrastructure plan. Poll get_deployment to track progress.",
   {
     id: z.string().uuid().describe("Deployment ID"),
   },

@@ -327,6 +327,11 @@ try {
   assert(awsTargets?.inputSchema?.properties?.stackId, "AWS target discovery must accept stackId");
 
   const createDeployment = tools.find(({ name }) => name === "create_deployment");
+  assert.deepEqual(
+    createDeployment?.inputSchema?.properties?.deploymentType?.enum,
+    ["APPLY", "PLAN"],
+    "create_deployment must only offer modes supported by the API and worker",
+  );
   assert(
     createDeployment?.inputSchema?.properties?.targetAccountId,
     "create_deployment must expose the AWS ownership choice as targetAccountId",

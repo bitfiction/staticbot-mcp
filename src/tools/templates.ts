@@ -54,16 +54,20 @@ registerApiTool(server,
   "A template is the shared starting point for BOTH Staticbot paths — hosting the repository and migrating " +
   "the app off its builder — so creating one does not commit the user to a migration. Use it when no " +
   "existing template from list_templates matches the repo. " +
+  "For an app in a subfolder, pass repoPath so the scan and deployment use that folder. " +
+  "If scanIncomplete is true, show scanStatusMessage and resolve source access before deploying. " +
   "The name is optional — if omitted, it's derived from the repo name.",
   {
     repoLink: z.string().describe("Repository URL (public or private; e.g. https://github.com/owner/repo or https://gitlab.com/group/project). Resolve it with list_source_repositories when a source-control integration is connected."),
     name: z.string().optional().describe("Template name (derived from repo name if omitted)"),
+    repoPath: z.string().optional().describe("Folder within the repository to scan and deploy, such as repo or apps/web. Omit for the repository root."),
     sourceControlIntegrationInstanceId: z.string().uuid().optional().describe("The repository's integrationInstanceId from list_source_repositories — the account it is hosted in. Pass it whenever the repo came from discovery: with several accounts connected on one provider, only that account's token can read it."),
   },
   { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  async ({ repoLink, name, sourceControlIntegrationInstanceId }) => {
+  async ({ repoLink, name, repoPath, sourceControlIntegrationInstanceId }) => {
     const body: Record<string, string> = { repoLink };
     if (name) body.name = name;
+    if (repoPath !== undefined) body.repoPath = repoPath;
     if (sourceControlIntegrationInstanceId) {
       body.sourceControlIntegrationInstanceId = sourceControlIntegrationInstanceId;
     }

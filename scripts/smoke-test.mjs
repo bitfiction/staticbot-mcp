@@ -258,6 +258,11 @@ try {
     "create_template must accept the integration the repository was discovered through",
   );
 
+  assert(
+    createTemplate?.inputSchema?.properties?.repoPath,
+    "create_template must let callers select the app folder in a repository",
+  );
+
   const sourceRepositories = tools.find(({ name }) => name === "list_source_repositories");
   assert.equal(sourceRepositories?.annotations?.readOnlyHint, true, "repository discovery must be read-only");
   assert(
@@ -533,6 +538,7 @@ try {
     name: "create_template",
     arguments: {
       repoLink: "https://gitlab.com/group/project",
+      repoPath: "apps/web",
       sourceControlIntegrationInstanceId: integrationInstanceId,
     },
   });
@@ -541,6 +547,13 @@ try {
       method === "POST" && url === "/api/v1/templates" &&
       body.includes(`"sourceControlIntegrationInstanceId":"${integrationInstanceId}"`)),
     "create_template must forward the integration the repository was discovered through",
+  );
+
+  assert(
+    apiRequests.some(({ method, url, body }) =>
+      method === "POST" && url === "/api/v1/templates" &&
+      JSON.parse(body).repoPath === "apps/web"),
+    "create_template must forward the selected app folder to the import API",
   );
 
   const migrationId = "0b4f2a27-6d19-4a3b-9a1e-2c7d5f8e9b03";

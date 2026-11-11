@@ -5,6 +5,19 @@ Source/tests, live V1 inventory and deployment-image checks retain their previou
 This does not certify authenticated reviewer workflows or portal submission readiness. Earlier
 dated sections below retain the scope of their original checks.
 
+## Sign in with Google — 2026-11-11
+
+The project's Domain and auth tab gained a "Sign in with Google" section, with V1 counterparts:
+
+| V1 operation | MCP tool | Bound to |
+| --- | --- | --- |
+| `GET /api/v1/connected-projects/{id}/google-sign-in` | `get_google_sign_in` | – |
+| `PUT /api/v1/connected-projects/{id}/google-sign-in` | none (baseline) | the Google client secret |
+
+Saving takes the user's Google client secret, so it is a deliberate difference like
+`provide-base44-secrets`: V1 refuses it for MCP-delegated callers (403 `SECRET_INTAKE_REFUSED`) and the
+tool description sends the user to the browser. API-key callers keep it. Runtime tools: 121.
+
 ## Release path tools — 2026-11-11
 
 Eight new V1 operations and tools close the gap between "an agent can deploy" and "an agent can run a

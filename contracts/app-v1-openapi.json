@@ -142,6 +142,30 @@
         }
       }
     },
+    "/api/v1/connected-projects/{id}/google-sign-in" : {
+      "parameters" : [ {
+        "name" : "id",
+        "in" : "path",
+        "required" : true,
+        "schema" : {
+          "type" : "string"
+        }
+      } ],
+      "get" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      },
+      "put" : {
+        "responses" : {
+          "default" : {
+            "description" : "See the runtime OpenAPI specification."
+          }
+        }
+      }
+    },
     "/api/v1/connected-projects/{id}/hosting/auth-domain" : {
       "parameters" : [ {
         "name" : "id",

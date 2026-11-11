@@ -1364,6 +1364,18 @@
         "destructive_justification": "Read-only; nothing is changed or removed."
       }
     },
+    "get_google_sign_in": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads whether the project's app can sign users in with Google and the values to enter in the user's own Google client; changes nothing.",
+        "open_world_justification": "Reads the user's own Staticbot project and its Supabase sign-in settings only.",
+        "destructive_justification": "Read-only; nothing is changed or removed."
+      }
+    },
     "set_sign_in_page": {
       "annotations": {
         "readOnlyHint": false,

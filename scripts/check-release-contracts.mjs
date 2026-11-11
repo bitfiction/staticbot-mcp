@@ -26,6 +26,8 @@ const api = createHttpServer(async (request, response) => {
   };
   if (request.url === `${projectPath}/sign-in-page`) return json(200,
     { offered: true, choice: body?.choice ?? null, decisionRequired: !body, options: [], previewLinks: [] });
+  if (request.url === `${projectPath}/google-sign-in`) return json(200,
+    { ready: false, statusLabel: "Off", callbackUrl: "https://ref.supabase.co/auth/v1/callback", siteOrigins: [] });
   if (request.url === `${projectPath}/pipeline`) return json(200,
     { connectedProjectId: id, stages: [{ id: stageId, name: "production", gate: "MANUAL", pendingCommitSha: "abc1234" }] });
   if (request.url === `${stagePath}/approve` || request.url === `${stagePath}/reject`) {
@@ -71,6 +73,7 @@ try {
       const cases = [
         ["get_sign_in_page", { id }, "GET", `${projectPath}/sign-in-page`],
         ["set_sign_in_page", { id, choice: "APP", confirmed: true }, "PUT", `${projectPath}/sign-in-page`],
+        ["get_google_sign_in", { id }, "GET", `${projectPath}/google-sign-in`],
         ["get_release_pipeline", { id }, "GET", `${projectPath}/pipeline`],
         ["approve_release", signOff, "POST", `${stagePath}/approve`],
         ["reject_release", signOff, "POST", `${stagePath}/reject`],

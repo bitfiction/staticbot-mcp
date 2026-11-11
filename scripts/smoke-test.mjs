@@ -6,10 +6,11 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 120;
+const expectedToolCount = 121;
 const expectedTools = [
   "get_sign_in_page",
   "set_sign_in_page",
+  "get_google_sign_in",
   "get_release_pipeline",
   "approve_release",
   "reject_release",

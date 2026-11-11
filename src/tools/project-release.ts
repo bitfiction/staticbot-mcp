@@ -40,6 +40,18 @@ export function registerProjectReleaseTools(server: McpServer, { apiFetch, toTex
   );
 
   registerApiTool(server,
+    "get_google_sign_in",
+    "Whether the app's users can sign in with Google: `statusLabel` / `ready`, the Google client the app's Supabase " +
+      "project uses (`clientId`, never a secret), and what the user pastes into their own Google client in Google " +
+      "Auth Platform: `callbackUrl` as the authorized redirect URI and `siteOrigins` as authorized JavaScript " +
+      "origins (`guideUrl` explains the Google side). Saving the client takes its secret, so it cannot be done over " +
+      "MCP: send the user to the project's Domain and auth tab to paste it there. Read-only.",
+    { id: z.string().uuid().describe("Connected project ID") },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    async ({ id }) => apiToolResult(await apiFetch(`/api/v1/connected-projects/${id}/google-sign-in`), toText),
+  );
+
+  registerApiTool(server,
     "get_release_pipeline",
     "Read a connected project's release pipeline: stages in order (preview first, production last), what each " +
       "serves and its status, and its gate: AUTO (green previews go live by themselves) or MANUAL (a release " +

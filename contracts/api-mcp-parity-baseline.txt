@@ -8,6 +8,7 @@ POST /api/v1/mcp/client-connections
 
 # Credential values must never enter MCP tool arguments; use the browser handoff.
 POST /api/v1/migrations/{}/jobs/{}/provide-base44-secrets
+PUT /api/v1/connected-projects/{}/google-sign-in
 
 # Anonymous browser website-check journey; MCP uses authenticated owned site-scan routes.
 GET /api/v1/public/site-scans/{}

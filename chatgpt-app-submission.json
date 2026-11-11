@@ -591,7 +591,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Only retrieves which secrets a migrated app uses and whether each has a value \u2014 names and states, never a value.",
+        "read_only_justification": "Only retrieves which secrets a migrated app uses and whether each has a value — names and states, never a value.",
         "open_world_justification": "Does not change migration work or an external system.",
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
@@ -1350,6 +1350,102 @@
         "read_only_justification": "Records an explicit conflict-review decision and advances the watch window.",
         "open_world_justification": "Updates only Staticbot state; it does not fix database records or change an external system.",
         "destructive_justification": "Advances the source window past the reviewed copy. Requires explicit user attestation and the exact inspected copy/result snapshot, reauthorized under locks."
+      }
+    },
+    "get_sign_in_page": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads which sign-in page the project's app shows and the available choices; changes nothing.",
+        "open_world_justification": "Reads the user's own Staticbot project only.",
+        "destructive_justification": "Read-only; nothing is changed or removed."
+      }
+    },
+    "set_sign_in_page": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Stores the user's choice of sign-in page for the project.",
+        "open_world_justification": "Changes a setting in the user's Staticbot project; the site changes only with its next build.",
+        "destructive_justification": "Reversible setting with explicit confirmation; nothing is deleted or redeployed."
+      }
+    },
+    "get_release_pipeline": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads the project's release stages, gates and any release awaiting sign-off; changes nothing.",
+        "open_world_justification": "Reads the user's own Staticbot project only.",
+        "destructive_justification": "Read-only; nothing is changed or removed."
+      }
+    },
+    "approve_release": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Deploys the release awaiting sign-off to its stage.",
+        "open_world_justification": "For production, changes what the public live website serves.",
+        "destructive_justification": "Replaces the served version; requires explicit confirmation of the exact pending commit."
+      }
+    },
+    "reject_release": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Drops the release awaiting sign-off from the stage.",
+        "open_world_justification": "Changes only the project's pipeline state; the served website is unchanged.",
+        "destructive_justification": "Nothing deployed is changed or removed; a later push arms a new release."
+      }
+    },
+    "set_release_gate": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Switches a stage between automatic promotion and manual sign-off.",
+        "open_world_justification": "Changes a setting in the user's Staticbot project.",
+        "destructive_justification": "Reversible setting with explicit confirmation; nothing is deleted."
+      }
+    },
+    "abort_deployment": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Stops a running deployment.",
+        "open_world_justification": "Stops work on the user's cloud hosting resources.",
+        "destructive_justification": "Interrupts a running deployment; requires explicit confirmation."
+      }
+    },
+    "destroy_deployment": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Destroys the deployment's cloud resources.",
+        "open_world_justification": "Removes the user's hosting, CDN and DNS records; a live site goes offline.",
+        "destructive_justification": "Irreversible removal; requires explicit confirmation and the exact inspected status."
       }
     }
   },

@@ -108,4 +108,42 @@ registerApiTool(server,
     return apiToolResult(data, toText);
   }
 );
+registerApiTool(server,
+  "abort_deployment",
+  "Abort a deployment that is running: its current job stops and the deployment settles as aborted; resources " +
+  "it already created stay. Read get_deployment first, confirm with the user, then pass confirmed=true. A 409 " +
+  "means the deployment is not running (the message says its state).",
+  {
+    id: z.string().uuid().describe("Deployment ID"),
+    confirmed: z.literal(true).describe("True only after the user confirmed the abort"),
+  },
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+  async ({ id, confirmed }) => {
+    const data = await apiFetch(`/api/v1/deployments/${id}/abort`, {
+      method: "POST", body: JSON.stringify({ confirmed }),
+    });
+    return apiToolResult(data, toText);
+  }
+);
+
+registerApiTool(server,
+  "destroy_deployment",
+  "IRREVERSIBLE: destroy a deployment's cloud resources (hosting, CDN and the DNS records it created). For a " +
+  "connected project's live deployment this takes the live site down. Read get_deployment first, tell the user " +
+  "what will be removed (stack, domains, status), get an explicit yes, then pass confirmed=true and " +
+  "expectedStatus = the status the user saw. A 409 means the status changed or does not allow destroying: read " +
+  "the deployment again and ask again. Needs workspace administrator rights. Follow progress with get_deployment.",
+  {
+    id: z.string().uuid().describe("Deployment ID"),
+    confirmed: z.literal(true).describe("True only after the user explicitly approved destroying it"),
+    expectedStatus: z.string().min(1).describe("The deployment status from get_deployment that the user saw"),
+  },
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+  async ({ id, confirmed, expectedStatus }) => {
+    const data = await apiFetch(`/api/v1/deployments/${id}/destroy`, {
+      method: "POST", body: JSON.stringify({ confirmed, expectedStatus }),
+    });
+    return apiToolResult(data, toText);
+  }
+);
 }

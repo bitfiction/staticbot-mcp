@@ -5,6 +5,29 @@ Source/tests, live V1 inventory and deployment-image checks retain their previou
 This does not certify authenticated reviewer workflows or portal submission readiness. Earlier
 dated sections below retain the scope of their original checks.
 
+## Release path tools — 2026-11-11
+
+Eight new V1 operations and tools close the gap between "an agent can deploy" and "an agent can run a
+project's release". The app's parity baseline drops from 175 to 167:
+
+| V1 operation | MCP tool | Bound to |
+| --- | --- | --- |
+| `GET /api/v1/connected-projects/{id}/sign-in-page` | `get_sign_in_page` | – |
+| `PUT /api/v1/connected-projects/{id}/sign-in-page` | `set_sign_in_page` | `confirmed` |
+| `GET /api/v1/connected-projects/{id}/pipeline` | `get_release_pipeline` | – |
+| `POST …/pipeline/stages/{stageId}/approve` | `approve_release` | `confirmed` + `expectedCommitSha` |
+| `POST …/pipeline/stages/{stageId}/reject` | `reject_release` | `confirmed` + `expectedCommitSha` |
+| `PATCH …/pipeline/stages/{stageId}/gate` | `set_release_gate` | `confirmed` |
+| `POST /api/v1/deployments/{id}/abort` | `abort_deployment` | `confirmed` |
+| `POST /api/v1/deployments/{id}/destroy` | `destroy_deployment` | `confirmed` + `expectedStatus` |
+
+A sign-off on a stage that has since re-armed on a newer push, or a destroy on a deployment whose status
+changed, answers 409 and is reported, never retried (`scripts/check-release-contracts.mjs`, both
+credential contexts). Inventory: 137 V1 operations, 120 runtime tools, 130 covered routes, and the
+same seven deliberate differences. A connected project's first go-live (the hosting launch with its
+domain and sign-in choices) is not in V1 yet; the app's
+`docs/follow-ups/2026-11-11-ui-v1-mcp-parity-gaps.md` has the design.
+
 ## V1 drift closed — 2026-11-11
 
 The app's Dynamic Websites work added `POST /api/v1/migrations/{id}/recheck-dynamic-site` (the gate

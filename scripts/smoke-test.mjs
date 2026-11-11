@@ -6,8 +6,16 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 112;
+const expectedToolCount = 120;
 const expectedTools = [
+  "get_sign_in_page",
+  "set_sign_in_page",
+  "get_release_pipeline",
+  "approve_release",
+  "reject_release",
+  "set_release_gate",
+  "abort_deployment",
+  "destroy_deployment",
   "get_connected_project_cutover",
   "check_connected_project_cutover",
   "copy_connected_project_late_changes",

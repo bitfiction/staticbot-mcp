@@ -5,6 +5,13 @@ Source/tests, live V1 inventory and deployment-image checks retain their previou
 This does not certify authenticated reviewer workflows or portal submission readiness. Earlier
 dated sections below retain the scope of their original checks.
 
+## V1 drift closed — 2026-11-11
+
+The app's Dynamic Websites work added `POST /api/v1/migrations/{id}/recheck-dynamic-site` (the gate
+action `RECHECK_DYNAMIC_SITE`). `recheck_migration_gate` now routes that action there, and the contract
+snapshot is refreshed: 129 V1 operations, 122 covered by 112 runtime tools, and the same seven deliberate
+differences. App CI had not reported the gap because its integration tests failed before the parity step ran.
+
 ## Current readiness — 2026-10-31
 
 | Surface | Verified state |

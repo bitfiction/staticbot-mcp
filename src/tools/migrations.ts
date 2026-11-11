@@ -274,12 +274,14 @@ const GATE_RECHECK_ENDPOINTS = {
   RECHECK_CAPACITY: "recheck-capacity",
   RECHECK_TARGET_EMPTY: "recheck-target-emptiness",
   RECHECK_SQL_SYNTAX: "recheck-sql-syntax",
+  RECHECK_DYNAMIC_SITE: "recheck-dynamic-site",
 } as const;
 
 registerApiTool(server,
   "recheck_migration_gate",
   "Run a pre-flight gate's re-check action: the enabled action in get_migration.preFlightGate.actions " +
-  "whose ID is RECHECK_EXPORT, RECHECK_OFFICIAL_EXPORT, RECHECK_CAPACITY, RECHECK_TARGET_EMPTY or RECHECK_SQL_SYNTAX. " +
+  "whose ID is RECHECK_EXPORT, RECHECK_OFFICIAL_EXPORT, RECHECK_CAPACITY, RECHECK_TARGET_EMPTY, RECHECK_SQL_SYNTAX " +
+  "or RECHECK_DYNAMIC_SITE. " +
   "These never go to confirm_migration, which refuses them. A re-check never approves initial execution. Each assumes the user " +
   "fixed something outside Staticbot first, so ask them to do that and confirm it is done before calling: " +
   "RECHECK_EXPORT / RECHECK_OFFICIAL_EXPORT — they created a Cloud Data export in their Lovable project " +
@@ -288,11 +290,15 @@ registerApiTool(server,
   "continue the already-approved stopped import. RECHECK_SQL_SYNTAX — they pushed SQL fixes to the source branch: " +
   "explain that this adopts its newest commit, reruns discovery and replaces the prepared plan. Obtain explicit " +
   "approval for that source re-prepare and set confirmed=true. This requires an open SQL_SYNTAX_ERRORS gate " +
-  "and returns to plan review without approving target writes. Poll get_migration_overview, read get_migration " +
+  "and returns to plan review without approving target writes. RECHECK_DYNAMIC_SITE — on a Dynamic Website gate " +
+  "(DYNAMIC_SITE_NOT_ELIGIBLE, or DYNAMIC_SITE_PLAN while the workspace needs a plan): the user changed their app, or " +
+  "upgraded/freed a site slot; Base44 discovery reruns and a fresh gate replaces the old one. It creates nothing and " +
+  "never confirms the plan. Poll get_migration_overview, read get_migration " +
   "after a change and fetch the new discovery report for review. A refusal never falls back to confirm/resume/retry.",
   {
     id: z.string().uuid().describe("Migration ID"),
-    action: z.enum(["RECHECK_EXPORT", "RECHECK_OFFICIAL_EXPORT", "RECHECK_CAPACITY", "RECHECK_TARGET_EMPTY", "RECHECK_SQL_SYNTAX"])
+    action: z.enum(["RECHECK_EXPORT", "RECHECK_OFFICIAL_EXPORT", "RECHECK_CAPACITY", "RECHECK_TARGET_EMPTY", "RECHECK_SQL_SYNTAX",
+      "RECHECK_DYNAMIC_SITE"])
       .describe("Exact enabled re-check action ID from get_migration.preFlightGate.actions"),
     confirmed: z.literal(true).optional().describe("Required for RECHECK_SQL_SYNTAX after explicit approval to adopt the newest source commit and replace the prepared plan"),
   },
@@ -305,6 +311,8 @@ registerApiTool(server,
     return apiToolResult({ queued: true, action,
       next: action === "RECHECK_SQL_SYNTAX"
         ? "Poll get_migration_overview, then inspect get_migration and the new discovery report. The new plan needs separate approval before target writes."
+        : action === "RECHECK_DYNAMIC_SITE"
+        ? "Poll get_migration_overview until discovery finishes, then read get_migration's new preFlightGate and present it before any choice."
         : "Poll get_migration_overview, then inspect get_migration for the updated gate or resumed import." }, toText);
   }
 );

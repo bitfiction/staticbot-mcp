@@ -63,6 +63,11 @@ source commit, reruns discovery and replaces the prepared plan. After explicit a
 inspect the detailed gate and new discovery report, and request separate approval before target
 writes. A 409 may mean no new commit or a changed gate; never fall back to confirm/resume/retry.
 
+For `RECHECK_DYNAMIC_SITE` (a Dynamic Website gate: the app isn't eligible yet, or the workspace needs a
+plan), have the user change their app or upgrade/free a site slot first, then call
+`recheck_migration_gate` with that action. Discovery reruns and a fresh gate replaces the old one;
+nothing is created and the plan is not confirmed. Present the new gate before any choice.
+
 ## Retained evidence and handoff
 
 - `list_migration_discovery_revisions` lists saved reports newest first; use the oldest returned `revisionNumber` as the exclusive `beforeRevision` cursor (page size 1–100, default 25). `get_migration_discovery_revision` reads one by `revisionId`. A missing historical report remains unknown. Historical approval is evidence, not permission to approve a replacement plan.

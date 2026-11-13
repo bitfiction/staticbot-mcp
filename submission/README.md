@@ -1,5 +1,23 @@
 # ChatGPT remote submission
 
+## Latest verification — 2026-11-13
+
+The production audit before the project-launch implementation found 139 V1 operations and hosted
+MCP `1.8.44-prod` at committed main `c20eb35`, with 121 tools covering 131 routes and eight deliberate
+exclusions. Local source now has 141 V1 operations and 123 MCP tools covering 133 routes after adding
+the confirmed connected-project launch flow. It needs a backend release followed by MCP through
+`release.sh`, then a fresh portal scan. Full MCP tests and 744 backend launch regression tests pass.
+The pre-implementation checks of public health/readiness, exact domain-proof bytes,
+advertised OAuth resource/issuer metadata and unauthenticated 401 protection pass. The portal's full
+requested scopes reach `login_required` in an unauthenticated `prompt=none` probe.
+
+These checks do not verify reviewer login, token exchange, portal tool discovery, sample projects,
+real workflow runs or the demo video. Account/portal observations below were recorded in October;
+recheck them before submission. npm still publishes `1.8.2`; local package version is `1.8.3`.
+See `CAPABILITY-PARITY.md` for the deployed versions and remaining dashboard capabilities.
+
+## Draft preparation and earlier portal checks
+
 Run `npm run pack:chatgpt` to generate `artifacts/chatgpt/staticbot-<version>.zip`.
 The builder uses the current listing and version from `.codex-plugin/plugin.json`,
 converts the draft review cases from `chatgpt-app-submission.json`, and copies only
@@ -72,11 +90,12 @@ the completed portal OAuth connection and tool scan remain unverified.
 This archive is for connection setup, not a verified final submission. Review
 cases still need real account fixtures and workflow runs. The demo video, support
 URL and listing icon are not supplied by this builder. A successful package upload
-does not prove these requirements are complete. The live V1 contract now contains
-all 128 operations, including the four cutover routes, and the hosted image contains
-all 112 MCP tools. Their authenticated reviewer workflows still need verification.
-All seven skill checks have passed in the portal; support URL, icon and review
-information remain blocking findings.
+does not prove these requirements are complete. At the 2026-10-29 release check, V1
+contained 128 operations and hosted MCP contained 112 tools; the latest inventory is
+recorded above. Their authenticated reviewer workflows still need verification.
+At the earlier portal inspection, all seven skill checks had passed; support URL,
+icon and review information were blocking findings. This audit did not recheck the
+portal's current findings.
 Credentials and reviewer access instructions go in the portal's secure form.
 
 References: [packaging and OAuth configuration](https://developers.openai.com/plugins/build/plugins),

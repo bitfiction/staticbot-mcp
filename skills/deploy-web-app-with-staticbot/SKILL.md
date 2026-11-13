@@ -23,6 +23,16 @@ If Staticbot cannot classify or support the repository, surface its diagnostic a
 
 Read [references/deployment-workflow.md](references/deployment-workflow.md) for tool order and reporting requirements.
 
+For an existing connected project's first go-live, use `get_connected_project_launch` with its
+attached release template. Present the exact backend URL, domain and sign-in choices. When
+`projectBackendRequired` is true, the connected client backend is fixed and `useMigratedBackend`
+must be true. Obtain approval, then call `launch_connected_project` with the inspected
+`templateVersion`, `stateVersion` as `expectedState`, and the chosen inputs. `CONFIGURED` means
+hosting is linked to the project and Live pipeline stage; no deployment has started. Continue with
+`create_deployment` on the returned stack and `start_deployment` within the user's authorization.
+If `existingStackId` is present, resume that hosting. After a 409 or an unknown outcome, inspect
+again; never automatically create another stack or substitute an approval snapshot.
+
 - Inspect templates, stacks, and integrations before creating duplicates.
 - Ask for a domain strategy and any required configuration values that cannot be discovered safely.
 - Treat stack creation, deployment creation/start, DNS push, settings changes, redeploy, and rollback as external mutations. A direct request to deploy authorizes the normal create-and-start flow, but not an external DNS write unless the request also asked Staticbot to configure DNS. Otherwise stop before the first mutation.

@@ -591,7 +591,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Only retrieves which secrets a migrated app uses and whether each has a value — names and states, never a value.",
+        "read_only_justification": "Only retrieves which secrets a migrated app uses and whether each has a value \u2014 names and states, never a value.",
         "open_world_justification": "Does not change migration work or an external system.",
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
@@ -1458,6 +1458,30 @@
         "read_only_justification": "Destroys the deployment's cloud resources.",
         "open_world_justification": "Removes the user's hosting, CDN and DNS records; a live site goes offline.",
         "destructive_justification": "Irreversible removal; requires explicit confirmation and the exact inspected status."
+      }
+    },
+    "get_connected_project_launch": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads the scoped project launch plan, available owned domains and sign-in/backend choices without creating resources.",
+        "open_world_justification": "Does not modify hosting, DNS, the backend or any external system.",
+        "destructive_justification": "Does not change project settings or launch a deployment."
+      }
+    },
+    "launch_connected_project": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "After explicit approval, creates a hosting stack and binds the project and its Live pipeline stage to it.",
+        "open_world_justification": "Resolves the approved domain and hosting choices through existing hosting integrations.",
+        "destructive_justification": "Only configures first hosting; refuses existing hosting and stale plans, and does not create/start a deployment or replace live resources."
       }
     }
   },

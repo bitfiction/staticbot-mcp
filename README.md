@@ -121,6 +121,14 @@ API/MCP results contain the customer summary rather than raw extracted scripts o
 
 ### Connected-project operations
 
+For a project's first hosting launch, call `get_connected_project_launch` with its attached release
+template. Present the inspected backend, domain and sign-in choices, then call
+`launch_connected_project` with the exact template version/state and explicit confirmation.
+`CONFIGURED` means the new stack is linked to the project and its Live pipeline stage; it has not
+been deployed. Continue with `create_deployment` using that stack ID, then `start_deployment`, when
+authorized. Existing hosting and stale plans return 409; inspect the current state before proceeding.
+These launch endpoints require the backend and MCP release described in the capability audit.
+
 Read `get_connected_project_operations` before preview/live/webhook changes. It returns the current
 builder/live branches, effective role permissions and repository-webhook consumers. Mutation tools
 require explicit confirmation; live operations require those exact branch names and webhook actions

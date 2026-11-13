@@ -99,6 +99,12 @@ export function probeCases(tool, overrides = {}) {
 }
 
 export const TOOL_PROBES = {
+  launch_connected_project: [
+    { type: 'AUTO_GENERATED' },
+    { type: 'CUSTOM_DOMAIN', domainName: 'launch.example.invalid' },
+    { type: 'EXISTING_DOMAIN', dnsDomainId: FIXTURE_ID },
+  ].map(domainOption => ({ id: FIXTURE_ID, templateId: FIXTURE_ID, templateVersion: '1.0.0',
+    domainOption, useMigratedBackend: true, signInPage: 'STATICBOT', expectedState: 'a'.repeat(64), confirmed: true })),
   copy_connected_project_late_changes: ['INSERT_ONLY', 'FULL_UPDATE'].map(mode => ({
     id: FIXTURE_ID, mode, expectedState: 'a'.repeat(64), confirmed: true })),
   mark_cutover_conflicts_reviewed: [{ id: FIXTURE_ID, expectedState: 'a'.repeat(64), confirmed: true }],

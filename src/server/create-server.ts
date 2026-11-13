@@ -15,6 +15,7 @@ import { registerMigrationTools } from "../tools/migrations.js";
 import { registerSiteScanTools } from "../tools/site-scans.js";
 import { registerProjectOperationTools } from "../tools/project-operations.js";
 import { registerProjectReleaseTools } from "../tools/project-release.js";
+import { registerProjectLaunchTools } from "../tools/project-launch.js";
 import { registerStackTools } from "../tools/stacks.js";
 import { registerTemplateTools } from "../tools/templates.js";
 
@@ -49,6 +50,7 @@ export function createServer(context: ToolContext): McpServer {
   registerConnectedProjectTools(server, context);
   registerProjectOperationTools(server, context);
   registerProjectReleaseTools(server, context);
+  registerProjectLaunchTools(server, context);
   registerBackendOperationTools(server, context);
   registerCutoverTools(server, context);
   registerGateTools(server, context);

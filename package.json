@@ -49,7 +49,7 @@
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "smoke": "node scripts/smoke-test.mjs",
-    "test": "npm run build && npm run smoke && npm run validate:hosted && npm run validate:discovery && npm run validate:versions && npm run validate:redaction && npm run validate:migrations && npm run validate:site-scans && npm run validate:project-operations && npm run validate:backend-operations && npm run validate:cutover && npm run validate:release && npm run validate:submission && npm run validate:api-parity",
+    "test": "npm run build && npm run smoke && npm run validate:hosted && npm run validate:discovery && npm run validate:versions && npm run validate:redaction && npm run validate:migrations && npm run validate:site-scans && npm run validate:project-operations && npm run validate:backend-operations && npm run validate:cutover && npm run validate:release && npm run validate:project-launch && npm run validate:submission && npm run validate:api-parity",
     "validate:hosted": "node --test scripts/check-hosted-discovery.mjs",
     "validate:discovery": "node scripts/validate-discovery-prompts.mjs",
     "prepack": "npm run build",
@@ -65,7 +65,8 @@
     "validate:api-parity": "node --test scripts/test-api-parity.mjs && node scripts/check-api-parity.mjs",
     "validate:backend-operations": "node scripts/check-backend-operation-contracts.mjs",
     "validate:cutover": "node scripts/check-cutover-contracts.mjs",
-    "validate:release": "node scripts/check-release-contracts.mjs"
+    "validate:release": "node scripts/check-release-contracts.mjs",
+    "validate:project-launch": "node scripts/check-project-launch-contracts.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

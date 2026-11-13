@@ -1,9 +1,74 @@
-# V1 / MCP capability check — 2026-10-31
+# V1 / MCP capability check — 2026-11-13
 
-The latest live checks cover reviewer account metadata and the public hosted MCP endpoints.
-Source/tests, live V1 inventory and deployment-image checks retain their previously recorded scope.
-This does not certify authenticated reviewer workflows or portal submission readiness. Earlier
-dated sections below retain the scope of their original checks.
+The latest audit checks current controllers, runtime MCP tool coverage, focused backend tests,
+production OpenAPI, deployed images and public MCP/OAuth endpoints. It does not establish
+authenticated reviewer workflows or submission readiness. Earlier dated sections retain the
+scope of their original checks.
+
+## Current readiness — 2026-11-13
+
+| Surface | Verified state |
+| --- | --- |
+| V1 source | 141 operations after the local project-launch addition. Controller inventory and internal-gap guardrails pass. |
+| MCP source | 123 runtime tools exercise 133 V1 routes. Eight deliberate exclusions are listed below. Parity passes against the current backend contract. |
+| Production V1 | Read-only audit before this implementation: 139 operations matching the then-current source. The two new project-launch routes need a release. |
+| Hosted MCP | The pre-implementation audit found `staticbot-mcp:1.8.44-prod` at committed main `c20eb35`, with 121 tools. One ready replica, zero restarts; health/readiness return 200. Pod digest: `sha256:0ec065a5e3b135c49a2e81e6cefab8addabd64c6069b301d76696fbdec3dd206`. The two local launch tools need a release. |
+| Backend release | `staticbot-app:1.9.306-prod` has one ready replica. Its release tag points to `8dd09e85`: two main commits follow it, the auth callback registration fix `30eac040` and triage documentation `5a1147e7`. These do not add V1 routes. |
+| OAuth and domain proof | The advertised resource metadata and issuer discovery return 200. The domain proof matches exactly, as plain text with `no-store`; unauthenticated MCP returns 401. A `prompt=none` probe with the portal's full scopes returns `login_required`, without a client/scope error. This is not a completed token exchange. |
+| npm | Registry latest remains `1.8.2`; source is `1.8.3`. This is separate from the current hosted image. |
+| Reviewer and portal | Last account/portal observations remain the dated records below. This audit did not sign in, reconnect the draft, verify fixtures, run reviewer workflows or record the video. |
+
+Validation: the full MCP suite passes. The documented launch regression batch passes 744 backend
+tests, including seven PostgreSQL tests exercising real commits/rollback and concurrent launch
+exclusion with auto-commit disabled. Route coverage does not prove every request/response field or
+a real workflow against an authenticated production account.
+
+### Connected-project launch implemented locally — 2026-11-13
+
+The earlier consolidation was already implemented in November 7 commits; its planning document's
+"parked" header was stale. Both generic UI/V1 paths already use `DeploymentWorkflow`,
+`StackLaunchWorkflow`, `RepositoryTemplateImport`, `AwsHostingOptionsQuery` and `DeploymentFactsQuery`.
+The remaining project-launch extension is implemented in backend commit `153cd6a4` and the local MCP tools:
+
+| V1 operation | MCP tool |
+| --- | --- |
+| `GET /api/v1/connected-projects/{id}/hosting/launch?templateId=…` | `get_connected_project_launch` |
+| `POST /api/v1/connected-projects/{id}/hosting/launch` | `launch_connected_project` |
+
+Inspection is side-effect free and returns a value-free plan, backend URL, sign-in choices and owned
+domain choices. Creation requires explicit confirmation, the exact template version/state and the
+user's domain/backend/sign-in choices. The shared setup transaction rechecks current authority under
+the project lock, applies stored backend configuration, and binds the new stack and Live stage.
+Fixed client backends remain fixed. API credentials do not acquire a fabricated person milestone.
+
+`CONFIGURED` is hosting setup only. Use `create_deployment` with the returned stack ID, then
+`start_deployment` separately. Credential-scoped creation rechecks project configuration authority
+and commits its deployment pointer with the new deployment, taking project then stack locks like
+the browser. Trusted internal callers retain their existing behavior. Stale approvals, duplicate
+families and existing hosting return useful conflicts; no implicit retry or deployment is performed.
+Public projections omit configuration/credentials and sanitize error diagnostics.
+
+The earlier 139-route production parity result predates these changes. No production release,
+reviewer workflow or portal scan was performed for this implementation. No worker or schema change
+is required; release the backend before MCP through `release.sh`.
+
+Website URL scanning is already exposed through `scan_website` / `get_website_scan` and authenticated
+workspace-owned `/api/v1/site-scans` routes. This entry point does not use browser Turnstile. A target
+website's own Cloudflare/access restrictions can still prevent a scan.
+
+### Dashboard capabilities still outside V1/MCP
+
+The current internal-route baseline contains 167 method/path differences. These are routes, not
+167 independent features; the baseline includes deferred workflows and deliberate differences.
+Passing V1-to-MCP parity does not close this separate dashboard-to-V1 backlog.
+
+- Project/migration/template lifecycle operations, deployment runtime logs and additional preview
+  checks, general DNS-zone management, billing reads and provider connection-health checks.
+- Dynamic Website collection/record/export management and forms. Exposing visitor data requires
+  a deliberate authorization and response contract.
+
+The recent sign-in page, Google sign-in status, pipeline read/approve/reject/gate, and deployment
+abort/destroy additions are deployed. Saving Google client secrets remains outside MCP by design.
 
 ## Sign in with Google — 2026-11-11
 
@@ -48,7 +113,7 @@ action `RECHECK_DYNAMIC_SITE`). `recheck_migration_gate` now routes that action 
 snapshot is refreshed: 129 V1 operations, 122 covered by 112 runtime tools, and the same seven deliberate
 differences. App CI had not reported the gap because its integration tests failed before the parity step ran.
 
-## Current readiness — 2026-10-31
+## Historical readiness snapshot — 2026-10-31
 
 | Surface | Verified state |
 | --- | --- |
@@ -109,11 +174,11 @@ The previous four internal-route deferrals have been removed. This extension nee
 migration or worker change. The backend and hosted MCP have now been released; refresh the
 portal scan after connecting its account. No customer copy was performed by this audit.
 
-Other documented dashboard gaps remain, including project linking, pipeline administration,
-deployment cleanup/destruction and general DNS-zone management. Passing V1-to-MCP coverage does not
+Other documented dashboard gaps remain, including project linking, additional pipeline administration,
+deployment record cleanup/deletion and general DNS-zone management. Passing V1-to-MCP coverage does not
 mean every dashboard feature has a public endpoint. Secret entry remains a deliberate browser boundary.
 
-### Validation and submission follow-through
+### Cutover validation and submission follow-through — 2026-10-29
 
 The full MCP suite passes, including all 112 tools, submission annotations/cases and route parity
 against the regenerated backend contract. The new cutover adapter checks exercise both API-key and
@@ -304,13 +369,14 @@ The focused backend batch and full MCP suite pass. Real provider/reviewer-fixtur
 deployment remain release validation. Deploy the backend before the hosted MCP server and refresh
 the portal scan after release.
 
-### Seven current route differences
+### Eight current route differences
 
 | V1 route | Context |
 | --- | --- |
 | `GET /api/v1/onboarding/unsubscribe` | Signed email unsubscribe link, not a general agent action. |
 | `POST /api/v1/mcp/client-connections` | Connection registration/control plane; not an end-user business tool. |
 | `POST /api/v1/migrations/{}/jobs/{}/provide-base44-secrets` | Deliberate credential boundary. Secret values are entered in the dashboard; MCP exposes secret names/state and the browser handoff. Do not create a credential-taking tool to close this row. |
+| `PUT /api/v1/connected-projects/{}/google-sign-in` | Takes the Google client secret. Available to API-key callers; delegated MCP callers use the browser handoff. `get_google_sign_in` exposes status and setup information. |
 | `POST /api/v1/public/site-scans` | Anonymous browser onboarding/anti-abuse flow. MCP starts owned checks through `POST /api/v1/site-scans`. |
 | `GET /api/v1/public/site-scans/{}` | Anonymous result flow. MCP reads owned results through `GET /api/v1/site-scans/{id}`. |
 | `GET /api/v1/public/site-scans/{}/screenshot` | Browser screenshot response. A future image tool needs a tested media/authorization contract; existing result reads do not establish screenshot parity. |
@@ -321,7 +387,7 @@ confirmation semantics remain the responsibility of the focused contract tests. 
 `GET /api/v1/pricing` that has not been implemented is still work in the app's
 `2026-10-16-plan-facts-single-source.md`; route discovery cannot infer an endpoint that does not exist.
 
-## Added locally
+## Earlier capability additions
 
 | Capability | V1 API | MCP |
 | --- | --- | --- |
@@ -370,8 +436,9 @@ an UNKNOWN comparison remains unknown, and `checkedAt` is retained evidence rath
 
 The newer dashboard is broader than V1/MCP. Examples confirmed in current source:
 
-- Linking a connected project to a stack or an existing deployment remains a separate browser-only
-  capability. Project creation/deletion, collaboration, delivery and pipeline administration are
+- Reattaching a connected project to an existing stack or deployment remains a separate browser-only
+  capability; the new first-launch operation links its own new stack. Project creation/deletion,
+  collaboration, delivery and additional pipeline administration are
   outside these two requested gaps. This change does not claim complete dashboard parity.
 - Credential intake is deliberately different. V1's Base44-secret endpoint exists for API-key
   callers, while delegated MCP rejects credential material. MCP sends the user to the dashboard.
@@ -384,7 +451,7 @@ This check does not claim every dashboard operation, request field or response f
 
 ## Submission maintenance
 
-`chatgpt-app-submission.json` now covers all 112 local runtime tools with explicit annotations and
+`chatgpt-app-submission.json` now covers all 123 local runtime tools with explicit annotations and
 justifications, exactly five positive cases and three negative cases. The one-time data-import gate
 test was replaced with a website check. Positive tests still need real reviewer fixtures and a live
 run; metadata validation is not an execution result.

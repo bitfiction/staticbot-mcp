@@ -1483,6 +1483,42 @@
         "open_world_justification": "Resolves the approved domain and hosting choices through existing hosting integrations.",
         "destructive_justification": "Only configures first hosting; refuses existing hosting and stale plans, and does not create/start a deployment or replace live resources."
       }
+    },
+    "get_sync_merge_conflict": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads merge conflict metadata and the shared prompt without changing state.",
+        "destructive_justification": "No writes or credit charges.",
+        "open_world_justification": "Returns stored project context only."
+      }
+    },
+    "resolve_sync_merge_with_ai": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Queues a replay retry and can resume the project sync.",
+        "destructive_justification": "Can merge repository changes and resume sync work; explicit approval is required.",
+        "open_world_justification": "The worker interacts with the connected repository and deployment workflow."
+      }
+    },
+    "recheck_sync_merge_conflict": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Queues a replay retry and can resume the project sync.",
+        "destructive_justification": "Can merge repository changes and resume sync work; explicit approval is required.",
+        "open_world_justification": "The worker interacts with the connected repository and deployment workflow."
+      }
     }
   },
   "test_cases": [

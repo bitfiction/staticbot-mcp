@@ -6,8 +6,11 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 123;
+const expectedToolCount = 126;
 const expectedTools = [
+  "get_sync_merge_conflict",
+  "resolve_sync_merge_with_ai",
+  "recheck_sync_merge_conflict",
   "get_connected_project_launch",
   "launch_connected_project",
   "get_sign_in_page",

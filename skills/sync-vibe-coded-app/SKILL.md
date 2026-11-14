@@ -12,7 +12,8 @@ Read [references/sync-workflow.md](references/sync-workflow.md) for the tool seq
 - Inspect the connected project, current sync mode, webhook state, last synced version, and recent runs before triggering or changing anything.
 - A request to review sync changes does not authorize applying them. Trigger a new run only when requested.
 - Use repository versions returned by Staticbot; do not infer commits or claim a diff was applied before the run completes.
-- When a run is `PAUSED_FOR_REVIEW`, fetch its jobs and present the destructive SQL/diff inventory. Ask whether to apply or skip destructive operations before `confirm_sync_run`.
+- For replay merge conflicts, call `get_sync_merge_conflict` for the shared resolution prompt. Offer `resolve_sync_merge_with_ai` (one credit on success) first, or help with the prompt and repository tools for free. After a reviewed fix is merged, `recheck_sync_merge_conflict` checks it without credits. Get approval before mutations.
+- When a run is `PAUSED_FOR_REVIEW` for destructive SQL, fetch its jobs and present the destructive SQL/diff inventory. Ask whether to apply or skip destructive operations before `confirm_sync_run`.
 - Inspect failures before retrying. Explain exactly what would be skipped and obtain explicit confirmation before `skip_sync_run`.
 - Confirm the requested mode before `set_connected_project_sync_mode`; `AUTOMATIC`, `MANUAL`, `PAUSED`, and `ARCHIVED` have materially different behavior.
 - Distinguish Continuous Sync (`trigger_sync`) from merging the migration preview onto the live mirror (`sync_connected_project_to_live`). Inspect `get_connected_project_operations` and branch previews before preview/live changes; explain the exact target and obtain explicit approval. Forward inspected branch names, and inspect/ask again on changed-target 409.

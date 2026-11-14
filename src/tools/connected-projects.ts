@@ -151,7 +151,7 @@ registerApiTool(server,
   {
     projectId: z.string().uuid().describe("Connected project ID"),
     runId: z.string().uuid().describe("Paused sync run ID"),
-    confirmed: z.literal(true).describe("Explicit approval of this action and resuming the sync; the AI action also costs one credit on success"),
+    confirmed: z.literal(true).describe("Explicit approval of checking the external fix and resuming the sync; this action is free"),
   },
   { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
   async ({ projectId, runId }) => {

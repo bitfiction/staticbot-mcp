@@ -1515,8 +1515,8 @@
         "openWorldHint": true
       },
       "justifications": {
-        "read_only_justification": "Queues a replay retry and can resume the project sync.",
-        "destructive_justification": "Can merge repository changes and resume sync work; explicit approval is required.",
+        "read_only_justification": "Rechecks an externally resolved conflict and can resume the project sync. Does not invoke Staticbot AI or consume credits.",
+        "destructive_justification": "Can resume sync work after an external fix; explicit approval is required. This action is free.",
         "open_world_justification": "The worker interacts with the connected repository and deployment workflow."
       }
     }

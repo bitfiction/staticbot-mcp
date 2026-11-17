@@ -52,16 +52,27 @@ export function registerProjectOperationTools(server: McpServer, { apiFetch, toT
     expectedLiveBranch: z.string().min(1).describe("Exact liveBranch just inspected via get_connected_project_operations"),
     expectedBuilderBranch: z.string().min(1).describe("Exact builderBranch just inspected via get_connected_project_operations"),
   };
+  const liveBranchInput = {
+    ...branchInput,
+    repositoryTakeoverAcknowledged: z.literal(true).describe(
+      "True only after the user explicitly confirms that this repository is completely disconnected from " +
+      "the AI builder (Lovable, Base44, Bolt, …) and the migrated changes are merged into the builder branch. " +
+      "Staticbot cannot verify this; a merged pull request or an unchanged branch is not proof."),
+  };
   registerApiTool(server,
     "switch_connected_project_live_branch",
     "Switch live deployment to the project's existing builder branch (cut the cord). This stops " +
-      "maintaining the Staticbot mirror and can redeploy the production site. It is not an arbitrary " +
+      "maintaining the Staticbot mirror and can redeploy the production site. It is optional: launching " +
+      "and continuing development on the mirror branch is the recommended path. It is not an arbitrary " +
       "branch picker, and no reverse action is exposed. Inspect get_connected_project_operations, " +
       "explain the exact current and target branches and obtain explicit approval before confirmed=true. " +
-      "Forward both branch names verbatim. On a 409 inspect again and obtain fresh approval; never " +
-      "substitute new targets automatically. A branch switch can succeed while redeployment fails: " +
-      "report the returned message and redeployed flag accurately.",
-    branchInput,
+      "Before repositoryTakeoverAcknowledged=true, warn that a still-connected AI builder can push to the " +
+      "builder branch and overwrite Staticbot's migration changes, breaking the hosted app, and get the " +
+      "user's own confirmation that the repository is disconnected and the migrated changes are merged; " +
+      "never infer it. Forward both branch names verbatim. On a 409 inspect again and obtain fresh " +
+      "approval; never substitute new targets automatically. A branch switch can succeed while " +
+      "redeployment fails: report the returned message and redeployed flag accurately.",
+    liveBranchInput,
     { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     async ({ id, ...body }) => apiToolResult(await apiFetch(`/api/v1/connected-projects/${id}/live-branch`, {
       method: "POST", body: JSON.stringify(body),

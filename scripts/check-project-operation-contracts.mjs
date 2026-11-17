@@ -33,6 +33,9 @@ const api = createHttpServer(async (request, response) => {
     { id, builderBranch: "main", liveBranch: "staticbot/live", webhook: { repositoryConfigId: configId, affectedTemplates: 2 } });
   if (request.url === `${projectPath}/build-preview`) return json(202, { message: "Queued" });
   if (request.url === `${projectPath}/live-branch` || request.url === `${projectPath}/sync-to-live`) {
+    // Mirrors V1 LiveBranchConfirmation: the switch also needs the repository-takeover acknowledgement.
+    if (request.url.endsWith("/live-branch") && body.repositoryTakeoverAcknowledged !== true)
+      return json(400, { message: "Disconnect the repository from the AI builder and merge the migrated changes first" });
     if (body.expectedLiveBranch !== "staticbot/live") return json(409, { message: "Branch targets changed" });
     return request.url.endsWith("/live-branch") ? json(200, { liveBranch: "main", redeployed: false, message: "Switched; redeploy failed" })
       : json(202, { started: false, alreadyRunning: true, runId, message: "Already running" });
@@ -48,6 +51,7 @@ const apiUrl = `http://127.0.0.1:${api.address().port}`;
 const actor = { subject: "parity-subject", username: "reviewer", email: "reviewer@example.invalid",
   oauthClientId: "parity-client", scopes: ["staticbot:read", "staticbot:write"] };
 const branch = { id, confirmed: true, expectedLiveBranch: "staticbot/live", expectedBuilderBranch: "main" };
+const liveSwitch = { ...branch, repositoryTakeoverAcknowledged: true };
 const hook = { id, confirmed: true, expectedRepositoryConfigId: configId };
 try {
   for (const [name, context, token] of [
@@ -62,7 +66,9 @@ try {
       const beforeInvalid = requests.length;
       for (const [tool, args] of [
         ["build_connected_project_preview", { id }],
-        ["switch_connected_project_live_branch", { ...branch, confirmed: false }],
+        ["switch_connected_project_live_branch", { ...liveSwitch, confirmed: false }],
+        ["switch_connected_project_live_branch", branch],
+        ["switch_connected_project_live_branch", { ...liveSwitch, repositoryTakeoverAcknowledged: false }],
         ["sync_connected_project_to_live", { id, confirmed: true }],
         ["reset_connected_project_webhook", { id, confirmed: true }],
         ["set_migration_live_site", { id, url: "" }],
@@ -75,7 +81,7 @@ try {
         ["get_migration_live_commit_check", { id }, "GET", `${migrationPath}/live-commit-check`],
         ["get_connected_project_operations", { id }, "GET", `${projectPath}/operations`],
         ["build_connected_project_preview", { id, confirmed: true }, "POST", `${projectPath}/build-preview`],
-        ["switch_connected_project_live_branch", branch, "POST", `${projectPath}/live-branch`],
+        ["switch_connected_project_live_branch", liveSwitch, "POST", `${projectPath}/live-branch`],
         ["sync_connected_project_to_live", branch, "POST", `${projectPath}/sync-to-live`],
         ["setup_connected_project_webhook", hook, "POST", `${projectPath}/setup-webhook`],
         ["reset_connected_project_webhook", hook, "POST", `${projectPath}/reset-webhook`],
@@ -97,7 +103,7 @@ try {
       const absent = await client.callTool({ name: "get_migration_live_site", arguments: { id: missingId } });
       assert.equal(absent.structuredContent.result, null, "204 means no live-site evidence");
       for (const [tool, args] of [
-        ["switch_connected_project_live_branch", { ...branch, expectedLiveBranch: "stale" }],
+        ["switch_connected_project_live_branch", { ...liveSwitch, expectedLiveBranch: "stale" }],
         ["reset_connected_project_webhook", { ...hook, expectedRepositoryConfigId: missingId }],
       ]) {
         const before = requests.length;
@@ -107,5 +113,5 @@ try {
       }
     } finally { await client.close(); await server.close(); }
   }
-  console.log("Project operation contracts passed: 10 tools, confirmations, stale targets, retained evidence, both credentials");
+  console.log("Project operation contracts passed: 10 tools, confirmations, takeover acknowledgement, stale targets, retained evidence, both credentials");
 } finally { api.closeAllConnections(); await new Promise(resolve => api.close(resolve)); }

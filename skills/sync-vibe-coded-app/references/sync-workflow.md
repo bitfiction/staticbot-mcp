@@ -21,7 +21,9 @@ Report the exact `fromRepoVersion`/`toCommitSha` or equivalent version fields re
    already-running result is not completion; do not queue duplicate work.
 4. For cutting the cord, explain the current/live and builder branch targets, mirror-maintenance stop
    and potential production redeploy. Call `switch_connected_project_live_branch` only after explicit
-   approval. If the switch persists but redeploy fails, report both facts.
+   approval, and pass `repositoryTakeoverAcknowledged: true` only when the user confirms the repository
+   is fully disconnected from the AI builder and the migrated changes are merged. Never infer this from
+   a merged PR. If the switch persists but redeploy fails, report both facts.
 5. For GitHub webhook setup/reset/disable, show all affected projects and the template count sharing
    the repository. Confirm the entire repository scope and pass the inspected configuration ID.
    Reset/disable cannot attest upstream deletion; preserve `remoteDeletionVerified: false`.

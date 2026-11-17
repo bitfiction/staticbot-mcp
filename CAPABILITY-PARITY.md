@@ -423,7 +423,10 @@ workspace membership, OAuth scope and role. `ApiV1ProjectAccess` reuses `Project
 the persisted-link/branch ownership rules. Feature flags and agency-client restrictions still apply.
 
 Preview/live/webhook mutations require `confirmed: true`. Live-branch operations also require the
-inspected `expectedLiveBranch` and `expectedBuilderBranch`; changed targets return 409. Webhook writes
+inspected `expectedLiveBranch` and `expectedBuilderBranch`; changed targets return 409. The live-branch
+switch additionally requires `repositoryTakeoverAcknowledged: true` (V1 `LiveBranchConfirmation`, app
+`74f74a36`): the user confirms the repository is disconnected from the AI builder and the migrated
+changes are merged. Staticbot cannot verify it, and V1 answers 400 without it. Webhook writes
 require `expectedRepositoryConfigId` from the inspection response and disclose the shared project
 and template scope. Webhook secrets stay inside the existing transactional writer. Upstream deletion
 is best-effort and is never reported as verified. A live switch can persist while its redeploy fails;

@@ -6,7 +6,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expectedToolCount = 126;
+const expectedToolCount = 128;
 const expectedTools = [
   "get_sync_merge_conflict",
   "resolve_sync_merge_with_ai",
@@ -53,6 +53,8 @@ const expectedTools = [
   "list_templates",
   "get_deployment",
   "push_dns_to_cloudflare",
+  "check_dns_records",
+  "get_worker_app_dns",
   "list_aws_hosting_targets",
   "list_cloudflare_hosting_targets",
   "preflight_cloudflare_hosting",

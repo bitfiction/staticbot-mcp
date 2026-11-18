@@ -30,6 +30,10 @@ Deliberately **not** destructive, and worth knowing why:
   takes none — it resolves a zone and reports collisions, and never creates, deletes or takes over
   anything. Choosing an account is a decision the user makes in `create_stack` / `create_deployment`,
   which carry their own hints.
+- `check_dns_records` / `get_worker_app_dns` only read: the first asks a domain's own nameservers whether
+  a deployment's records are in place, the second reads a Workers custom hostname's records and status from
+  Cloudflare without asking it to retry (that is `recheck_dns_verification`, which is not read-only). Neither
+  writes a record, so `openWorldHint` stays false, like `preflight_cloudflare_hosting`.
 - `get_account_status` only reads the caller's own account, organization, plan and connection state.
   It returns no secrets by construction — a connection is a boolean and a dashboard link.
 - `list_source_repositories` only reads the public and private repositories already granted to the

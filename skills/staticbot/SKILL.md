@@ -58,7 +58,7 @@ Poll deployment, migration, or sync status at a moderate interval, normally 10â€
 
 For migrations, check `executionCompatibility.locked` first, then treat `pendingAction` as the source of truth for the next step. When it is null, poll only if the migration is still flowing. On completion, report the final state, preview/live URLs, skipped jobs, partial best-effort failures, and any required manual follow-up.
 
-For deployments, inspect the `dns` array on every poll. Present records exactly as returned and follow the DNS rules in the reference. Never recommend nameserver delegation as the default.
+For deployments, inspect the `dns` array on every poll and follow the DNS rules in the reference: give the user each record's `hostField`, and suggest a nameserver change only when the item carries `nameserverOption`.
 When an item offers a linked-Cloudflare push, use only its returned `domainId` and obtain authorization before the DNS write. Rechecking verification does not write DNS.
 
 ## Keep the Contract Current

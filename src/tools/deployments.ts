@@ -91,13 +91,18 @@ registerApiTool(server,
   "**Response fields you should always read:**\n" +
   "- `status` — pipeline state.\n" +
   "- `dns` — per-domain DNS state, populated once Terraform emits a state snapshot. Present " +
-  "regardless of `status`; check it on every poll, not just on WAITING.\n" +
+  "regardless of `status`; check it on every poll, not just on WAITING. Always empty for a Cloudflare Workers " +
+  "deployment: call get_worker_app_dns for its custom-hostname records instead.\n" +
+  "- `failureSummary` — see below; a DNS wait arrives here, not as a status.\n" +
   "- `requiredAction` — legacy; only set when `status=WAITING` and there are records to add. Prefer `dns`.\n\n" +
   "**For each entry in `dns`, read `action` and behave as follows:**\n" +
-  "- `NO_ACTION` — registrar NS already delegate to a zone Staticbot owns; nothing to ask the user. Celebrate.\n" +
-  "- `MANUAL_RECORDS_AT_REGISTRAR` — present `records` (cert CNAME + ALIAS/CNAME for the website) to the user, " +
-  "asking them to add them at whatever DNS provider currently serves their domain. **Do NOT** suggest changing " +
-  "nameservers — Staticbot intentionally does not recommend NS takeover as a default path.\n" +
+  "- `NO_ACTION` — DNS already points at a zone Staticbot runs; nothing to ask the user. Celebrate.\n" +
+  "- `MANUAL_RECORDS_AT_REGISTRAR` — present `records` (certificate CNAME + ALIAS/CNAME for the website) and ask the " +
+  "user to add them at the DNS provider that serves their domain. Tell them to type each record's `hostField` into " +
+  "the provider's host field (an empty `hostField` means the root, usually `@`), never the full `host`: most " +
+  "forms append the domain, so the full name ends up doubled. Use `dnsProvider` for the provider's own words " +
+  "(`addRecordPath`, `hostFieldLabel`, `valueFieldLabel`, `beforeYouStart`) and link `dnsProvider.guideUrl`. A record " +
+  "with `supportedAtProvider=false` can't be added there: relay its `providerNote` instead.\n" +
   "- `OFFER_CLOUDFLARE_PUSH` — domain is on Cloudflare and an integration is linked. Offer " +
   "push_dns_to_cloudflare using this item's exact `domainId`; obtain authorization before the external DNS write. " +
   "Manual records at the current provider remain the fallback.\n" +
@@ -105,16 +110,30 @@ registerApiTool(server,
   "(direct the user to the integrations page) for the smoothest no-NS-change path.\n" +
   "- `REGISTER_DOMAIN_FIRST` — domain is not registered. Block and ask the user to register it first.\n" +
   "- `RESERVED_DOMAIN` — domain is a reserved name nobody can register (e.g. a.com, example.com, *.test). It can never work: stop and ask the user for a domain they own.\n\n" +
+  "**Nameservers:** mention a nameserver change ONLY when the entry has `nameserverOption`; otherwise adding " +
+  "`records` is the path. Lead with it only when `nameserverOption.recommended` is true (for example, a DNS host " +
+  "that can't point the root domain at the site); otherwise offer it as the alternative. Always relay its " +
+  "`caveat` before the user switches. For `DELEGATE_APEX_NS`, the user replaces the domain's nameservers at the " +
+  "registrar (`registrar`, `registrarGuideUrl`) with `nameserverOption.nameservers`; for `DELEGATE_SUBDOMAIN_NS`, " +
+  "they add NS records for that subdomain with those values. For `MIRROR_THEN_DELEGATE` (`mailRecordsDetected=true`), " +
+  "`nameservers` is empty on purpose: the existing email records must be copied first, which only the dashboard " +
+  "does (`statusUrl`), and a nameserver change before that breaks the user's email.\n\n" +
   "**Other fields per domain:**\n" +
-  "- `staticbotManaged` — true when live registrar NS overlap our recorded Route53 zone NS for this apex. Useful " +
-  "for explaining 'your domain is already pointing at us'.\n" +
-  "- `nsPointedAt` — `AWS_ROUTE53` | `CLOUDFLARE` | `OTHER` (where the live NS resolve to).\n" +
-  "- `mailRecordsDetected` — true when MX/TXT/SRV/CAA records exist on the apex. **Treat as a hard block on any " +
-  "advice that involves changing nameservers** — doing so would risk breaking the customer's mail.\n" +
+  "- `staticbotManaged` — true when the live nameservers overlap a DNS zone Staticbot runs for this domain (AWS " +
+  "Route 53 or Staticbot's Cloudflare). Useful for explaining 'your domain is already pointing at us'.\n" +
+  "- `nsPointedAt` — `AWS_ROUTE53` | `CLOUDFLARE` | `OTHER` | `NONE` (where the live nameservers resolve; `NONE` = " +
+  "the domain has no nameservers).\n" +
+  "- `mailRecordsDetected` — true when MX/TXT/SRV/CAA records exist. Never advise a plain nameserver change when true.\n" +
   "- `cloudflareLinked` — true when the domain is wired to a Cloudflare integration in Staticbot.\n" +
   "- `domainId` — Staticbot DNS-domain ID; pass this exact value to push_dns_to_cloudflare.\n" +
-  "- `records` — flat list of `{type, host, value, description}` to surface to the user.\n\n" +
-  "The response also includes `failureSummary` when a worker job is failing or has been retried. Surface its `summary`; when `terminal=true`, include the `statusUrl` so the user can inspect the full failure.",
+  "- `records` — `{type, host, value, description, hostField, typeAtProvider, supportedAtProvider, providerNote, checkKey}`. " +
+  "After the user adds them, call check_dns_records to confirm (`checkKey` joins each record to its verdict).\n\n" +
+  "**`failureSummary`** is present when a worker job is failing or has been retried. When " +
+  "`failureSummary.customerDnsWait` is set (`failureReason=CUSTOMER_DNS_VALIDATION_TIMEOUT`), the deployment is " +
+  "waiting for the user's certificate record, not broken: do not report a failure. Follow " +
+  "`customerDnsWait.instructions`: get the records added (or pushed when `cloudflarePush`), confirm with " +
+  "check_dns_records until `certificateRecordsFound` is true, then send the user to `statusUrl` to continue the " +
+  "deployment. Otherwise surface `summary`; when `terminal=true`, include the `statusUrl` so the user can inspect the full failure.",
   {
     id: z.string().uuid().describe("Deployment ID"),
   },

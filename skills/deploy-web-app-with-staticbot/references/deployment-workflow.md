@@ -41,16 +41,27 @@ with a generic `create_stack` call. For a standalone website, start at step 1.
 
 ## DNS and completion
 
-Always inspect every `dns` item:
+Always inspect every `dns` item. A Cloudflare Workers deployment has none: call `get_worker_app_dns` for its
+custom-hostname records instead.
 
 - `NO_ACTION`: no DNS change is needed.
-- `MANUAL_RECORDS_AT_REGISTRAR`: present returned records verbatim and keep the current nameservers.
+- `MANUAL_RECORDS_AT_REGISTRAR`: present the records and keep the current nameservers. Give the user each
+  record's `hostField` to type (empty means the root, usually `@`), not the full `host`, which most forms
+  double. Use `dnsProvider` for the provider's own field names and form location, and link its `guideUrl`.
 - `OFFER_CLOUDFLARE_PUSH`: offer `push_dns_to_cloudflare` using this item's exact `domainId`; explain the external DNS write and obtain authorization first. Show manual records as fallback.
 - `OFFER_CLOUDFLARE_CONNECT`: suggest connecting Cloudflare and show manual records as fallback.
 - `REGISTER_DOMAIN_FIRST`: stop until the domain is registered.
 - `RESERVED_DOMAIN`: stop; the name is reserved and can never be registered. Ask for a domain the user owns.
 
-Never recommend nameserver delegation as the default. If `mailRecordsDetected` is true, treat nameserver-change advice as blocked.
+Mention a nameserver change only when the item has `nameserverOption`; lead with it only when
+`nameserverOption.recommended` is true, and relay its `caveat` first. For `MIRROR_THEN_DELEGATE`
+(`mailRecordsDetected` true) its `nameservers` list is empty: the email records must be copied in the
+dashboard (`statusUrl`) before any nameserver change.
+
+After the user adds records, confirm with `check_dns_records` (poll no faster than every 30 seconds). Relay
+each verdict's message; `UNKNOWN` is a failed lookup, never "missing". When
+`failureSummary.customerDnsWait` is set, the deployment is waiting for the certificate record, not broken:
+follow its `instructions`, and once `certificateRecordsFound` is true send the user to `statusUrl` to continue.
 
 After a linked-Cloudflare push, present the response's `message` and every per-record error. For a
 Cloudflare Workers custom hostname, call `recheck_dns_verification` after records are published. Do

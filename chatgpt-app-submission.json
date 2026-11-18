@@ -200,6 +200,30 @@
         "destructive_justification": "Can overwrite live deployment-owned DNS records, although it never changes nameservers or mail records and requires an exact eligible domain ID."
       }
     },
+    "check_dns_records": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only asks the domain's nameservers whether the deployment's records are in place and reports a verdict per record.",
+        "open_world_justification": "Reads public DNS answers; does not change any DNS record, zone or external system.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
+    "get_worker_app_dns": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves a Cloudflare Workers deployment's custom-hostname records and their current verification status.",
+        "open_world_justification": "Reads the custom hostname's status from Cloudflare without asking it to retry or changing it.",
+        "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
+      }
+    },
     "recheck_dns_verification": {
       "annotations": {
         "readOnlyHint": false,

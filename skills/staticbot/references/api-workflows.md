@@ -78,19 +78,23 @@ choice — do not send an account ID, a zone ID, or `infrastructureOwnership` fo
 - `POST /deployments/{id}/redeploy-website?useLatest=true|false`
 - `POST /deployments/{id}/dns/{domainId}/push-cloudflare`
 - `POST /deployments/{id}/worker-app-dns/recheck`
+- `GET /deployments/{id}/worker-app-dns` (a Workers deployment's DNS card; read-only)
+- `GET /deployments/{id}/dns/record-check` (are the records live? read-only)
 
-Typical deployment flow: inspect or create a template, create a stack, create a deployment, inspect it, start it, and poll `GET /deployments/{id}`. Share its `statusUrl`. Read `dns` on every response, not only while the deployment is waiting.
+Typical deployment flow: inspect or create a template, create a stack, create a deployment, inspect it, start it, and poll `GET /deployments/{id}`. Share its `statusUrl`. Read `dns` on every response, not only while the deployment is waiting. A Cloudflare Workers deployment's `dns` is always empty: read `GET /deployments/{id}/worker-app-dns` for its records (and its `domainId` for the push when `canPush`).
 
 DNS actions:
 
 - `NO_ACTION`: DNS is already delegated correctly; do not ask for changes.
-- `MANUAL_RECORDS_AT_REGISTRAR`: show `records` verbatim and tell the user to add them at the current DNS provider. Do not suggest nameserver changes.
+- `MANUAL_RECORDS_AT_REGISTRAR`: tell the user to add `records` at the current DNS provider, typing each record's `hostField` (empty = the root, usually `@`), not the full `host`, which most forms double. Use `dnsProvider` for the provider's field names and form location and link its `guideUrl`.
 - `OFFER_CLOUDFLARE_PUSH`: offer the linked-zone push using this item's exact `domainId`; explain the external DNS write and obtain authorization first. Show manual records as fallback.
 - `OFFER_CLOUDFLARE_CONNECT`: suggest connecting Cloudflare; show manual records as fallback.
 - `REGISTER_DOMAIN_FIRST`: stop and ask the user to register the domain.
 - `RESERVED_DOMAIN`: the domain is a reserved name nobody can register (a.com, example.com, *.test); stop and ask for a domain the user owns.
 
-If `mailRecordsDetected` is true, treat that as a hard block on nameserver-change advice.
+Suggest a nameserver change only when the item has `nameserverOption`, lead with it only when `recommended` is true, and relay its `caveat`. For `MIRROR_THEN_DELEGATE` (`mailRecordsDetected` true), `nameservers` is empty: the email records must be copied in the dashboard first.
+
+After records are added, confirm with `GET /deployments/{id}/dns/record-check` (no faster than every 30 seconds); `UNKNOWN` is a failed lookup, never "missing". When `failureSummary.customerDnsWait` is set, the deployment is waiting for the certificate record: follow its `instructions` instead of reporting a failure.
 
 The Cloudflare push idempotently writes only deployment-owned certificate-validation and website
 routing records. It does not delegate nameservers or modify mail records. Present its structured

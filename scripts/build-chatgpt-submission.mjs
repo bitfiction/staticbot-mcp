@@ -37,6 +37,11 @@ for (const test of submission.test_cases) {
   assert(Object.hasOwn(submission.tools, test.tools_triggered), "unknown review test tool");
 }
 const { skills, mcpServers, interface: listing, ...metadata } = source;
+assert.equal(new URL(listing.supportURL).protocol, "https:");
+const icon = "assets/staticbot-icon.png";
+for (const field of ["logo", "composerIcon"]) {
+  assert.equal(listing[field], `./${icon}`, `${field} must reference the packaged app icon`);
+}
 const manifest = {
   $schema: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   ...metadata,
@@ -49,6 +54,9 @@ const manifest = {
           negative: submission.negative_test_cases.map(convertCase),
         },
       },
+      publication: {
+        release_notes: "Initial directory submission for Staticbot hosting, migrations, and Continuous Sync. Includes website and DNS checks, migration plan review, and connected-project release management.",
+      },
     },
   },
 };
@@ -57,12 +65,13 @@ const manifest = {
 const skillFiles = execFileSync("git", ["ls-files", "-z", "--", "skills/"], { cwd: root })
   .toString().split("\0").filter(Boolean);
 assert(skillFiles.some((name) => name.endsWith("/SKILL.md")), "no tracked skills found");
+const packagedFiles = ["LICENSE", icon, ...skillFiles];
 const outputDir = path.join(root, "artifacts/chatgpt");
 const archive = path.join(outputDir, `staticbot-${pkg.version}.zip`);
 const staging = await mkdtemp(path.join(tmpdir(), "staticbot-submission-"));
 try {
   await mkdir(outputDir, { recursive: true });
-  for (const name of ["LICENSE", ...skillFiles]) {
+  for (const name of packagedFiles) {
     assert(!path.isAbsolute(name) && !name.split("/").includes(".."));
     const target = path.join(staging, name);
     await mkdir(path.dirname(target), { recursive: true });
@@ -72,11 +81,11 @@ try {
   await writeFile(path.join(staging, "plugin.json"), json(manifest));
   await writeFile(path.join(staging, "mcp.json"), json(mcp));
   await rm(archive, { force: true });
-  execFileSync("zip", ["-q", "-X", archive, "plugin.json", "mcp.json", "LICENSE", ...skillFiles],
+  execFileSync("zip", ["-q", "-X", archive, "plugin.json", "mcp.json", ...packagedFiles],
     { cwd: staging });
   console.log(`Remote OAuth draft ZIP: ${archive}`);
   console.log(`Includes ${skillFiles.length} tracked skill files and 5 positive / 3 negative draft cases.`);
-  console.log("Connection preparation only: reviewer fixtures, video, listing assets and live tool scan still need verification.");
+  console.log("Reviewer fixtures, video, and live tool scan still need verification.");
 } finally {
   await rm(staging, { recursive: true, force: true });
 }

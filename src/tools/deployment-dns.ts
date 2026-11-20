@@ -38,8 +38,8 @@ export function registerDeploymentDnsTools(
 
   registerApiTool(server,
     "check_dns_records",
-    "Check whether the DNS records a deployment asked the user to add are live, by asking each domain's own " +
-      "nameservers (no cache wait). Read-only and display-only: Staticbot never gates on it. Call it after the " +
+    "Check whether the DNS records a deployment asked the user to add are live by querying each domain’s public " +
+      "authoritative nameservers. Returns an informational verdict for each record. Call it after the " +
       "user says they added the records from get_deployment, and when a deployment is waiting for its " +
       "certificate record (failureSummary.customerDnsWait). Poll no faster than every 30 seconds. Join each " +
       "verdict to get_deployment's dns[].records[] by checkKey. Relay each record's message as written. " +
@@ -51,7 +51,7 @@ export function registerDeploymentDnsTools(
     {
       deploymentId: z.string().uuid().describe("Deployment ID returned by get_deployment"),
     },
-    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async ({ deploymentId }) => {
       const data = await apiFetch(`/api/v1/deployments/${deploymentId}/dns/record-check`);
       return apiToolResult(data, toText);

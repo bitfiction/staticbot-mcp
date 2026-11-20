@@ -397,9 +397,11 @@ try {
 
   const approvedRevisionId = "00000000-0000-4000-8000-000000000055";
   const historyJobId = "00000000-0000-4000-8000-000000000056";
-  for (const name of ["get_migration_discovery_report", "get_migration_execution_revisions", "get_migration_job_history"]) {
+  for (const name of ["get_migration_execution_revisions", "get_migration_job_history"]) {
     assert.equal(tools.find(tool => tool.name === name)?.annotations?.readOnlyHint, true);
   }
+  assert.equal(tools.find(tool => tool.name === "get_migration_discovery_report")?.annotations?.readOnlyHint, false,
+    "get_migration_discovery_report can persist a proposed revision");
   const confirm = tools.find(tool => tool.name === "confirm_migration");
   assert(confirm?.inputSchema.properties?.approvedRevisionId, "confirmation must accept the reviewed revision");
   assert.match(confirm.description, /never substitute a revision automatically/i);
@@ -467,7 +469,8 @@ try {
 
   // Testing saved connection credentials takes no value and sends none back.
   const credentialTest = tools.find(({ name }) => name === "test_connection_credentials");
-  assert.equal(credentialTest?.annotations?.readOnlyHint, true, "test_connection_credentials must be read-only");
+  assert.equal(credentialTest?.annotations?.readOnlyHint, false,
+    "test_connection_credentials sends a credential-validation request to the provider");
   assert.match(credentialTest?.description ?? "", /Never ask for client IDs or secrets/,
     "test_connection_credentials must tell agents never to ask for credential values");
   assert.deepEqual(Object.keys(credentialTest?.inputSchema?.properties ?? {}).sort(),

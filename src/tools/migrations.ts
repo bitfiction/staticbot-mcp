@@ -44,10 +44,12 @@ registerApiTool(server,
 
 registerApiTool(server,
   "get_migration",
+  "Read stored status, phases, gates, and next-action guidance for the selected migration. Use get_migration_overview " +
+  "for routine status polling. The response describes separate actions the user can take.\n\n" +
   "For missing original source-snapshot metadata on a paused migration, inspect get_migration_source_recovery. " +
   "Restore only the eligible revision and commit with restore_migration_source_snapshot after explicit approval. " +
   "Restoration never resumes or retries work and cannot bypass an execution lock.\n\n" +
-  "Get detailed migration state and next-action context. Use get_migration_overview for routine status polling; this detailed tool remains available whenever the full context is needed. Get the current status and phase breakdown of a migration. The response includes all migration phases (Discovery, DB Migration, Data Import, Edge Functions, Storage Buckets, Auth Config, Backend Switchover, Preview & Verify, Continuous Sync, Download, Follow-ups) with their individual statuses, plus sourceType (LOVABLE_SUPABASE / BOLT_SUPABASE / FIREBASE / BASE44_SUPABASE / BASE44_NATIVE), targetType (SUPABASE_CLOUD / SUPABASE_SELF_HOSTED), and packageAvailable (true once the downloadable zip is ready — fetch via download_package).\n\n" +
+  "The response includes each migration phase’s status, sourceType, targetType, and packageAvailable (true once the downloadable zip is ready — fetch via download_package).\n\n" +
   "**Execution compatibility:** check `executionCompatibility.locked` before routing any action. If true, stop execution polling and all migration mutations, even when status is IN_PROGRESS and pendingAction is null. Show `executionCompatibility.message` or `blockedReason`. Reports, job history and previews remain readable. Start a new migration with fresh discovery; prefer a clean target when the old run made writes. Never upgrade/reset version pins or try legacy confirm/resume/retry paths. Hosting and Continuous Sync have independent lifecycles.\n\n" +
   "**Self-navigating:** the response includes a `pendingAction` field that tells you the next action to take. New pre-flight states are explicit: REVIEW_TARGET_CONFLICTS → present `targetConflictReport`, then either call clean_migration_target after destructive confirmation or call confirm_migration only after the user explicitly declines cleanup; WAIT_FOR_TARGET_CLEANUP → poll; RETRY_TARGET_CLEANUP → call retry_migration_job (never skip cleanup); RESOLVE_TARGET_CAPACITY → the target database ran out of room mid-import: present preFlightGate.targetCapacity (plan, size, the stopped job and its remediation — Supabase billing changes the user must agree to), then call recheck_migration_gate once space is added; the stopped job continues after its last imported row. Use PROCEED_ANYWAY via confirm_migration only if the user accepts losing the remaining rows, and never retry the job directly; CHOOSE_MIGRATION_STRATEGY → present `preFlightGate.actions` and consequences, then call confirm_migration with the selected gateChoice, except a RECHECK_* action, which goes to recheck_migration_gate. RESUME → the migration is paused and waiting on a person: tell the user what it is waiting for and call resume_migration once they agree (never resume a migration they paused without asking). PROVIDE_BASE44_SECRETS / PROVIDE_SECRETS → the step takes the values of the customer's own third-party credentials (Base44 app secrets; for Lovable/Supabase sources, the ones the source could not supply), so it is resolved in a browser and NOT by a tool: `endpoint` is null, `url` opens the migration's App secrets tab, and `detail` is written to be shown to the user verbatim. Give them the URL, keep polling, and do not ask for the secret values in the conversation — no tool accepts them and the API refuses them over this connection. Saving in that tab continues the migration; get_app_secrets shows which are still missing. PROVIDE_SECRETS blocks nothing (the migration and preview keep going), so another step is reported first when one is waiting. When every secret already has a value, the same step comes back as COMPLETE_MANUAL_JOB: call complete_migration_job to continue it — no values are sent. CONFIRM → fetch get_migration_discovery_report, present its proposed work, unknown coverage, findings and approvalBlockers, then pass its exact revisionId as approvedRevisionId only after the user explicitly approves starting writes to the target. On a stale-plan 409, fetch the changed report and obtain approval again; never silently substitute a new revision. An already approved, execution-compatible resume does not need another revision. An answered CHOOSE_MIGRATION_STRATEGY question is not approval to start. REVIEW_PHASE (GUARDED migrations) → the migration stopped before a phase: show the job's `title`, `body` and `job_summary` (get_migration_jobs → inputData) and call complete_migration_job only when the user says to continue. REVIEW_DATA_ACCESS (GUARDED Base44 migrations) → show the job's `entities` and `options` and pass the user's choice to complete_migration_job as accessDefault/accessOverrides; never pick for them. When `pendingAction.detail` is present, show it to the user. Other types: RETRY_OR_SKIP, RESOLVE_SCHEMA_GAP, CHOOSE_BACKEND_SWITCHOVER, CHOOSE_DATA_IMPORT_METHOD, CHOOSE_FRONTEND_DEPLOY, COMPLETE_MANUAL_JOB. When `pendingAction` is null, poll only while the status is flowing.\n\n" +
   "`gatingLevel` says how often the migration stops for the user: GUARDED (the default for migrations created through this connection) stops at every choice, before every phase, and asks who can see data that has no access rules; STREAMLINED takes recommended options but still requires initial discovery-plan approval and stops when it cannot continue safely. Every stop is the user's decision — relay it; do not complete it on their behalf. Change the level only when the user asks, with set_migration_gating_level.\n\n" +
@@ -145,9 +147,9 @@ registerApiTool(server,
 
 registerApiTool(server,
   "get_migration_discovery_report",
-  "Read the migration's discovery report and its revisionId. Present source coverage (including unknown or partial areas), findings, proposed work and approvalBlockers before asking the user to approve initial execution. Reading may retain a proposal but never starts migration or records approval. Send the exact reviewed revisionId as approvedRevisionId to confirm_migration only after explicit approval. A stale-plan 409 needs a fresh report and a new approval; never approve a changed revision automatically. Inspect sourceInspection.supported/available/inProgress/reason: optional inspect_migration_source requires separate explicit authorization to commit and deploy a source helper before approval. Read the refreshed report after inspection. Use list_migration_discovery_revisions and get_migration_discovery_revision for retained reports, and get_migration_handoff_report for the Markdown checklist and remediation prompts. Approved reports are historical and read-only; legacy baselines do not establish customer approval.",
+  "Prepare the migration’s discovery report and save a proposed revision when the plan is ready and has changed. Present its revisionId, source coverage (including unknown or partial areas), findings, proposed work and approvalBlockers. Starting migration execution requires separate approval. Send the exact reviewed revisionId as approvedRevisionId to confirm_migration only after explicit approval. A stale-plan 409 needs a fresh report and a new approval; never approve a changed revision automatically. Inspect sourceInspection.supported/available/inProgress/reason: optional inspect_migration_source requires separate explicit authorization to commit and deploy a source helper before approval. Read the refreshed report after inspection. Use list_migration_discovery_revisions and get_migration_discovery_revision for retained reports, and get_migration_handoff_report for the Markdown checklist and remediation prompts. Approved reports are historical and read-only; legacy baselines do not establish customer approval.",
   { id: z.string().uuid().describe("Migration ID") },
-  { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   async ({ id }) => apiToolResult(await apiFetch(`/api/v1/migrations/${id}/discovery-report`), toText),
 );
 
@@ -292,8 +294,8 @@ registerApiTool(server,
   "approval for that source re-prepare and set confirmed=true. This requires an open SQL_SYNTAX_ERRORS gate " +
   "and returns to plan review without approving target writes. RECHECK_DYNAMIC_SITE — on a Dynamic Website gate " +
   "(DYNAMIC_SITE_NOT_ELIGIBLE, or DYNAMIC_SITE_PLAN while the workspace needs a plan): the user changed their app, or " +
-  "upgraded/freed a site slot; Base44 discovery reruns and a fresh gate replaces the old one. It creates nothing and " +
-  "never confirms the plan. Poll get_migration_overview, read get_migration " +
+  "upgraded/freed a site slot; Base44 discovery reruns and a fresh gate replaces the old one. Initial execution " +
+  "still requires separate approval. Poll get_migration_overview, read get_migration " +
   "after a change and fetch the new discovery report for review. A refusal never falls back to confirm/resume/retry.",
   {
     id: z.string().uuid().describe("Migration ID"),
@@ -302,7 +304,7 @@ registerApiTool(server,
       .describe("Exact enabled re-check action ID from get_migration.preFlightGate.actions"),
     confirmed: z.literal(true).optional().describe("Required for RECHECK_SQL_SYNTAX after explicit approval to adopt the newest source commit and replace the prepared plan"),
   },
-  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
   async ({ id, action, confirmed }) => {
     if (action === "RECHECK_SQL_SYNTAX" && !confirmed) {
       throw new Error("RECHECK_SQL_SYNTAX requires explicit approval to re-prepare from the newest source commit; pass confirmed=true only after approval.");
@@ -421,7 +423,9 @@ registerApiTool(server,
 
 registerApiTool(server,
   "get_app_secrets",
-  "Which secrets (API keys for third-party services — Stripe, OpenAI, AWS and the like) a migrated app uses, which already have a value, what the app uses each for, and where a saved value is applied — names and states only, never a value. Pass connectedProjectId for a project (the app after go-live), migrationId for a migration, or stackId for a stack that deploys a migrated app (its preview, or a hosted version, including ones Continuous Sync minted). " +
+  "Read configuration inventory for the selected app. Returns secret names, presence flags and usage, connection " +
+  "status, and the dashboard link. The response contains no credential values. Pass connectedProjectId for a " +
+  "connected project, migrationId for a migration, or stackId for a stack that deploys a migrated app. " +
   "A project's answer is per ENVIRONMENT — what its deployments run against (the Supabase project and its values). An environment is not a pipeline stage: several stages can share one, and each entry lists its `stages`; today every project has exactly one, shared by preview and production, so a value saved once applies to both. " +
   "Values are entered ONLY by the user, in the dashboard at `browserUrl` (the migration's App secrets tab): give them that link when `missingCount` is above 0 or they want to change a value. No tool accepts secret values and the API refuses them over this connection, so never ask for them in the conversation and do not accept them if offered. " +
   "`pendingStep` is set while a provide-secrets step is waiting; saving in the dashboard continues the migration. Features that use a secret without a value do not work until it has one — name them (usedFor / usedBy) when reporting on a preview or before going live.",
@@ -446,8 +450,8 @@ registerApiTool(server,
 
 registerApiTool(server,
   "test_connection_credentials",
-  "Ask the provider (Google or Dropbox) whether it accepts the OAuth client ID and secret the user saved for one per-user account connection — the same \"Test credentials\" button as the dashboard. Take connectorId from the `connectors` in get_app_secrets, typically one in state READY_TO_TEST. " +
-  "It sends a deliberately invalid authorization code with the saved client, so the provider only answers whether it recognises the client: nothing is saved or changed, and no value is sent by you or returned. The redirect URI is not checked; the provider checks it when a user connects. " +
+  "Send a credential validation request to Google or Dropbox using the saved OAuth client for the selected connection. Use a connectorId from get_app_secrets, typically one in state READY_TO_TEST. " +
+  "Staticbot sends the saved client credentials and a deliberately invalid authorization code directly to the provider’s token endpoint. The tool returns a verdict without exposing credentials or issuing a token. The redirect URI is checked separately when a user connects. " +
   "`status`: ACCEPTED (the client is recognised; next, the user tests Connect in their preview), REJECTED (wrong client ID or secret), MISSING (not both saved yet), UNAVAILABLE (the connection cannot be installed; `message` says why) or UNKNOWN (no verdict, e.g. the provider could not be reached). Show `message` as given. " +
   "When the values need entering or fixing, give the user `browserUrl`: they enter them in the dashboard themselves. Never ask for client IDs or secrets in the conversation and do not accept them if offered.",
   {
@@ -455,7 +459,7 @@ registerApiTool(server,
     migrationId: z.string().uuid().optional().describe("Migration ID. Ignored when connectedProjectId is given."),
     connectorId: z.string().min(1).describe("connectors[].connectorId from get_app_secrets"),
   },
-  { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   async ({ connectedProjectId, migrationId, connectorId }) => {
     if (!connectedProjectId && !migrationId) throw new Error("Pass connectedProjectId or migrationId.");
     const path = `secrets/connections/${encodeURIComponent(connectorId)}/check`;
@@ -468,11 +472,11 @@ registerApiTool(server,
 
 registerApiTool(server,
   "retry_migration_job",
-  "Retry a failed migration job, or a skipped one whose `retryableAfterSkip` is true. It will be reset to READY and picked up by the worker again. A skipped SQL file can be retried while the migration is paused: it runs first, and whatever step is failing then runs again after it; retry one skipped file at a time. Use get_migration_jobs first to find the job's ID, error message and retryableAfterSkip.",
+  "Reset a failed migration job, or a skipped job with retryableAfterSkip true, to READY and queue it again. The worker repeats the selected action, which can overwrite target data or re-run cleanup. Use get_migration_jobs to identify the job and get the user’s approval before repeating its effects. A skipped SQL file can run first while the migration is paused, followed by the step that failed. Retry one skipped file at a time.",
   {
     jobId: z.string().uuid().describe("Migration job ID (from get_migration_jobs)"),
   },
-  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
   async ({ jobId }) => {
     const data = await apiFetch(`/api/v1/migrations/jobs/${jobId}/retry`, { method: "POST" });
     return apiToolResult(data, toText);
@@ -481,7 +485,7 @@ registerApiTool(server,
 
 registerApiTool(server,
   "skip_migration_job",
-  "Skip a migration job that is blocking progress. The job will be marked as SKIPPED and dependent jobs will proceed. Use this when a job is non-critical (e.g. an edge function that can be deployed manually later) or when retry won't help. " +
+  "Skip a migration job that is blocking progress. This normally marks the job ABORTED and lets dependent jobs proceed without its work. Use this when a non-critical job can be completed separately or retries won’t help. " +
   "FIRST check the job's `skipGuard` from get_migration_jobs. When it is non-null, skipping breaks the rest of the migration — present `skipGuard.consequence` and `skipGuard.alternative` to the user verbatim, get explicit approval, then call again with acknowledged=true. " +
   "The jobs that deploy the Staticbot export function to the source project (MANUAL_SYNC_LOVABLE, MANUAL_SYNC_BASE44, LOVABLE_MCP_SYNC, AUTO_DEPLOY_EXPORT_FUNCTION) are the main case: that function is the only way to read the customer's data, so skipping it makes the data import fail with \"function not found\". The API re-checks whether the function is live and returns 400 if it is not. " +
   "A failed APPLY_SQL whose file creates tables is the other case: skipping leaves those tables missing and every later file that uses them fails, so prefer fixing and retrying it. A skipped SQL file can still be retried later while the migration is paused (retryableAfterSkip on get_migration_jobs). " +
@@ -516,10 +520,10 @@ registerApiTool(server,
 
 registerApiTool(server,
   "create_migration",
-  "Create a new migration. Starts a multi-phase pipeline: Discovery → DB Migration → Data Import → Edge Functions → Storage Buckets → Auth Config → Backend Switchover → Preview & Verify → Continuous Sync → Download → Follow-ups.\n\n" +
+  "Create a workspace migration and queue source discovery. Discovery can contact the Git provider, the source platform, and a deployed source URL. Target execution requires separate approval.\n\n" +
   "Two delivery modes via targetType:\n" +
   "  • SUPABASE_CLOUD (default) — Staticbot applies the migration end-to-end against a managed Supabase project you own. Requires targetSupabaseProjectRef plus the Supabase integration instance.\n" +
-  "  • SUPABASE_SELF_HOSTED — Staticbot runs discovery + data export, then produces a downloadable AES-256-encrypted zip the user applies to their self-hosted Supabase (typically with Claude Code following the bundled CLAUDE.md). Skip target* params; once the GENERATE_PACKAGE job completes, call download_package to fetch the zip + password.\n\n" +
+  "  • SUPABASE_SELF_HOSTED — Staticbot runs discovery + data export, then produces a downloadable AES-256-encrypted zip with installation instructions for the user’s self-hosted Supabase. Skip target* params; once the GENERATE_PACKAGE job completes, call download_package to fetch the zip + password.\n\n" +
   "Source platforms via sourceType:\n" +
   "  • LOVABLE_SUPABASE (default) — Lovable-built apps on Supabase.\n" +
   "  • BOLT_SUPABASE — Bolt.new apps on Supabase (Phase 3 Lovable-specific steps are adjusted).\n" +
@@ -557,7 +561,7 @@ registerApiTool(server,
       includeStorageFiles: z.boolean().optional().describe("Include Base44 storage files. Defaults to false."),
     }).optional().describe("Optional self-hosted package build options for BASE44_NATIVE migrations."),
   },
-  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   async (params) => {
     const sourceType = params.sourceType ?? "LOVABLE_SUPABASE";
 
@@ -640,8 +644,9 @@ registerApiTool(server,
 
 registerApiTool(server,
   "complete_migration_job",
-  "Complete a manual job that requires user action. Used for jobs with type MANUAL_SYNC_LOVABLE, " +
-  "MANUAL_SYNC_BASE44, MANUAL_EXPORT_DATA, MANUAL_IMPORT_DATA, etc. The job must be in READY status. " +
+  "Mark a READY manual job complete so dependent migration work can proceed. The follow-up work can apply " +
+  "changes to the target. Used for jobs with type MANUAL_SYNC_LOVABLE, MANUAL_SYNC_BASE44, MANUAL_EXPORT_DATA, " +
+  "MANUAL_IMPORT_DATA, etc. " +
   "For MANUAL_SYNC_LOVABLE / MANUAL_SYNC_BASE44 you normally do NOT need this tool: ask the user to open " +
   "their Lovable project and paste 'deploy staticbot edge function' into the Lovable AI chat (Base44: sync " +
   "the project from GitHub). Staticbot detects the deployed function and completes the step by itself within " +
@@ -962,23 +967,11 @@ registerApiTool(server,
 
 registerApiTool(server,
   "list_base44_apps",
-  "List the Base44 apps a connected Base44 integration can migrate. Call this before create_migration " +
-  "for any BASE44_NATIVE migration: a Base44 personal access token is scoped to a WORKSPACE and reaches " +
-  "every app in it, so the integration alone does not identify which app to migrate. Pass the chosen " +
-  "app's `id` as create_migration's `base44AppId`.\n" +
-  "Ask the user which app when more than one is returned — never guess, and never assume the first or " +
-  "the most recently edited one is meant. Migrating the wrong app is not cheaply reversible.\n" +
-  "An empty list means the token cannot see any apps: usually a token scoped to a single app that has " +
-  "since been deleted, or one created with Access limited to one app. A 400 means the integration still " +
-  "holds a legacy Base44 account API key, which cannot enumerate apps and stops working entirely on " +
-  "2026-10-15 — tell the user to reconnect Base44 with a personal access token. Contains no secrets.\n" +
-  "NEVER ask the user to paste their Base44 personal access token into the conversation, and never " +
-  "accept one if they offer it — no Staticbot tool takes it, and there is nowhere for it to go. It is " +
-  "a long-lived, workspace-wide, full-access credential that can read and change every app in the " +
-  "workspace. A token pasted into chat is sent to the model, kept in the conversation transcript, and " +
-  "may be retained in client logs. The only correct handling is the browser: send the user to the " +
-  "integrations page and have them enter it there. If no Base44 integration exists yet, this tool and " +
-  "create_migration both return the exact connect URL in their error — give the user that URL verbatim.",
+  "Read app metadata from the Base44 workspace or app permitted by the selected Staticbot integration. " +
+  "Before starting a BASE44_NATIVE migration, use the chosen app's id as base44AppId. Ask the user which app " +
+  "they mean when several are returned. An empty list means no apps are visible through this connection. " +
+  "For a legacy-key error, have the user reconnect with a personal access token in the integrations dashboard. " +
+  "If the connection is missing, share the connect URL from the error. Never request or accept a token in the conversation.",
   {
     base44IntegrationInstanceId: z.string().uuid().describe("Base44 integration instance ID (from list_integration_instances, type='base44')"),
   },

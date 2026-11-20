@@ -18,10 +18,14 @@ See `CAPABILITY-PARITY.md` for the deployed versions and remaining dashboard cap
 
 ## Draft preparation and earlier portal checks
 
+The 2026-11-20 package uses version `1.8.4` for the listing update. The corrected
+tool annotations are served by MCP and appear after a release through
+`release.sh` and a portal rescan.
+
 Run `npm run pack:chatgpt` to generate `artifacts/chatgpt/staticbot-<version>.zip`.
 The builder uses the current listing and version from `.codex-plugin/plugin.json`,
-converts the draft review cases from `chatgpt-app-submission.json`, and copies only
-tracked skill files and the license. It changes the submission category to the
+converts the draft review cases from `chatgpt-app-submission.json`, and includes
+the Staticbot icon, tracked skill files and the license. It changes the submission category to the
 portal's `Developer Tools` title. The local stdio configuration stays in `.mcp.json`.
 The [current unpublished draft](https://platform.openai.com/plugins/manage/plugin_asdk_app_6ae3b22b73dc8191b2830ef4b1770d7d)
 accepted this portable package on 2026-10-29, including the remote OAuth settings
@@ -87,10 +91,9 @@ requested-scope acceptance were rechecked successfully. These checks do not esta
 successful reviewer login, token exchange, tool discovery or workflow execution;
 the completed portal OAuth connection and tool scan remain unverified.
 
-This archive is for connection setup, not a verified final submission. Review
-cases still need real account fixtures and workflow runs. The demo video, support
-URL and listing icon are not supplied by this builder. A successful package upload
-does not prove these requirements are complete. At the 2026-10-29 release check, V1
+The archive includes the support URL, listing icon, draft cases and release notes.
+Review cases still need real account fixtures and workflow runs, and reviewers
+need an accessible demo recording URL. At the 2026-10-29 release check, V1
 contained 128 operations and hosted MCP contained 112 tools; the latest inventory is
 recorded above. Their authenticated reviewer workflows still need verification.
 At the earlier portal inspection, all seven skill checks had passed; support URL,

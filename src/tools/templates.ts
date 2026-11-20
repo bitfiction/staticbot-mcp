@@ -43,7 +43,7 @@ registerApiTool(server,
 
 registerApiTool(server,
   "create_template",
-  "Create a new template by scanning a source repository (GitHub or GitLab). Auto-detects platforms, env vars, and builders. " +
+  "Create a private Staticbot template by reading the specified GitHub or GitLab repository. The scan detects platforms, env vars, and builders. " +
   "Both public and private repositories are supported through the organization's connected Staticbot source-control integration. " +
   "Before asking the user for a URL, call list_source_repositories and use an unambiguous repository match from " +
   "the current client/project context, passing that repository's integrationInstanceId as " +
@@ -63,7 +63,7 @@ registerApiTool(server,
     repoPath: z.string().optional().describe("Folder within the repository to scan and deploy, such as repo or apps/web. Omit for the repository root."),
     sourceControlIntegrationInstanceId: z.string().uuid().optional().describe("The repository's integrationInstanceId from list_source_repositories — the account it is hosted in. Pass it whenever the repo came from discovery: with several accounts connected on one provider, only that account's token can read it."),
   },
-  { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   async ({ repoLink, name, repoPath, sourceControlIntegrationInstanceId }) => {
     const body: Record<string, string> = { repoLink };
     if (name) body.name = name;

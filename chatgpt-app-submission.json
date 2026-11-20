@@ -71,12 +71,12 @@
     "create_template": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
+        "openWorldHint": true,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Creates a private Staticbot template by scanning the specified GitHub repository.",
-        "open_world_justification": "Only creates private Staticbot configuration and does not modify the GitHub repository.",
+        "read_only_justification": "Creates a private Staticbot template from a specified GitHub or GitLab repository.",
+        "open_world_justification": "Reads the specified repository and its contents from the external Git provider.",
         "destructive_justification": "Adds a template without deleting or overwriting existing resources."
       }
     },
@@ -203,12 +203,12 @@
     "check_dns_records": {
       "annotations": {
         "readOnlyHint": true,
-        "openWorldHint": false,
+        "openWorldHint": true,
         "destructiveHint": false
       },
       "justifications": {
         "read_only_justification": "Only asks the domain's nameservers whether the deployment's records are in place and reports a verdict per record.",
-        "open_world_justification": "Reads public DNS answers; does not change any DNS record, zone or external system.",
+        "open_world_justification": "Queries public authoritative DNS servers for the deployment domain.",
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
@@ -376,7 +376,7 @@
       },
       "justifications": {
         "read_only_justification": "Only retrieves migration status, phases, conflicts, gates, next actions, and available human-support routes.",
-        "open_world_justification": "Does not change a migration or an external system.",
+        "open_world_justification": "Reads stored state and next-action guidance for a migration owned by the authenticated workspace.",
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
@@ -430,14 +430,14 @@
     },
     "get_migration_discovery_report": {
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Only retrieves the sanitized discovery proposal and its approval blockers.",
-        "open_world_justification": "Does not change a public website or an external system.",
-        "destructive_justification": "Does not delete, replace, approve or execute customer resources."
+        "read_only_justification": "Can persist a proposed discovery revision and audit entry when a new plan is ready.",
+        "open_world_justification": "Builds the proposal from migration data already stored in Staticbot.",
+        "destructive_justification": "Appends the proposal to revision history without approving it or executing target changes."
       }
     },
     "inspect_migration_source": {
@@ -528,12 +528,12 @@
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": true,
-        "destructiveHint": false
+        "destructiveHint": true
       },
       "justifications": {
         "read_only_justification": "Records refreshed export, target or SQL checks; SQL syntax rechecking adopts the latest source commit and replaces the prepared plan.",
         "open_world_justification": "Reads the source Git/export service or connected target Supabase project. A successful capacity check may continue an already-approved import.",
-        "destructive_justification": "Does not approve initial execution or delete source/target data. SQL re-prepare returns to discovery-plan review; a stopped import continues only within its existing approval."
+        "destructive_justification": "A SQL syntax recheck adopts a new source commit and replaces the prepared plan. A dynamic site recheck replaces its gate, and a capacity recheck can resume an approved import."
       }
     },
     "get_clean_target_plan": {
@@ -616,19 +616,19 @@
       },
       "justifications": {
         "read_only_justification": "Only retrieves which secrets a migrated app uses and whether each has a value \u2014 names and states, never a value.",
-        "open_world_justification": "Does not change migration work or an external system.",
+        "open_world_justification": "Returns configuration inventory and connection status scoped to the selected app and its linked environment.",
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
     "test_connection_credentials": {
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": true,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Only asks the provider whether it recognises the OAuth client already saved for one account connection; nothing is saved or changed, and no value is sent or returned.",
-        "open_world_justification": "Sends one deliberately invalid authorization code to Google's or Dropbox's token endpoint with the saved client.",
+        "read_only_justification": "Sends a validation request using saved OAuth client credentials to the selected provider and returns its verdict.",
+        "open_world_justification": "Posts the saved client credentials and a deliberately invalid authorization code to Google or Dropbox.",
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
@@ -636,12 +636,12 @@
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": true,
-        "destructiveHint": false
+        "destructiveHint": true
       },
       "justifications": {
         "read_only_justification": "Resets a failed migration job and queues it to run again.",
         "open_world_justification": "The retried job can write migration changes to connected external systems.",
-        "destructive_justification": "Only retries work that already failed and does not skip or delete it."
+        "destructive_justification": "Can rerun target cleanup or a data import that deletes and reloads target rows."
       }
     },
     "skip_migration_job": {
@@ -653,7 +653,7 @@
       "justifications": {
         "read_only_justification": "Marks a blocking job skipped and allows dependent migration jobs to proceed.",
         "open_world_justification": "Dependent jobs can continue changing connected external systems after the skip.",
-        "destructive_justification": "The skipped work is never performed and cannot be unskipped through another tool."
+        "destructive_justification": "Cancels the selected job and can let dependent work proceed without its changes. Only eligible skipped jobs can be retried."
       }
     },
     "get_migration_deployments": {
@@ -671,12 +671,12 @@
     "create_migration": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
+        "openWorldHint": true,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Creates a private migration and begins source discovery, including Firebase migrations that do not require a repository template.",
-        "open_world_justification": "Discovery reads source systems and pauses for approval before target writes begin.",
+        "read_only_justification": "Creates a private workspace migration and queues discovery for the selected source.",
+        "open_world_justification": "Discovery contacts source and target providers and may fetch the deployed Base44 site specified by the user.",
         "destructive_justification": "Does not apply target changes until a later explicit confirmation."
       }
     },
@@ -856,7 +856,7 @@
       },
       "justifications": {
         "read_only_justification": "Only retrieves apps available through the selected, organization-owned Base44 integration.",
-        "open_world_justification": "Does not change a public website or an external system.",
+        "open_world_justification": "Reads app metadata only from the Base44 workspace or app permitted by the selected organization-owned integration.",
         "destructive_justification": "Does not delete, replace, approve or execute customer resources."
       }
     },
@@ -1440,12 +1440,12 @@
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": false,
-        "destructiveHint": false
+        "destructiveHint": true
       },
       "justifications": {
         "read_only_justification": "Drops the release awaiting sign-off from the stage.",
         "open_world_justification": "Changes only the project's pipeline state; the served website is unchanged.",
-        "destructive_justification": "Nothing deployed is changed or removed; a later push arms a new release."
+        "destructive_justification": "Cancels the pending release and clears the stage\u2019s pending commit, leaving the currently served deployment in place."
       }
     },
     "set_release_gate": {

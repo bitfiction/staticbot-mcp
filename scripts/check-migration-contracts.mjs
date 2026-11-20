@@ -172,6 +172,7 @@ try {
       assert.equal(descriptor("restore_migration_source_snapshot").annotations.openWorldHint, true);
       assert.match(descriptor("restore_migration_source_snapshot").description, /never substitute/i);
       assert.match(descriptor("recheck_migration_gate").description, /replaces the prepared plan/);
+      assert.equal(descriptor("recheck_migration_gate").annotations.destructiveHint, true);
       const recoveryBeforeInvalid = requests.length;
       const restoreArgs = { id: migrationId, revisionId, commitSha: originalCommit, confirmed: true };
       for (const args of [

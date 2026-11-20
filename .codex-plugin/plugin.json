@@ -1,7 +1,7 @@
 {
   "name": "staticbot",
-  "version": "1.8.3",
-  "description": "Migrate vibe-coded apps, deploy analyzed repositories, and keep customer-owned infrastructure synchronized with Staticbot.",
+  "version": "1.8.4",
+  "description": "Deploy web apps, migrate application backends, and keep deployed apps synchronized with Staticbot.",
   "author": {
     "name": "BITFICTION, s.r.o.",
     "email": "hello@staticbot.dev",
@@ -15,21 +15,16 @@
     "deployment",
     "migration",
     "continuous sync",
-    "vendor lock-in",
-    "base44",
-    "lovable",
-    "bolt",
-    "firebase",
-    "supabase",
-    "aws",
-    "cloudflare"
+    "website hosting",
+    "DNS",
+    "release management"
   ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Staticbot",
     "shortDescription": "Deploy and migrate web apps",
-    "longDescription": "Move Base44, Lovable, Bolt, and Firebase apps to customer-owned Supabase infrastructure, deploy repositories through Staticbot's workload-aware AWS or Cloudflare routing and ownership model, and keep future changes synchronized with explicit approval gates.",
+    "longDescription": "Deploy web apps from source repositories, review migration plans for moving apps to infrastructure you control, and keep deployed apps synchronized with later source changes. Connect your Staticbot workspace to inspect projects and deployments, check DNS, and approve changes when required.",
     "developerName": "BITFICTION, s.r.o.",
     "category": "Engineering",
     "capabilities": [
@@ -38,13 +33,16 @@
       "Write"
     ],
     "websiteURL": "https://www.staticbot.dev/",
+    "supportURL": "https://www.staticbot.dev/contact",
     "privacyPolicyURL": "https://www.staticbot.dev/privacy",
     "termsOfServiceURL": "https://www.staticbot.dev/terms",
     "defaultPrompt": [
       "Deploy this repository with Staticbot and explain the selected target",
-      "Migrate my Base44 app to a Supabase project I own",
+      "Review the migration plan for my app",
       "Review and run the latest Continuous Sync changes"
     ],
-    "brandColor": "#0F766E"
+    "brandColor": "#0F766E",
+    "composerIcon": "./assets/staticbot-icon.png",
+    "logo": "./assets/staticbot-icon.png"
   }
 }

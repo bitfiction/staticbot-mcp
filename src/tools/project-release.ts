@@ -41,11 +41,10 @@ export function registerProjectReleaseTools(server: McpServer, { apiFetch, toTex
 
   registerApiTool(server,
     "get_google_sign_in",
-    "Whether the app's users can sign in with Google: `statusLabel` / `ready`, the Google client the app's Supabase " +
-      "project uses (`clientId`, never a secret), and what the user pastes into their own Google client in Google " +
-      "Auth Platform: `callbackUrl` as the authorized redirect URI and `siteOrigins` as authorized JavaScript " +
-      "origins (`guideUrl` explains the Google side). Saving the client takes its secret, so it cannot be done over " +
-      "MCP: send the user to the project's Domain and auth tab to paste it there. Read-only.",
+    "Read Google sign-in status from the Supabase project linked to this Staticbot project. Returns statusLabel, " +
+      "ready, clientId, and the callbackUrl, siteOrigins and guideUrl for Google Auth Platform configuration. " +
+      "Use callbackUrl as the authorized redirect URI and siteOrigins as authorized JavaScript origins. Direct the " +
+      "user to the project's Domain and auth tab to save a Google client. The response contains no client secret.",
     { id: z.string().uuid().describe("Connected project ID") },
     { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ id }) => apiToolResult(await apiFetch(`/api/v1/connected-projects/${id}/google-sign-in`), toText),
@@ -87,11 +86,11 @@ export function registerProjectReleaseTools(server: McpServer, { apiFetch, toTex
 
   registerApiTool(server,
     "reject_release",
-    "Reject the release awaiting approval on a stage: the pending commit is dropped and what the stage serves is " +
-      "unchanged. A later push arms a new release. Confirm the stage and pending commit with the user first; a 409 " +
+    "Cancel the release awaiting sign-off on the selected stage and remove its pending commit. The stage continues serving its current deployment. " +
+      "A later push arms a new release. Confirm the stage and pending commit with the user first; a 409 " +
       "means the stage now awaits another commit.",
     signOff,
-    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     async ({ id, stageId, ...body }) => apiToolResult(await apiFetch(
       `/api/v1/connected-projects/${id}/pipeline/stages/${stageId}/reject`, {
         method: "POST", body: JSON.stringify(body),

@@ -1,6 +1,6 @@
 {
   "name": "@staticbot/mcp",
-  "version": "1.8.3",
+  "version": "1.8.4",
   "mcpName": "io.github.bitfiction/staticbot",
   "description": "MCP server for the Staticbot API",
   "license": "MIT",
@@ -33,6 +33,7 @@
     ".codex-plugin",
     ".claude-plugin",
     ".mcp.json",
+    "assets/staticbot-icon.png",
     "skills",
     "evals",
     "scripts/validate-discovery-prompts.mjs",

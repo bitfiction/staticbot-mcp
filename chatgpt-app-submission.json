@@ -51,7 +51,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Only retrieves the organization's available Staticbot templates.",
+        "read_only_justification": "Retrieves the organization's own templates by default and includes built-in templates only when requested.",
         "open_world_justification": "Does not change public internet state or an external system.",
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
@@ -1571,11 +1571,11 @@
   },
   "test_cases": [
     {
-      "description": "List available deployment templates.",
-      "user_prompt": "Show me the Staticbot templates available for deploying my website.",
+      "description": "List templates owned by the connected organization.",
+      "user_prompt": "Show me my Staticbot templates.",
       "file_attachment_urls": null,
       "tools_triggered": "list_templates",
-      "expected_output": "Returns available templates with identifiers, names, categories, and repository links.",
+      "expected_output": "Returns only templates owned by the connected organization, with identifiers, names, categories, and repository links.",
       "expected_output_url": null
     },
     {

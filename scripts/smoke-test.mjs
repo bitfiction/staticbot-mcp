@@ -95,6 +95,25 @@ const expectedTools = [
 
 const installedCommand = process.env.STATICBOT_MCP_COMMAND;
 
+const ownedTemplate = {
+  id: "00000000-0000-4000-8000-000000000061",
+  name: "Tipsy Jar",
+  templateCategory: "STATIC_WEBSITE",
+};
+const builtInTemplate = {
+  id: "00000000-0000-4000-8000-000000000062",
+  name: "S3 and CloudFront",
+  templateCategory: "INFRA",
+};
+const builtInDetails = { ...builtInTemplate, configVariables: [] };
+const templateResponses = new Map([
+  ["/api/v1/templates", [ownedTemplate, builtInTemplate]],
+  ["/api/v1/templates?scope=OWNED", [ownedTemplate]],
+  ["/api/v1/templates?scope=BUILT_IN", [builtInTemplate]],
+  ["/api/v1/templates?scope=ALL", [ownedTemplate, builtInTemplate]],
+  [`/api/v1/templates/${builtInTemplate.id}`, builtInDetails],
+]);
+
 const apiRequests = [];
 const apiServer = createServer(async (request, response) => {
   let body = "";
@@ -106,7 +125,7 @@ const apiServer = createServer(async (request, response) => {
     return;
   }
   response.writeHead(200, { "Content-Type": "application/json" });
-  response.end("[]");
+  response.end(JSON.stringify(templateResponses.get(request.url) ?? []));
 });
 await new Promise((resolve, reject) => {
   apiServer.once("error", reject);
@@ -364,8 +383,26 @@ try {
   const listResult = await client.callTool({ name: "list_templates", arguments: {} });
   assert.deepEqual(
     listResult.structuredContent,
-    { result: [] },
-    "tools must return the API JSON through structuredContent.result",
+    { result: [ownedTemplate] },
+    "the default template list must return only organization-owned templates",
+  );
+
+  for (const [scope, expectedTemplates] of [
+    ["BUILT_IN", [builtInTemplate]],
+    ["ALL", [ownedTemplate, builtInTemplate]],
+  ]) {
+    const result = await client.callTool({ name: "list_templates", arguments: { scope } });
+    assert.deepEqual(result.structuredContent, { result: expectedTemplates }, `template list scope ${scope}`);
+  }
+
+  const templateDetails = await client.callTool({
+    name: "get_template",
+    arguments: { id: builtInTemplate.id },
+  });
+  assert.deepEqual(
+    templateDetails.structuredContent,
+    { result: builtInDetails },
+    "a built-in template must remain readable directly by ID",
   );
 
   const integrationInstanceId = "79f97fb7-51c4-4a70-8453-6c1d59d1efb1";

@@ -14,23 +14,29 @@ export function registerTemplateTools(server: McpServer, { apiFetch, toText }: T
 
 registerApiTool(server,
   "list_templates",
-  "List available templates (slim response: id, name, category, repoLink). " +
-  "Use get_template to see full details including config variables. " +
-  "Templates feed both hosting and migration. Reuse an exact repository match when one exists; otherwise create " +
+  "List templates owned by the current organization by default, including requests like 'show all my templates'. " +
+  "Use scope ALL when the user explicitly asks for all available templates or asks to include built-in templates. " +
+  "Use scope BUILT_IN when the user explicitly asks for the built-in catalog. When asked about a specific built-in template by name, use BUILT_IN to resolve its ID and show only that template's details. " +
+  "Use get_template for full details, including configuration variables. For a specific template attached to a stack, get its templateId from get_stack. " +
+  "For hosting or migration, reuse an exact repository match when one exists; otherwise create " +
   "a new template from the repository resolved through list_source_repositories. Ask the user to choose only when " +
   "multiple existing templates or repositories are plausible — and when two repositories share a name, show which " +
   "account each is hosted in (sourceLabel) so the choice is meaningful.",
-  {},
+  {
+    scope: z.enum(["OWNED", "BUILT_IN", "ALL"]).optional().describe(
+      "OWNED (default) lists customer-owned templates. BUILT_IN lists Staticbot's catalog. ALL lists both. Choose BUILT_IN or ALL only for an explicit request.",
+    ),
+  },
   { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-  async () => {
-    const data = await apiFetch("/api/v1/templates");
+  async ({ scope = "OWNED" }) => {
+    const data = await apiFetch(`/api/v1/templates?scope=${scope}`);
     return apiToolResult(data, toText);
   }
 );
 
 registerApiTool(server,
   "get_template",
-  "Get details of a template including its backend-classified configuration variables. Each entry has `key`, `configured` (whether a value is set at all), and sanitized `value`. Staticbot never returns credential values, so read `configured` to tell \"withheld\" apart from \"not set\". For migrations, follow `migrationAction`, `collectionStage`, `sensitivity`, `resolution`, `integration`, and `migrationHint`; do not infer meaning or safety from prefixes. Include a configOverride only when `migrationEditable=true`. `migrationBackendDerived=true` means Staticbot derives the value from target state and user input cannot take precedence. `SECURITY_REVIEW` means stop and explain the client-exposure finding; `REVIEW_CONFIGURATION` means the variable needs an explicit template annotation. Never request either as a configOverride. `CONFIGURE_INTEGRATION` is follow-up work, not a migration-creation input.",
+  "Get details of an organization-owned or built-in template by ID, including its backend-classified configuration variables. Each entry has `key`, `configured` (whether a value is set at all), and sanitized `value`. Staticbot never returns credential values, so read `configured` to tell \"withheld\" apart from \"not set\". For migrations, follow `migrationAction`, `collectionStage`, `sensitivity`, `resolution`, `integration`, and `migrationHint`; do not infer meaning or safety from prefixes. Include a configOverride only when `migrationEditable=true`. `migrationBackendDerived=true` means Staticbot derives the value from target state and user input cannot take precedence. `SECURITY_REVIEW` means stop and explain the client-exposure finding; `REVIEW_CONFIGURATION` means the variable needs an explicit template annotation. Never request either as a configOverride. `CONFIGURE_INTEGRATION` is follow-up work, not a migration-creation input.",
   {
     id: z.string().uuid().describe("Template ID"),
   },

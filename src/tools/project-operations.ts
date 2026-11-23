@@ -74,7 +74,7 @@ export function registerProjectOperationTools(server: McpServer, { apiFetch, toT
     "Switch live deployment to the project's existing builder branch (cut the cord). This stops " +
       "maintaining the Staticbot mirror and can redeploy the production site. It is optional: launching " +
       "and continuing development on the mirror branch is the recommended path. It is not an arbitrary " +
-      "branch picker, and no reverse action is exposed. Staticbot refuses the switch when it reads the builder " +
+      "branch picker; switch_connected_project_back_to_mirror is the way back. Staticbot refuses the switch when it reads the builder " +
       "branch and finds it lacks the migrated backend (for Base44, no @staticbot/base44-supabase-shim in package.json); " +
       "relay that refusal instead of retrying. Every switch is recorded in get_connected_project_audit. " +
       "Inspect get_connected_project_operations, " +
@@ -88,6 +88,23 @@ export function registerProjectOperationTools(server: McpServer, { apiFetch, toT
     liveBranchInput,
     { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     async ({ id, ...body }) => apiToolResult(await apiFetch(`/api/v1/connected-projects/${id}/live-branch`, {
+      method: "POST", body: JSON.stringify(body),
+    }), toText),
+  );
+  registerApiTool(server,
+    "switch_connected_project_back_to_mirror",
+    "Switch live deployment back from the builder branch to Staticbot's mirror branch (staticbot/live): the reverse " +
+      "of switch_connected_project_live_branch. Continuous sync again merges each builder push into the mirror, which " +
+      "can use AI credits when a push conflicts with the migrated changes. If the mirror already contains the builder " +
+      "branch and the app is live, the mirror's proven preview is promoted to production; otherwise a catch-up sync " +
+      "starts and production keeps serving the builder branch until the updated preview is promoted. Refused when " +
+      "the mirror branch is missing or lacks the migrated backend; relay that refusal. Inspect " +
+      "get_connected_project_operations (liveBranch must equal builderBranch), explain the consequences and obtain " +
+      "explicit approval before confirmed=true. Forward both branch names verbatim; on a 409 inspect again. Report " +
+      "the returned message and redeployed flag accurately. Recorded in get_connected_project_audit.",
+    branchInput,
+    { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+    async ({ id, ...body }) => apiToolResult(await apiFetch(`/api/v1/connected-projects/${id}/live-branch/mirror`, {
       method: "POST", body: JSON.stringify(body),
     }), toText),
   );

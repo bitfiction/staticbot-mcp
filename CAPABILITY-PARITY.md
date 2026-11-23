@@ -400,6 +400,7 @@ confirmation semantics remain the responsibility of the focused contract tests. 
 | Read the project's audit trail (live-branch switches with actor and from/to) | `GET /api/v1/connected-projects/{id}/audit` | `get_connected_project_audit` |
 | Build a branch preview | `POST /api/v1/connected-projects/{id}/build-preview` | `build_connected_project_preview` |
 | Switch live to the builder branch | `POST /api/v1/connected-projects/{id}/live-branch` | `switch_connected_project_live_branch` |
+| Switch live back to the mirror branch (staticbot/live) | `POST /api/v1/connected-projects/{id}/live-branch/mirror` | `switch_connected_project_back_to_mirror` |
 | Sync the migration preview onto live | `POST /api/v1/connected-projects/{id}/sync-to-live` | `sync_connected_project_to_live` |
 | Set up/reset/disable a GitHub webhook | `POST /api/v1/connected-projects/{id}/{setup,reset,disable}-webhook` | `{setup,reset,disable}_connected_project_webhook` |
 

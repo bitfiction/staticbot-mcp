@@ -34,6 +34,10 @@ const api = createHttpServer(async (request, response) => {
   if (request.url === `${projectPath}/audit`) return json(200, [{ eventType: "USER_ACTION", actor: "owner@example.com",
     actorType: "USER", oldStatus: "staticbot/live", newStatus: "main", detail: "LIVE_BRANCH_SWITCH: staticbot/live -> main",
     occurredAt: "2026-11-18T00:11:28.873Z" }]);
+  if (request.url === `${projectPath}/live-branch/mirror`) {
+    if (body.expectedLiveBranch !== "main") return json(409, { message: "Branch targets changed" });
+    return json(200, { liveBranch: "staticbot/live", redeployed: false, message: "Switched back; a catch-up sync started" });
+  }
   if (request.url === `${projectPath}/build-preview`) return json(202, { message: "Queued" });
   if (request.url === `${projectPath}/live-branch` || request.url === `${projectPath}/sync-to-live`) {
     // Mirrors V1 LiveBranchConfirmation: the switch also needs the repository-takeover acknowledgement.
@@ -86,6 +90,7 @@ try {
         ["get_connected_project_audit", { id }, "GET", `${projectPath}/audit`],
         ["build_connected_project_preview", { id, confirmed: true }, "POST", `${projectPath}/build-preview`],
         ["switch_connected_project_live_branch", liveSwitch, "POST", `${projectPath}/live-branch`],
+        ["switch_connected_project_back_to_mirror", { ...branch, expectedLiveBranch: "main" }, "POST", `${projectPath}/live-branch/mirror`],
         ["sync_connected_project_to_live", branch, "POST", `${projectPath}/sync-to-live`],
         ["setup_connected_project_webhook", hook, "POST", `${projectPath}/setup-webhook`],
         ["reset_connected_project_webhook", hook, "POST", `${projectPath}/reset-webhook`],

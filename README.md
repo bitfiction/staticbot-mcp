@@ -139,6 +139,9 @@ upstream removal, so a local configuration change is not proof that GitHub delet
 `get_connected_project_audit` answers "when and by whom did this project start deploying branch X":
 every live-branch switch is recorded with its actor, channel (UI or API/MCP) and from/to branch. The
 switch is refused when Staticbot reads the builder branch and finds it lacks the migrated backend.
+`switch_connected_project_back_to_mirror` is the way back: the project deploys `staticbot/live` again, its
+proven preview is promoted when the mirror already contains the builder branch, and otherwise a catch-up
+sync runs first while production keeps serving the builder branch.
 
 The backend route must be deployed before enabling these tools in the hosted MCP server. See the
 [capability audit](CAPABILITY-PARITY.md) for the remaining dashboard/API differences.

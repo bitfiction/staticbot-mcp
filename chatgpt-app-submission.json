@@ -1064,6 +1064,18 @@
         "destructiveHint": true
       }
     },
+    "switch_connected_project_back_to_mirror": {
+      "justifications": {
+        "read_only_justification": "Changes the live branch back to the mirror and can promote its preview to production.",
+        "open_world_justification": "Can redeploy the public website from the mirror branch's verified preview.",
+        "destructive_justification": "Resumes mirror maintenance and can replace the live build; explicit confirmation and matching branch targets are required."
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      }
+    },
     "sync_connected_project_to_live": {
       "justifications": {
         "read_only_justification": "Queues a preview-to-live merge or returns the already running sync.",

@@ -1028,6 +1028,18 @@
         "destructiveHint": false
       }
     },
+    "get_connected_project_audit": {
+      "justifications": {
+        "read_only_justification": "Only retrieves the project's recorded actions: who switched branches or links, when, and from/to.",
+        "open_world_justification": "Reads Staticbot records without changing a repository or public site.",
+        "destructive_justification": "Does not execute or approve an operation."
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
     "build_connected_project_preview": {
       "justifications": {
         "read_only_justification": "Queues a new or refreshed preview build after explicit confirmation.",

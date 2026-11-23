@@ -17,6 +17,16 @@ export function registerProjectOperationTools(server: McpServer, { apiFetch, toT
   );
 
   registerApiTool(server,
+    "get_connected_project_audit",
+    "Read a connected project's audit trail, newest first (latest 100): live-branch switches with who made them, " +
+      "when, and from/to branch (oldStatus/newStatus), migration backend link changes, and Sync to Live runs. " +
+      "Use it to answer \"when and how did this project start deploying branch X?\". Read-only.",
+    { id: z.string().uuid().describe("Connected project ID") },
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    async ({ id }) => apiToolResult(await apiFetch(`/api/v1/connected-projects/${id}/audit`), toText),
+  );
+
+  registerApiTool(server,
     "build_connected_project_preview",
     "Build or refresh the project's live-tracking branch preview. Inspect get_connected_project_operations " +
       "and obtain explicit approval first: this can provision preview infrastructure and replace an " +
@@ -64,7 +74,10 @@ export function registerProjectOperationTools(server: McpServer, { apiFetch, toT
     "Switch live deployment to the project's existing builder branch (cut the cord). This stops " +
       "maintaining the Staticbot mirror and can redeploy the production site. It is optional: launching " +
       "and continuing development on the mirror branch is the recommended path. It is not an arbitrary " +
-      "branch picker, and no reverse action is exposed. Inspect get_connected_project_operations, " +
+      "branch picker, and no reverse action is exposed. Staticbot refuses the switch when it reads the builder " +
+      "branch and finds it lacks the migrated backend (for Base44, no @staticbot/base44-supabase-shim in package.json); " +
+      "relay that refusal instead of retrying. Every switch is recorded in get_connected_project_audit. " +
+      "Inspect get_connected_project_operations, " +
       "explain the exact current and target branches and obtain explicit approval before confirmed=true. " +
       "Before repositoryTakeoverAcknowledged=true, warn that a still-connected AI builder can push to the " +
       "builder branch and overwrite Staticbot's migration changes, breaking the hosted app, and get the " +

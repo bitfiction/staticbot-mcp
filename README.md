@@ -136,6 +136,9 @@ require the returned repository configuration ID. A changed target returns 409 a
 inspection and approval. Feature flags, workspace roles, persisted-link validation and agency-client
 restrictions remain enforced by the backend. Webhook reset/deletion uses the existing best-effort
 upstream removal, so a local configuration change is not proof that GitHub deleted the old hook.
+`get_connected_project_audit` answers "when and by whom did this project start deploying branch X":
+every live-branch switch is recorded with its actor, channel (UI or API/MCP) and from/to branch. The
+switch is refused when Staticbot reads the builder branch and finds it lacks the migrated backend.
 
 The backend route must be deployed before enabling these tools in the hosted MCP server. See the
 [capability audit](CAPABILITY-PARITY.md) for the remaining dashboard/API differences.

@@ -397,6 +397,7 @@ confirmation semantics remain the responsibility of the focused contract tests. 
 | Read/set a migration's live URL | `GET` / `PUT /api/v1/migrations/{id}/live-site` | `get_migration_live_site`, `set_migration_live_site` |
 | Read retained live-commit comparison | `GET /api/v1/migrations/{id}/live-commit-check` | `get_migration_live_commit_check` |
 | Inspect branch targets and shared webhook scope | `GET /api/v1/connected-projects/{id}/operations` | `get_connected_project_operations` |
+| Read the project's audit trail (live-branch switches with actor and from/to) | `GET /api/v1/connected-projects/{id}/audit` | `get_connected_project_audit` |
 | Build a branch preview | `POST /api/v1/connected-projects/{id}/build-preview` | `build_connected_project_preview` |
 | Switch live to the builder branch | `POST /api/v1/connected-projects/{id}/live-branch` | `switch_connected_project_live_branch` |
 | Sync the migration preview onto live | `POST /api/v1/connected-projects/{id}/sync-to-live` | `sync_connected_project_to_live` |

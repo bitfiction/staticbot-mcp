@@ -31,6 +31,9 @@ const api = createHttpServer(async (request, response) => {
     { scan: { id: runId, status: "QUEUED" }, pollAfterMs: 1500 });
   if (request.url === `${projectPath}/operations`) return json(200,
     { id, builderBranch: "main", liveBranch: "staticbot/live", webhook: { repositoryConfigId: configId, affectedTemplates: 2 } });
+  if (request.url === `${projectPath}/audit`) return json(200, [{ eventType: "USER_ACTION", actor: "owner@example.com",
+    actorType: "USER", oldStatus: "staticbot/live", newStatus: "main", detail: "LIVE_BRANCH_SWITCH: staticbot/live -> main",
+    occurredAt: "2026-11-18T00:11:28.873Z" }]);
   if (request.url === `${projectPath}/build-preview`) return json(202, { message: "Queued" });
   if (request.url === `${projectPath}/live-branch` || request.url === `${projectPath}/sync-to-live`) {
     // Mirrors V1 LiveBranchConfirmation: the switch also needs the repository-takeover acknowledgement.
@@ -80,6 +83,7 @@ try {
         ["set_migration_live_site", { id, url: "https://customer.example/" }, "PUT", `${migrationPath}/live-site`],
         ["get_migration_live_commit_check", { id }, "GET", `${migrationPath}/live-commit-check`],
         ["get_connected_project_operations", { id }, "GET", `${projectPath}/operations`],
+        ["get_connected_project_audit", { id }, "GET", `${projectPath}/audit`],
         ["build_connected_project_preview", { id, confirmed: true }, "POST", `${projectPath}/build-preview`],
         ["switch_connected_project_live_branch", liveSwitch, "POST", `${projectPath}/live-branch`],
         ["sync_connected_project_to_live", branch, "POST", `${projectPath}/sync-to-live`],

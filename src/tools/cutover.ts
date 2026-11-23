@@ -24,10 +24,14 @@ export function registerCutoverTools(server: McpServer, { apiFetch, toText }: To
     "reads bounded source timestamps/new accounts and records evidence; configured workspace notifications " +
     "may be sent. Never copies data or resolves conflicts. Poll get_connected_project_cutover while checking. " +
     "Preserve unknown, unreadable, incomplete and access-blocked results. The check does not cover deletions, " +
-    "files, existing account changes or external systems, and cannot bypass a target website's access controls.",
-    { id }, { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-    async ({ id }) => apiToolResult(await apiFetch(`/api/v1/connected-projects/${id}/cutover/check`,
-      { method: "POST" }), toText));
+    "files, existing account changes or external systems, and cannot bypass a target website's access controls. " +
+    "Once Staticbot serves the app on its go-live domain, that domain is the address checked. Pass liveUrl only when " +
+    "the user names the address their customers use; it becomes the migration's live address.",
+    { id, liveUrl: z.string().url().max(2048).optional()
+        .describe("The live app's address, only when the user named it; omit to check the address Staticbot watches") },
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    async ({ id, liveUrl }) => apiToolResult(await apiFetch(`/api/v1/connected-projects/${id}/cutover/check`,
+      liveUrl ? { method: "POST", body: JSON.stringify({ liveUrl }) } : { method: "POST" }), toText));
 
   registerApiTool(server, "copy_connected_project_late_changes",
     "Copy late Base44 changes into the project's migrated Supabase after explicit user approval. First inspect " +

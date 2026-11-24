@@ -20,6 +20,18 @@
         "destructive_justification": "Does not delete, overwrite, or irreversibly alter data."
       }
     },
+    "get_guided_migration_workflow": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns bundled workflow instructions without querying an account or invoking the Staticbot API.",
+        "open_world_justification": "Returns the text stored in the MCP server and does not make a network request.",
+        "destructive_justification": "Does not create, change, approve, or delete any resource."
+      }
+    },
     "scan_website": {
       "annotations": {
         "readOnlyHint": false,

@@ -17,7 +17,7 @@ const apiResultSchema = z.union([
 ]);
 
 export const apiToolOutputSchema = {
-  result: apiResultSchema.describe("Parsed JSON response or explicitly requested report text from the Staticbot public API"),
+  result: apiResultSchema.describe("Staticbot tool output, including parsed JSON and report or workflow text"),
 };
 
 /** Register an API-backed tool using the current SDK descriptor form and shared output shape. */

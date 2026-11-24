@@ -11,6 +11,7 @@ import { registerDeploymentDnsTools } from "../tools/deployment-dns.js";
 import { registerDeploymentManagementTools } from "../tools/deployment-management.js";
 import { registerDeploymentTools } from "../tools/deployments.js";
 import { registerGateTools } from "../tools/gates.js";
+import { registerGuidedMigrationTool } from "../tools/guided-migration.js";
 import { registerMigrationTools } from "../tools/migrations.js";
 import { registerSiteScanTools } from "../tools/site-scans.js";
 import { registerProjectOperationTools } from "../tools/project-operations.js";
@@ -33,11 +34,15 @@ export const SERVER_VERSION = "1.8.4";
  * stdio-only because it depends on a browser extension reaching the user's own machine.
  */
 export function createServer(context: ToolContext): McpServer {
-  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
+  const server = new McpServer(
+    { name: SERVER_NAME, version: SERVER_VERSION },
+    { instructions: "For the Staticbot website's Lovable or Base44 migration prompt, read get_guided_migration_workflow and check get_account_status. Follow Staticbot's pending actions and obtain the user's required approvals. Enter credentials in the Staticbot dashboard or the client's secure configuration." },
+  );
 
   // Registered first so it reads first in the tool list: it is the call that tells an agent
   // what is connected and what the user still has to choose.
   registerAccountTools(server, context);
+  registerGuidedMigrationTool(server);
   registerSiteScanTools(server, context);
   registerTemplateTools(server, context);
   registerStackTools(server, context);

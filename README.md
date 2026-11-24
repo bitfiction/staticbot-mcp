@@ -26,7 +26,7 @@ key. The local server uses the API key you give it.
 
 This repository is also a Codex plugin. Its manifest bundles the Staticbot MCP server with focused skills:
 
-- `guided-migration` is the entry point for the [website's migration prompt](https://www.staticbot.dev/). It guides account setup, runs or resumes a Lovable or Base44 test migration, and prepares a cutover plan when requested.
+- `guided-migration` is the local skill for the [website's migration prompt](https://www.staticbot.dev/). ChatGPT and Claude can read the workflow through `get_guided_migration_workflow` on the hosted connector. It guides account setup, runs or resumes a Lovable or Base44 test migration, and prepares a cutover plan when requested.
 - `deploy-web-app-with-staticbot` deploys a repository without making the agent choose a cloud provider. Staticbot analyzes the repo, classifies the workload, and selects the supported AWS or Cloudflare target plus its customer-owned or Staticbot-managed ownership model.
 - `migrate-vibe-coded-app` moves Base44, Lovable, Bolt, or Firebase backends to customer-owned Supabase infrastructure with discovery and approval gates.
 - `sync-vibe-coded-app` keeps migrated projects synchronized while preserving destructive-change review.

@@ -6,13 +6,14 @@ const cases = JSON.parse(await readFile(promptPath, "utf8"));
 const validSkills = new Set([
   "deploy-web-app-with-staticbot",
   "migrate-vibe-coded-app",
+  "guided-migration",
   "sync-vibe-coded-app",
   "live-migrate-ai-built-app",
 ]);
 const validKinds = new Set(["direct", "indirect", "negative"]);
 
 assert(Array.isArray(cases), "discovery prompt fixture must be an array");
-assert(cases.length >= 30 && cases.length <= 50, "keep 30-50 discovery prompts");
+assert(cases.length >= 30 && cases.length <= 60, "keep 30-60 discovery prompts");
 
 const ids = new Set();
 const prompts = new Set();

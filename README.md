@@ -18,13 +18,15 @@ have a Staticbot account yet, one is created when you first connect.
 newer and a Staticbot API key from
 [app.staticbot.dev/developer](https://app.staticbot.dev/developer).
 
-Both expose the same tools. The hosted server acts as the person who authorized it and never sees an
-API key; the local server uses the API key you give it.
+Both transports share a tool registry, and the npm package and hosted deployment can be on
+different versions. The hosted server acts as the person who authorized it and never sees an API
+key. The local server uses the API key you give it.
 
 ## Install as a Codex plugin
 
-This repository is also a Codex plugin. Its manifest bundles the Staticbot MCP server with four intent-focused skills:
+This repository is also a Codex plugin. Its manifest bundles the Staticbot MCP server with focused skills:
 
+- `guided-migration` is the local skill for the [website's migration prompt](https://www.staticbot.dev/). ChatGPT and Claude can read the workflow through `get_guided_migration_workflow` on the hosted connector. It guides account setup, runs or resumes a Lovable or Base44 test migration, and prepares a cutover plan when requested.
 - `deploy-web-app-with-staticbot` deploys a repository without making the agent choose a cloud provider. Staticbot analyzes the repo, classifies the workload, and selects the supported AWS or Cloudflare target plus its customer-owned or Staticbot-managed ownership model.
 - `migrate-vibe-coded-app` moves Base44, Lovable, Bolt, or Firebase backends to customer-owned Supabase infrastructure with discovery and approval gates.
 - `sync-vibe-coded-app` keeps migrated projects synchronized while preserving destructive-change review.
@@ -71,7 +73,7 @@ Add the published package to your project or global MCP configuration:
   "mcpServers": {
     "staticbot": {
       "command": "npx",
-      "args": ["-y", "@staticbot/mcp"],
+      "args": ["-y", "--package=@staticbot/mcp", "staticbot-mcp"],
       "env": {
         "STATICBOT_API_KEY": "sk-your-api-key-here"
       }

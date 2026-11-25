@@ -1,0 +1,4 @@
+interface:
+  display_name: "Guided Migration"
+  short_description: "Try a Lovable or Base44 migration preview"
+  default_prompt: "Use $guided-migration to guide me from setup to a preview of my Lovable or Base44 app on my own Supabase."

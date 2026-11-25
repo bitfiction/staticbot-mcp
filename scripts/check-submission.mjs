@@ -16,6 +16,11 @@ try {
   const { tools } = await client.listTools();
   assert.deepEqual(Object.keys(submission.tools).sort(), tools.map(t => t.name).sort(),
     "submission tool inventory must match the runtime");
+  const guide = await client.callTool({ name: "get_guided_migration_workflow", arguments: {} });
+  assert.equal(guide.isError, undefined);
+  assert.equal(guide.structuredContent.result, guide.content[0].text);
+  assert.match(guide.structuredContent.result, /approvedRevisionId/);
+  assert.match(guide.structuredContent.result, /get_migration_preview_evidence/);
   for (const tool of tools) {
     const declared = submission.tools[tool.name];
     for (const hint of ["readOnlyHint", "openWorldHint", "destructiveHint"]) {

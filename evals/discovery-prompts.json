@@ -216,6 +216,54 @@
     "kind": "direct"
   },
   {
+    "id": "guided-01",
+    "prompt": "Guide me through moving my Lovable or Base44 app to my own Supabase with Staticbot. Use the Staticbot guided-migration skill.",
+    "expectedSkill": "guided-migration",
+    "kind": "direct"
+  },
+  {
+    "id": "guided-02",
+    "prompt": "I copied the Staticbot migration prompt from the homepage. Help me connect my new account and run a preview for my Lovable app.",
+    "expectedSkill": "guided-migration",
+    "kind": "indirect"
+  },
+  {
+    "id": "guided-03",
+    "prompt": "Use guided-migration with this already connected Base44 repo. I only want to try it on a test Supabase project.",
+    "expectedSkill": "guided-migration",
+    "kind": "direct"
+  },
+  {
+    "id": "guided-04",
+    "prompt": "Use the guided migration to rehearse my Lovable move and prepare a cutover plan without starting it.",
+    "expectedSkill": "guided-migration",
+    "kind": "direct"
+  },
+  {
+    "id": "guided-05",
+    "prompt": "Resume the guided Staticbot migration 98c701e6-31c7-4e46-b5c3-32644ea67d91 and take it to the test preview.",
+    "expectedSkill": "guided-migration",
+    "kind": "direct"
+  },
+  {
+    "id": "guided-06",
+    "prompt": "I restarted Claude Code after linking Staticbot. Continue the Base44 migration I started from the website prompt.",
+    "expectedSkill": "guided-migration",
+    "kind": "indirect"
+  },
+  {
+    "id": "guided-07",
+    "prompt": "Walk me through the Staticbot website's migration prompt. I have two Lovable repos and need help picking the right one before discovery.",
+    "expectedSkill": "guided-migration",
+    "kind": "indirect"
+  },
+  {
+    "id": "guided-08",
+    "prompt": "Start the guided Staticbot preview for Base44 and tell me what I still need to verify when it comes up.",
+    "expectedSkill": "guided-migration",
+    "kind": "indirect"
+  },
+  {
     "id": "negative-01",
     "prompt": "Help me build a new app in Lovable.",
     "expectedSkill": null,

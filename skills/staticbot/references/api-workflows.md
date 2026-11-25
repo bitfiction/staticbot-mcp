@@ -105,6 +105,8 @@ not report a Workers custom hostname live until both returned status fields are 
 
 - `GET|POST /migrations`
 - `GET /migrations/{id}`
+- `GET /migrations/{id}/overview` — lightweight status polling. Follow `pollAfterMs` and re-read full details when the version changes or a decision is due. Track the preview status independently.
+- `GET /migrations/{id}/preview-evidence` — retained checks grouped into what worked, what had problems, and what remains unverified
 - `GET /migrations/{id}/discovery-report` — discovery coverage, findings, proposed work and the revision to review
 - `POST /migrations/{id}/source-inspection` — requires `{"authorizeHelperDeployment":true}` after explicit authorization to commit and deploy a helper in the source account; only before approval/execution
 - `GET /migrations/{id}/discovery-report/revisions?beforeRevision=10&limit=25` — saved report list, newest first; exclusive revision-number cursor, limit 1–100

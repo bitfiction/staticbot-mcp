@@ -4,6 +4,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 
 export const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'TRACE']);
 export const FIXTURE_ID = '00000000-0000-4000-8000-000000000911';
+const bundledDocumentationTools = new Set(['get_guided_migration_workflow']);
 const parameter = /\{[^}]+\}/g;
 const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export function normalizePath(path) {
@@ -159,7 +160,11 @@ export async function collectToolCalls(createServer, probes = TOOL_PROBES) {
         const result = await client.callTool({ name: tool.name, arguments: args });
         assert.notEqual(result.isError, true,
           `${tool.name} parity probe failed; provide valid inputs: ${JSON.stringify(args)} → ${JSON.stringify(result.content)}`);
-        assert(calls.length > before, `${tool.name} did not call the API for ${JSON.stringify(args)}; add a valid parity probe`);
+        if (bundledDocumentationTools.has(tool.name)) {
+          assert.equal(calls.length, before, `${tool.name} must serve bundled content without calling the API`);
+        } else {
+          assert(calls.length > before, `${tool.name} did not call the API for ${JSON.stringify(args)}; add a valid parity probe`);
+        }
       }
     }
     return { calls, toolCount: tools.length };

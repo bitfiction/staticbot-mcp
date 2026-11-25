@@ -1,6 +1,6 @@
 {
   "name": "@staticbot/mcp",
-  "version": "1.8.4",
+  "version": "1.8.5",
   "mcpName": "io.github.bitfiction/staticbot",
   "description": "MCP server for the Staticbot API",
   "license": "MIT",
